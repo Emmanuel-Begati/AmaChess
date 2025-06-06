@@ -7,6 +7,7 @@ AmaChess is a comprehensive chess learning platform that combines advanced AI an
 ## 🔗 Repository
 
 **GitHub Repository:** [https://github.com/Emmanuel-Begati/AmaChess](https://github.com/Emmanuel-Begati/AmaChess)
+**Video For Demonstration:** [https://github.com/Emmanuel-Begati/AmaChess](https://youtu.be/oIrY9cAHAsg)
 
 ## 📋 Description
 
