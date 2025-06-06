@@ -43,13 +43,13 @@ AmaChess revolutionizes chess education by offering:
 - Detailed move-by-move breakdown
 - Identify tactical and strategic mistakes
 
-## 🚀 Setup Instructions
+<!-- ## 🚀 Setup Instructions
 
 ### Prerequisites
 
 - Modern web browser (Chrome, Firefox, Safari, or Edge)
 - Internet connection for external dependencies
-- Text editor or IDE (VS Code recommended)
+- Text editor or IDE (VS Code recommended) -->
 
 <!-- ### Environment Setup
 
