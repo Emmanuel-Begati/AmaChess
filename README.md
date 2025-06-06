@@ -93,7 +93,7 @@ AmaChess revolutionizes chess education by offering:
    
    Then visit `http://localhost:8000` in your browser -->
 
-### Dependencies
+<!-- ### Dependencies
 
 The project uses the following external libraries:
 
@@ -101,7 +101,7 @@ The project uses the following external libraries:
 - **Google Fonts**: Lexend, Newsreader, Space Grotesk, and Noto Sans
 - **Phosphor Icons**: Icon library for UI elements
 
-All dependencies are loaded via CDN, so no local installation is required.
+All dependencies are loaded via CDN, so no local installation is required. -->
 
 ## 🎨 Design & Interface
 
