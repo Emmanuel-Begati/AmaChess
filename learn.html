@@ -1,0 +1,294 @@
+<html>
+  <head>
+    <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="" />
+    <link
+      rel="stylesheet"
+      as="style"
+      onload="this.rel='stylesheet'"
+      href="https://fonts.googleapis.com/css2?display=swap&amp;family=Lexend%3Awght%40400%3B500%3B700%3B900&amp;family=Noto+Sans%3Awght%40400%3B500%3B700%3B900"
+    />
+
+    <title>Stitch Design</title>
+    <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64," />
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  </head>
+  <body>
+    <div class="relative flex size-full min-h-screen flex-col bg-[#121621] dark group/design-root overflow-x-hidden" style='font-family: Lexend, "Noto Sans", sans-serif;'>
+      <div class="layout-container flex h-full grow flex-col">
+        <header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-b-[#272e45] px-10 py-3"></header>
+        <div class="gap-1 px-6 flex flex-1 justify-center py-5">
+          <div class="layout-content-container flex flex-col w-80">
+            <div class="flex flex-wrap justify-between gap-3 p-4">
+              <div class="flex min-w-72 flex-col gap-3">
+                <p class="text-white tracking-light text-[32px] font-bold leading-tight">Learn From Your Games</p>
+                <p class="text-[#97a1c4] text-sm font-normal leading-normal">Transform your playing experience into personalized chess education</p>
+              </div>
+            </div>
+            <div class="flex justify-stretch">
+              <div class="flex flex-1 gap-3 flex-wrap px-4 py-3 justify-start">
+                <button
+                  class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 bg-[#272e45] text-white text-sm font-bold leading-normal tracking-[0.015em]"
+                >
+                  <span class="truncate">Import from Lichess</span>
+                </button>
+                <button
+                  class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 bg-[#272e45] text-white text-sm font-bold leading-normal tracking-[0.015em]"
+                >
+                  <span class="truncate">Import from Chess.com</span>
+                </button>
+              </div>
+            </div>
+            <div class="flex px-4 py-3 justify-start">
+              <button
+                class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 bg-[#272e45] text-white text-sm font-bold leading-normal tracking-[0.015em]"
+              >
+                <span class="truncate">Upload PGN</span>
+              </button>
+            </div>
+            <div class="flex flex-wrap gap-4 p-4">
+              <div class="flex min-w-[158px] flex-1 flex-col gap-2 rounded-xl p-6 border border-[#374162]">
+                <p class="text-white text-base font-medium leading-normal">Total Games Imported</p>
+                <p class="text-white tracking-light text-2xl font-bold leading-tight">234</p>
+              </div>
+              <div class="flex min-w-[158px] flex-1 flex-col gap-2 rounded-xl p-6 border border-[#374162]">
+                <p class="text-white text-base font-medium leading-normal">Games Analyzed</p>
+                <p class="text-white tracking-light text-2xl font-bold leading-tight">187</p>
+              </div>
+              <div class="flex min-w-[158px] flex-1 flex-col gap-2 rounded-xl p-6 border border-[#374162]">
+                <p class="text-white text-base font-medium leading-normal">Learning Points</p>
+                <p class="text-white tracking-light text-2xl font-bold leading-tight">456</p>
+              </div>
+            </div>
+            <h2 class="text-white text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">Game Library</h2>
+            <div class="px-4 py-3">
+              <label class="flex flex-col min-w-40 h-12 w-full">
+                <div class="flex w-full flex-1 items-stretch rounded-xl h-full">
+                  <div
+                    class="text-[#97a1c4] flex border-none bg-[#272e45] items-center justify-center pl-4 rounded-l-xl border-r-0"
+                    data-icon="MagnifyingGlass"
+                    data-size="24px"
+                    data-weight="regular"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+                      <path
+                        d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"
+                      ></path>
+                    </svg>
+                  </div>
+                  <input
+                    placeholder="Search"
+                    class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-white focus:outline-0 focus:ring-0 border-none bg-[#272e45] focus:border-none h-full placeholder:text-[#97a1c4] px-4 rounded-l-none border-l-0 pl-2 text-base font-normal leading-normal"
+                    value=""
+                  />
+                </div>
+              </label>
+            </div>
+            <div class="flex gap-3 p-3 flex-wrap pr-4">
+              <div class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#272e45] pl-4 pr-4">
+                <p class="text-white text-sm font-medium leading-normal">Opening</p>
+              </div>
+              <div class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#272e45] pl-4 pr-4">
+                <p class="text-white text-sm font-medium leading-normal">Result</p>
+              </div>
+              <div class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#272e45] pl-4 pr-4">
+                <p class="text-white text-sm font-medium leading-normal">Date</p>
+              </div>
+              <div class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#272e45] pl-4 pr-4">
+                <p class="text-white text-sm font-medium leading-normal">Opponent</p>
+              </div>
+              <div class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#272e45] pl-4 pr-4">
+                <p class="text-white text-sm font-medium leading-normal">Time Control</p>
+              </div>
+              <div class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#272e45] pl-4 pr-4">
+                <p class="text-white text-sm font-medium leading-normal">Rating Range</p>
+              </div>
+              <div class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#272e45] pl-4 pr-4">
+                <p class="text-white text-sm font-medium leading-normal">Color Played</p>
+              </div>
+              <div class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#272e45] pl-4 pr-4">
+                <p class="text-white text-sm font-medium leading-normal">Result</p>
+              </div>
+            </div>
+            <div class="flex gap-4 bg-[#121621] px-4 py-3 justify-between">
+              <div class="flex flex-1 flex-col justify-center">
+                <p class="text-white text-base font-medium leading-normal">Your Rating: 1500 (+15)</p>
+                <p class="text-[#97a1c4] text-sm font-normal leading-normal">Result: Win, Date: 2024-01-15, Time Control: 10+0</p>
+                <p class="text-[#97a1c4] text-sm font-normal leading-normal">vs. Opponent 1 (1650)</p>
+              </div>
+              <div class="shrink-0"><button class="text-base font-medium leading-normal">Analyze</button></div>
+            </div>
+            <div class="flex gap-4 bg-[#121621] px-4 py-3 justify-between">
+              <div class="flex flex-1 flex-col justify-center">
+                <p class="text-white text-base font-medium leading-normal">Your Rating: 1515 (-10)</p>
+                <p class="text-[#97a1c4] text-sm font-normal leading-normal">Result: Loss, Date: 2024-01-10, Time Control: 5+0</p>
+                <p class="text-[#97a1c4] text-sm font-normal leading-normal">vs. Opponent 2 (1800)</p>
+              </div>
+              <div class="shrink-0"><button class="text-base font-medium leading-normal">Analyze</button></div>
+            </div>
+            <div class="flex gap-4 bg-[#121621] px-4 py-3 justify-between">
+              <div class="flex flex-1 flex-col justify-center">
+                <p class="text-white text-base font-medium leading-normal">Your Rating: 1505 (+5)</p>
+                <p class="text-[#97a1c4] text-sm font-normal leading-normal">Result: Draw, Date: 2024-01-05, Time Control: 15+10</p>
+                <p class="text-[#97a1c4] text-sm font-normal leading-normal">vs. Opponent 3 (1700)</p>
+              </div>
+              <div class="shrink-0"><button class="text-base font-medium leading-normal">Analyze</button></div>
+            </div>
+          </div>
+          <div class="layout-content-container flex flex-col max-w-[960px] flex-1">
+            <div class="flex flex-wrap justify-between gap-3 p-4"><p class="text-white tracking-light text-[32px] font-bold leading-tight min-w-72">Game Analysis</p></div>
+            <div class="p-4">
+              <div
+                class="relative flex items-center justify-center bg-blue-800 bg-cover bg-center aspect-video rounded-xl p-4"
+                style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDBPVtLcCFpAhOFIbPy2f9uifNzv6uPbhp4dQv6fpEFomqi6KTe1Zup68DQGvjuXhUhvGn7axRA7VNjzUJYZrWyS47dpIhkvEblJIWOqwXMoH8ZSMlMM8KRuHKHHsr0MZeedRuq8hhkIB9yDePPiqFFNbKaf2voWNb4CwkwgKej7M0yGnMRUuE7wrzTmod3-G5zNY0WvNuuVm0ogaNlBDZpfxUlx0xxEgEnLbdsge-TDgDTfObiLvZr44ByaLevUVyPV7xXX_hgNTM");'
+              >
+                <button class="flex shrink-0 items-center justify-center rounded-full size-16 bg-black/40 text-white">
+                  <div class="text-inherit" data-icon="Play" data-size="24px" data-weight="fill">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+                      <path
+                        d="M240,128a15.74,15.74,0,0,1-7.6,13.51L88.32,229.65a16,16,0,0,1-16.2.3A15.86,15.86,0,0,1,64,216.13V39.87a15.86,15.86,0,0,1,8.12-13.82,16,16,0,0,1,16.2.3L232.4,114.49A15.74,15.74,0,0,1,240,128Z"
+                      ></path>
+                    </svg>
+                  </div>
+                </button>
+              </div>
+            </div>
+            <h2 class="text-white text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">AI Insights</h2>
+            <div class="pb-3">
+              <div class="flex border-b border-[#374162] px-4 gap-8">
+                <a class="flex flex-col items-center justify-center border-b-[3px] border-b-blue-800 text-white pb-[13px] pt-4" href="#">
+                  <p class="text-white text-sm font-bold leading-normal tracking-[0.015em]">Strengths</p>
+                </a>
+                <a class="flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-[#97a1c4] pb-[13px] pt-4" href="#">
+                  <p class="text-[#97a1c4] text-sm font-bold leading-normal tracking-[0.015em]">Learning Opportunities</p>
+                </a>
+                <a class="flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-[#97a1c4] pb-[13px] pt-4" href="#">
+                  <p class="text-[#97a1c4] text-sm font-bold leading-normal tracking-[0.015em]">Pattern Recognition</p>
+                </a>
+                <a class="flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-[#97a1c4] pb-[13px] pt-4" href="#">
+                  <p class="text-[#97a1c4] text-sm font-bold leading-normal tracking-[0.015em]">Study Recommendations</p>
+                </a>
+              </div>
+            </div>
+            <p class="text-white text-base font-normal leading-normal pb-3 pt-1 px-4">
+              Your strengths include solid opening principles and tactical awareness in the middlegame. Continue to reinforce these areas through practice and analysis.
+            </p>
+            <h2 class="text-white text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">Learning Dashboard</h2>
+            <div class="pb-3">
+              <div class="flex border-b border-[#374162] px-4 gap-8">
+                <a class="flex flex-col items-center justify-center border-b-[3px] border-b-blue-800 text-white pb-[13px] pt-4" href="#">
+                  <p class="text-white text-sm font-bold leading-normal tracking-[0.015em]">Rating Progress</p>
+                </a>
+                <a class="flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-[#97a1c4] pb-[13px] pt-4" href="#">
+                  <p class="text-[#97a1c4] text-sm font-bold leading-normal tracking-[0.015em]">Weak Areas</p>
+                </a>
+                <a class="flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-[#97a1c4] pb-[13px] pt-4" href="#">
+                  <p class="text-[#97a1c4] text-sm font-bold leading-normal tracking-[0.015em]">Learning Streaks</p>
+                </a>
+                <a class="flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-[#97a1c4] pb-[13px] pt-4" href="#">
+                  <p class="text-[#97a1c4] text-sm font-bold leading-normal tracking-[0.015em]">Mastery Progress</p>
+                </a>
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-4 px-4 py-6">
+              <div class="flex min-w-72 flex-1 flex-col gap-2">
+                <p class="text-white text-base font-medium leading-normal">Rating Over Time</p>
+                <p class="text-white tracking-light text-[32px] font-bold leading-tight truncate">1510</p>
+                <div class="flex gap-1">
+                  <p class="text-[#97a1c4] text-base font-normal leading-normal">Last 30 Days</p>
+                  <p class="text-[#0bda62] text-base font-medium leading-normal">+5%</p>
+                </div>
+                <div class="flex min-h-[180px] flex-1 flex-col gap-8 py-4">
+                  <svg width="100%" height="148" viewBox="-3 0 478 150" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+                    <path
+                      d="M0 109C18.1538 109 18.1538 21 36.3077 21C54.4615 21 54.4615 41 72.6154 41C90.7692 41 90.7692 93 108.923 93C127.077 93 127.077 33 145.231 33C163.385 33 163.385 101 181.538 101C199.692 101 199.692 61 217.846 61C236 61 236 45 254.154 45C272.308 45 272.308 121 290.462 121C308.615 121 308.615 149 326.769 149C344.923 149 344.923 1 363.077 1C381.231 1 381.231 81 399.385 81C417.538 81 417.538 129 435.692 129C453.846 129 453.846 25 472 25V149H326.769H0V109Z"
+                      fill="url(#paint0_linear_1131_5935)"
+                    ></path>
+                    <path
+                      d="M0 109C18.1538 109 18.1538 21 36.3077 21C54.4615 21 54.4615 41 72.6154 41C90.7692 41 90.7692 93 108.923 93C127.077 93 127.077 33 145.231 33C163.385 33 163.385 101 181.538 101C199.692 101 199.692 61 217.846 61C236 61 236 45 254.154 45C272.308 45 272.308 121 290.462 121C308.615 121 308.615 149 326.769 149C344.923 149 344.923 1 363.077 1C381.231 1 381.231 81 399.385 81C417.538 81 417.538 129 435.692 129C453.846 129 453.846 25 472 25"
+                      stroke="#97a1c4"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                    ></path>
+                    <defs>
+                      <linearGradient id="paint0_linear_1131_5935" x1="236" y1="1" x2="236" y2="149" gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#272e45"></stop>
+                        <stop offset="1" stop-color="#272e45" stop-opacity="0"></stop>
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <div class="flex justify-around">
+                    <p class="text-[#97a1c4] text-[13px] font-bold leading-normal tracking-[0.015em]">Jan 1</p>
+                    <p class="text-[#97a1c4] text-[13px] font-bold leading-normal tracking-[0.015em]">Jan 8</p>
+                    <p class="text-[#97a1c4] text-[13px] font-bold leading-normal tracking-[0.015em]">Jan 15</p>
+                    <p class="text-[#97a1c4] text-[13px] font-bold leading-normal tracking-[0.015em]">Jan 22</p>
+                    <p class="text-[#97a1c4] text-[13px] font-bold leading-normal tracking-[0.015em]">Jan 29</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <h2 class="text-white text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">AI Learning Coach</h2>
+            <p class="text-white text-base font-normal leading-normal pb-3 pt-1 px-4">
+              Your AI Learning Coach provides personalized insights based on your game analysis. It identifies key areas for improvement, suggests smart recommendations, tracks
+              your progress, and offers custom training options to enhance your chess skills.
+            </p>
+            <div class="flex justify-end overflow-hidden px-5 pb-5">
+              <button
+                class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-14 px-5 bg-blue-800 text-white text-base font-bold leading-normal tracking-[0.015em] min-w-0 gap-4 pl-4 pr-6"
+              >
+                <div class="text-white" data-icon="Plus" data-size="24px" data-weight="regular">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+                    <path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"></path>
+                  </svg>
+                </div>
+                <span class="truncate">Analyze New Game</span>
+              </button>
+            </div>
+            <div class="flex justify-end overflow-hidden px-5 pb-5">
+              <button
+                class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-14 px-5 bg-blue-800 text-white text-base font-bold leading-normal tracking-[0.015em] min-w-0 gap-4 pl-4 pr-6"
+              >
+                <div class="text-white" data-icon="BookOpen" data-size="24px" data-weight="regular">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+                    <path
+                      d="M224,48H160a40,40,0,0,0-32,16A40,40,0,0,0,96,48H32A16,16,0,0,0,16,64V192a16,16,0,0,0,16,16H96a24,24,0,0,1,24,24,8,8,0,0,0,16,0,24,24,0,0,1,24-24h64a16,16,0,0,0,16-16V64A16,16,0,0,0,224,48ZM96,192H32V64H96a24,24,0,0,1,24,24V200A39.81,39.81,0,0,0,96,192Zm128,0H160a39.81,39.81,0,0,0-24,8V88a24,24,0,0,1,24-24h64Z"
+                    ></path>
+                  </svg>
+                </div>
+                <span class="truncate">Create Study Plan</span>
+              </button>
+            </div>
+            <div class="flex justify-end overflow-hidden px-5 pb-5">
+              <button
+                class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-14 px-5 bg-blue-800 text-white text-base font-bold leading-normal tracking-[0.015em] min-w-0 gap-4 pl-4 pr-6"
+              >
+                <div class="text-white" data-icon="File" data-size="24px" data-weight="regular">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+                    <path
+                      d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Z"
+                    ></path>
+                  </svg>
+                </div>
+                <span class="truncate">Export Report</span>
+              </button>
+            </div>
+            <div class="flex justify-end overflow-hidden px-5 pb-5">
+              <button
+                class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-14 px-5 bg-blue-800 text-white text-base font-bold leading-normal tracking-[0.015em] min-w-0 gap-4 pl-4 pr-6"
+              >
+                <div class="text-white" data-icon="Calendar" data-size="24px" data-weight="regular">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+                    <path
+                      d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Zm-96-88v64a8,8,0,0,1-16,0V132.94l-4.42,2.22a8,8,0,0,1-7.16-14.32l16-8A8,8,0,0,1,112,120Zm59.16,30.45L152,176h16a8,8,0,0,1,0,16H136a8,8,0,0,1-6.4-12.8l28.78-38.37A8,8,0,1,0,145.07,132a8,8,0,1,1-13.85-8A24,24,0,0,1,176,136,23.76,23.76,0,0,1,171.16,150.45Z"
+                    ></path>
+                  </svg>
+                </div>
+                <span class="truncate">Schedule Review</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
