@@ -61,7 +61,7 @@ AmaChess revolutionizes chess education by offering:
 
 2. **Project Structure**
    ```
-   AmaChess/
+   AmaChess/html_files/
    ├── index.html              # Landing page with hero section and features
    ├── dashboard.html          # User dashboard with progress tracking
    ├── learn.html             # Game analysis and learning center
@@ -108,11 +108,12 @@ All dependencies are loaded via CDN, so no local installation is required.
 ### Figma Mockups
 **Design File:** [AmaChess Figma Design](https://www.figma.com/design/pyAKOsKeEgY1n4nupxtp31/AmaChess?node-id=0-1&p=f&t=S1PdSXMMyXxdfnTy-0)
 
+
 The design follows a modern dark theme with:
 - Clean, minimal interface
 - Intuitive navigation
 - Responsive layout design
-- Consistent color scheme (#121621, #111822, #101a23 backgrounds)
+- Consistent color scheme (#121621,rgb(33, 73, 129),rgb(48, 51, 54) backgrounds)
 - Professional typography using Lexend, Newsreader, and Space Grotesk fonts
 
 ### App Screenshots
@@ -142,6 +143,9 @@ The design follows a modern dark theme with:
 - Account management
 - Preferences configuration
 - Privacy and subscription controls
+
+
+(The design is still in progress)
 
 ## 🚀 Deployment Plan
 
@@ -222,4 +226,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-*Enhance your chess journey with AmaChess - where learning meets practice.*
+*Enhance your chess journey with AmaChess - where personalized learning meets practice.*
