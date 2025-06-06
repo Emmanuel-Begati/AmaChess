@@ -51,7 +51,7 @@ AmaChess revolutionizes chess education by offering:
 - Internet connection for external dependencies
 - Text editor or IDE (VS Code recommended)
 
-### Environment Setup
+<!-- ### Environment Setup
 
 1. **Clone the Repository**
    ```bash
@@ -91,7 +91,7 @@ AmaChess revolutionizes chess education by offering:
    php -S localhost:8000
    ```
    
-   Then visit `http://localhost:8000` in your browser
+   Then visit `http://localhost:8000` in your browser -->
 
 ### Dependencies
 
