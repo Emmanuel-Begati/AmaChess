@@ -8,8 +8,6 @@ AmaChess is a comprehensive chess learning platform that combines advanced AI an
 
 **GitHub Repository:** [https://github.com/Emmanuel-Begati/AmaChess](https://github.com/Emmanuel-Begati/AmaChess)
 
-**Video For Demonstration:** [https://github.com/Emmanuel-Begati/AmaChess](https://youtu.be/oIrY9cAHAsg)
-
 ## 📋 Description
 
 AmaChess revolutionizes chess education by offering:
@@ -45,15 +43,15 @@ AmaChess revolutionizes chess education by offering:
 - Detailed move-by-move breakdown
 - Identify tactical and strategic mistakes
 
-<!-- ## 🚀 Setup Instructions
+## 🚀 Setup Instructions
 
 ### Prerequisites
 
 - Modern web browser (Chrome, Firefox, Safari, or Edge)
 - Internet connection for external dependencies
-- Text editor or IDE (VS Code recommended) -->
+- Text editor or IDE (VS Code recommended)
 
-<!-- ### Environment Setup
+### Environment Setup
 
 1. **Clone the Repository**
    ```bash
@@ -63,7 +61,7 @@ AmaChess revolutionizes chess education by offering:
 
 2. **Project Structure**
    ```
-   AmaChess/html_files/
+   AmaChess/
    ├── index.html              # Landing page with hero section and features
    ├── dashboard.html          # User dashboard with progress tracking
    ├── learn.html             # Game analysis and learning center
@@ -93,9 +91,9 @@ AmaChess revolutionizes chess education by offering:
    php -S localhost:8000
    ```
    
-   Then visit `http://localhost:8000` in your browser -->
+   Then visit `http://localhost:8000` in your browser
 
-<!-- ### Dependencies
+### Dependencies
 
 The project uses the following external libraries:
 
@@ -103,19 +101,18 @@ The project uses the following external libraries:
 - **Google Fonts**: Lexend, Newsreader, Space Grotesk, and Noto Sans
 - **Phosphor Icons**: Icon library for UI elements
 
-All dependencies are loaded via CDN, so no local installation is required. -->
+All dependencies are loaded via CDN, so no local installation is required.
 
 ## 🎨 Design & Interface
 
 ### Figma Mockups
 **Design File:** [AmaChess Figma Design](https://www.figma.com/design/pyAKOsKeEgY1n4nupxtp31/AmaChess?node-id=0-1&p=f&t=S1PdSXMMyXxdfnTy-0)
 
-
 The design follows a modern dark theme with:
 - Clean, minimal interface
 - Intuitive navigation
 - Responsive layout design
-- Consistent color scheme (#121621,rgb(33, 73, 129),rgb(48, 51, 54) backgrounds)
+- Consistent color scheme (#121621, #111822, #101a23 backgrounds)
 - Professional typography using Lexend, Newsreader, and Space Grotesk fonts
 
 ### App Screenshots
@@ -145,9 +142,6 @@ The design follows a modern dark theme with:
 - Account management
 - Preferences configuration
 - Privacy and subscription controls
-
-
-(The design is still in progress)
 
 ## 🚀 Deployment Plan
 
@@ -228,4 +222,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-*Enhance your chess journey with AmaChess - where personalized learning meets practice.*
+*Enhance your chess journey with AmaChess - where learning meets practice.*
