@@ -46,9 +46,45 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
+// Body parsing middleware with better error handling
+app.use(express.json({ 
+  limit: '10mb',
+  strict: true,
+  verify: (req: any, res, buf, encoding) => {
+    // Log raw buffer for debugging JSON issues
+    if (buf && buf.length) {
+      const rawBody = buf.toString(encoding || 'utf8');
+      console.log('Raw request body:', rawBody);
+      
+      // Check for common JSON formatting issues
+      if (rawBody.includes('""') && !rawBody.includes('":"')) {
+        console.warn('Potential double-quoted JSON detected');
+      }
+    }
+  }
+}));
 app.use(express.urlencoded({ extended: true }));
+
+// Enhanced JSON parsing error handler
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (err instanceof SyntaxError && 'body' in err) {
+    console.error('JSON parsing error details:', {
+      message: err.message,
+      body: (req as any).body,
+      headers: req.headers,
+      url: req.url,
+      method: req.method
+    });
+    
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid JSON format',
+      message: 'Please send a valid JSON object in the request body',
+      details: err.message
+    });
+  }
+  next(err);
+});
 
 // API routes
 app.use('/api/auth', authRoutes);
@@ -132,6 +168,14 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
       success: false,
       error: 'Unauthorized',
       message: 'Invalid token',
+    });
+  }
+  
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json({
+      success: false,
+      error: 'JSON Parse Error',
+      message: 'Invalid JSON format in request body',
     });
   }
   
