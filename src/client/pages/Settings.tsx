@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import { 
   User, 
   Bell, 
@@ -12,16 +12,24 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react'
+import { useAuth } from '../hooks/useAuth'
 
 const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = useState('profile')
   const [showPassword, setShowPassword] = useState(false)
+  const navigate = useNavigate()
+  const { logout } = useAuth()
   const [notifications, setNotifications] = useState({
     email: true,
     push: false,
     gameReminders: true,
     puzzleReminders: false,
   })
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/')
+  }
 
   const settingsTabs = [
     { id: 'profile', label: 'Profile', icon: User },
@@ -41,24 +49,14 @@ const Settings: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#121621] text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">        {/* Header */}
+        <div className="mb-8">
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Settings</h1>
           <p className="text-gray-400">Manage your account preferences and settings</p>
-        </motion.div>
+        </div>
 
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Sidebar */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="w-full lg:w-80"
-          >
+        <div className="flex flex-col lg:flex-row gap-8">          {/* Sidebar */}
+          <div className="w-full lg:w-80">
             <div className="bg-[#272e45] rounded-xl p-6">
               <nav className="space-y-2">
                 {settingsTabs.map((tab) => (
@@ -76,22 +74,19 @@ const Settings: React.FC = () => {
                   </button>
                 ))}
               </nav>
-              
-              <div className="mt-8 pt-6 border-t border-[#374162]">
-                <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 hover:bg-red-600/10 transition-colors">
+                <div className="mt-8 pt-6 border-t border-[#374162]">
+                <button 
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 hover:bg-red-600/10 transition-colors"
+                >
                   <LogOut className="w-5 h-5" />
                   <span className="font-medium">Sign Out</span>
-                </button>
-              </div>
+                </button>              </div>
             </div>
-          </motion.div>
+          </div>
 
           {/* Main Content */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex-1"
-          >
+          <div className="flex-1">
             <div className="bg-[#272e45] rounded-xl p-6">
               {/* Profile Settings */}
               {activeTab === 'profile' && (
@@ -296,9 +291,8 @@ const Settings: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              )}
-            </div>
-          </motion.div>
+              )}            </div>
+          </div>
         </div>
       </div>
     </div>

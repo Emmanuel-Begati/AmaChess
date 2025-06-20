@@ -32,24 +32,21 @@ const Navbar: React.FC = () => {
     { name: 'Community', path: '/community', icon: User, authRequired: true },
     { name: 'Library', path: '/library', icon: Library, authRequired: true },
   ]
+
   const publicNavigationItems = [
     { name: 'Learn', path: '#features', icon: BookOpen },
     { name: 'Practice', path: '#practice', icon: Gamepad2 },
     { name: 'Community', path: '#community', icon: User },
     { name: 'About', path: '#about', icon: BookOpen },
   ]
-  
+
   const handleLogout = async () => {
     try {
       await logout()
-      setIsProfileMenuOpen(false)
-      setIsMobileMenuOpen(false)
       navigate('/')
+      setIsProfileMenuOpen(false)
     } catch (error) {
       console.error('Logout error:', error)
-      setIsProfileMenuOpen(false)
-      setIsMobileMenuOpen(false)
-      navigate('/')
     }
   }
 
@@ -57,8 +54,9 @@ const Navbar: React.FC = () => {
     if (path === '/dashboard' && location.pathname === '/') return true
     return location.pathname === path
   }
+
   return (
-    <header className="sticky top-0 z-50 bg-background-primary/95 backdrop-blur-sm border-b border-background-tertiary">
+    <header className="sticky top-0 z-50 bg-[#121621]/95 backdrop-blur-sm border-b border-[#272e45]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -120,23 +118,22 @@ const Navbar: React.FC = () => {
                     <p className="text-xs text-gray-400">Rating: {user?.rating || 1200}</p>
                   </div>
                 </button>
-                
+
                 {/* Profile Dropdown */}
                 {isProfileMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-background-secondary rounded-lg shadow-lg border border-background-tertiary">
+                  <div className="absolute right-0 mt-2 w-48 bg-[#272e45] rounded-lg shadow-lg border border-[#374162]">
                     <div className="p-2">
                       <Link
                         to="/settings"
-                        className="flex items-center space-x-2 w-full p-2 text-left text-sm text-gray-300 hover:text-white hover:bg-background-tertiary rounded-md transition-colors duration-200"
+                        className="flex items-center space-x-2 w-full p-2 text-left text-sm text-gray-300 hover:text-white hover:bg-[#374162] rounded-md transition-colors duration-200"
                         onClick={() => setIsProfileMenuOpen(false)}
                       >
                         <Settings className="w-4 h-4" />
                         <span>Settings</span>
                       </Link>
-                      
                       <button
                         onClick={handleLogout}
-                        className="flex items-center space-x-2 w-full p-2 text-left text-sm text-gray-300 hover:text-white hover:bg-background-tertiary rounded-md transition-colors duration-200"
+                        className="flex items-center space-x-2 w-full p-2 text-left text-sm text-gray-300 hover:text-white hover:bg-[#374162] rounded-md transition-colors duration-200"
                       >
                         <LogOut className="w-4 h-4" />
                         <span>Logout</span>
@@ -149,13 +146,13 @@ const Navbar: React.FC = () => {
               <div className="flex space-x-2">
                 <Link
                   to="/login"
-                  className="btn-secondary"
+                  className="bg-[#374162] hover:bg-[#4a5568] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                 >
                   Login
                 </Link>
                 <Link
                   to="/register"
-                  className="btn-primary"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                 >
                   Start Free Trial
                 </Link>
@@ -172,12 +169,13 @@ const Navbar: React.FC = () => {
               <X className="w-6 h-6" />
             ) : (
               <Menu className="w-6 h-6" />
-            )}          </button>
+            )}
+          </button>
         </div>
-        
+
         {/* Mobile Navigation */}
         {isMobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-background-tertiary">
+          <div className="md:hidden py-4 border-t border-[#374162]">
             <div className="space-y-2">
               {isAuthenticated ? (
                 <>
@@ -196,7 +194,7 @@ const Navbar: React.FC = () => {
                       <span>{item.name}</span>
                     </Link>
                   ))}
-                  <div className="border-t border-background-tertiary pt-2 mt-2">
+                  <div className="border-t border-[#374162] pt-2 mt-2">
                     <Link
                       to="/settings"
                       className="flex items-center space-x-2 p-3 rounded-md text-sm font-medium text-gray-300 hover:text-white hover:bg-background-secondary transition-colors duration-200"
@@ -230,24 +228,25 @@ const Navbar: React.FC = () => {
                       <span>{item.name}</span>
                     </a>
                   ))}
-                  <div className="border-t border-background-tertiary pt-2 mt-2 space-y-2">
+                  <div className="border-t border-[#374162] pt-2 mt-2 space-y-2">
                     <Link
                       to="/login"
-                      className="block w-full btn-secondary text-center"
+                      className="block w-full bg-[#374162] hover:bg-[#4a5568] text-white px-4 py-2 rounded-lg text-sm font-medium text-center transition-colors"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       Login
                     </Link>
                     <Link
                       to="/register"
-                      className="block w-full btn-primary text-center"
+                      className="block w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium text-center transition-colors"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       Start Free Trial
                     </Link>
                   </div>
                 </>
-              )}            </div>
+              )}
+            </div>
           </div>
         )}
       </div>

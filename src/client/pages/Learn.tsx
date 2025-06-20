@@ -1,284 +1,366 @@
 import React, { useState } from 'react'
 import { 
-  Upload, 
-  Search, 
+  Brain, 
+  Trophy, 
+  Target, 
+  BookOpen, 
   Play, 
-  TrendingUp,
+  Clock,
+  CheckCircle,
+  ArrowRight,
+  Award,
+  Activity,
   BarChart3,
-  Calendar,
-  Plus,
-  Target,
-  BookOpen,
   Zap,
-  Award
+  Gift,
+  Upload,
+  Eye,
+  TrendingUp,
+  Users
 } from 'lucide-react'
 
 const Learn: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('strengths')
-  const [activeProgressTab, setActiveProgressTab] = useState('rating')
-
-  const stats = [
-    { label: 'Total Games', value: '187' },
-    { label: 'Learning Points', value: '456' },
-  ]
-
-  const strengths = [
-    "Solid opening principles",
-    "Tactical awareness in the middlegame",
-    "Strong endgame technique",
-    "Good time management"
-  ]
-
-  const improvements = [
-    "Positional understanding",
-    "Pattern recognition",
-    "Complex calculation",
-    "Opening theory depth"
-  ]
-
-  const chartData = [
-    { date: 'Jan 1', rating: 1520 },
-    { date: 'Jan 8', rating: 1535 },
-    { date: 'Jan 15', rating: 1550 },
-    { date: 'Jan 22', rating: 1580 },
-    { date: 'Jan 29', rating: 1650 },
-  ]
+  const [activeTab, setActiveTab] = useState('overview')
 
   return (
     <div className="min-h-screen bg-[#121621] text-white">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
-            Learn From Your Games
-          </h1>
-          <p className="text-gray-400 text-sm mb-6">
-            Transform your playing experience into personalized chess education
-          </p>
-          
-          {/* Import Buttons */}
-          <div className="flex flex-wrap gap-3 mb-6">
-            <button className="bg-[#272e45] hover:bg-[#374162] text-white px-4 py-2 rounded-full text-sm font-medium transition-colors">
-              Import from Lichess
-            </button>
-            <button className="bg-[#272e45] hover:bg-[#374162] text-white px-4 py-2 rounded-full text-sm font-medium transition-colors">
-              Import from Chess.com
-            </button>
-            <button className="bg-[#272e45] hover:bg-[#374162] text-white px-6 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2">
-              <Upload className="w-4 h-4" />
-              Upload PGN
-            </button>
-          </div>
-        </div>        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {stats.map((stat) => (
-            <div
-              key={stat.label}
-              className="bg-[#272e45] rounded-xl p-6 border border-[#374162]"
-            >
-              <h3 className="text-white text-base font-medium mb-1">{stat.label}</h3>
-              <p className="text-white text-2xl font-bold">{stat.value}</p>
+      {/* Enhanced Hero Section */}
+      <section className="relative overflow-hidden">
+        {/* Background Elements */}
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/10 to-transparent" />
+          <div className="absolute top-20 right-10 w-96 h-96 bg-blue-600/5 rounded-full blur-3xl" />
+          <div className="absolute bottom-20 left-10 w-96 h-96 bg-purple-600/5 rounded-full blur-3xl" />
+        </div>
+        
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="text-center">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-3 bg-blue-900/20 border border-blue-500/20 rounded-full px-6 py-3 mb-8 backdrop-blur-sm">
+              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
+              <span className="text-blue-300 font-medium">AI-Powered Chess Learning</span>
             </div>
-          ))}
-        </div>{/* Game Library Search */}
-        <div className="bg-[#272e45] rounded-xl p-6 mb-8">
-          <h2 className="text-xl font-bold text-white mb-4">Game Library</h2>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search your games..."
-              className="w-full bg-[#374162] text-white pl-10 pr-4 py-3 rounded-lg border border-[#4a5568] focus:outline-none focus:border-blue-400"
-            />
-          </div>        </div>
-
-        {/* Featured Video */}
-        <div className="bg-[#272e45] rounded-xl p-6 mb-8">
-          <div className="relative aspect-video bg-cover bg-center rounded-lg overflow-hidden">
-            <div 
-              className="w-full h-full bg-cover bg-center"
-              style={{
-                backgroundImage: 'url("https://images.unsplash.com/photo-1529699211952-734e80c4d42b?w=800&h=450&fit=crop&crop=center")'
-              }}
-            >
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                <button className="bg-black/40 hover:bg-black/60 rounded-full p-4 transition-colors">
-                  <Play className="w-8 h-8 text-white fill-current" />
-                </button>
-              </div>
-            </div>
-          </div>        </div>
-
-        {/* AI Insights Tabs */}
-        <div className="bg-[#272e45] rounded-xl p-6 mb-8">
-          <h2 className="text-xl font-bold text-white mb-4">AI Insights</h2>
-          
-          {/* Tab Navigation */}
-          <div className="flex border-b border-[#374162] mb-6">
-            {[
-              { id: 'strengths', label: 'Strengths' },
-              { id: 'improvements', label: 'Learning Opportunities' },
-              { id: 'patterns', label: 'Pattern Recognition' },
-              { id: 'recommendations', label: 'Study Recommendations' }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`pb-3 pt-4 px-4 text-sm font-bold tracking-wide border-b-3 transition-colors ${
-                  activeTab === tab.id
-                    ? 'border-blue-800 text-white'
-                    : 'border-transparent text-gray-400 hover:text-white'
-                }`}
-              >
-                {tab.label}
+            
+            {/* Main Heading */}
+            <h1 className="text-5xl md:text-7xl font-black bg-gradient-to-r from-blue-400 via-blue-300 to-cyan-300 bg-clip-text text-transparent mb-6 tracking-tight">
+              Master Chess
+              <br />
+              <span className="text-4xl md:text-6xl">with Intelligence</span>
+            </h1>
+            
+            {/* Subtitle */}
+            <p className="text-xl md:text-2xl text-gray-300 max-w-4xl mx-auto mb-12 leading-relaxed font-light">
+              Transform your chess journey with personalized AI coaching, real-time analysis, 
+              and adaptive learning paths designed for rapid improvement.
+            </p>
+            
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16">
+              <button className="group bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-10 py-5 rounded-2xl font-bold text-lg shadow-2xl flex items-center gap-3 transition-all duration-300 transform hover:scale-105 hover:shadow-blue-500/25">
+                <Play className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                Start Learning Journey
               </button>
+              
+              <button className="group border-2 border-gray-600 hover:border-blue-400 text-gray-300 hover:text-white px-10 py-5 rounded-2xl font-bold text-lg transition-all duration-300 flex items-center gap-3 backdrop-blur-sm hover:bg-blue-900/10">
+                <Eye className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                Watch Demo
+              </button>
+            </div>
+
+            {/* Feature Highlights */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+              {[
+                { icon: Brain, title: 'AI Analysis', desc: 'Deep position evaluation' },
+                { icon: TrendingUp, title: 'Progress Tracking', desc: 'Detailed improvement metrics' },
+                { icon: Users, title: 'Expert Guidance', desc: 'Learn from grandmaster games' }
+              ].map((feature, index) => (
+                <div key={index} className="flex flex-col items-center text-center group">
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-600/20 to-blue-700/20 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform border border-blue-500/20">
+                    <feature.icon className="w-8 h-8 text-blue-400" />
+                  </div>
+                  <h3 className="text-white font-bold text-lg mb-2">{feature.title}</h3>
+                  <p className="text-gray-400 text-sm">{feature.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        {/* Enhanced Stats Overview */}
+        <section className="mb-20">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Your Chess Journey</h2>
+            <p className="text-gray-400 text-lg">Track your progress and celebrate your achievements</p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              { icon: Trophy, label: 'Current Rating', value: '1,650', change: '+85 this month', color: 'blue', bgGradient: 'from-blue-600/10 to-blue-700/5' },
+              { icon: Target, label: 'Puzzles Solved', value: '1,247', change: '92% accuracy', color: 'purple', bgGradient: 'from-purple-600/10 to-purple-700/5' },
+              { icon: Clock, label: 'Study Time', value: '47h', change: '5-day streak', color: 'green', bgGradient: 'from-green-600/10 to-green-700/5' },
+              { icon: Activity, label: 'Games Analyzed', value: '342', change: '78% win rate', color: 'orange', bgGradient: 'from-orange-600/10 to-orange-700/5' }
+            ].map((stat, index) => (
+              <div
+                key={index}
+                className={`relative overflow-hidden bg-gradient-to-br ${stat.bgGradient} rounded-2xl p-6 border border-gray-800/50 hover:border-blue-500/30 transition-all duration-300 group hover:transform hover:scale-105`}
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <div className="w-12 h-12 bg-gradient-to-br from-gray-700 to-gray-800 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <stat.icon className="w-6 h-6 text-blue-400" />
+                  </div>
+                  <div className="text-right">
+                    <div className="text-green-400 text-xs font-medium bg-green-900/20 px-2 py-1 rounded-full border border-green-500/20">
+                      {stat.change}
+                    </div>
+                  </div>
+                </div>
+                <h3 className="text-3xl font-black text-white mb-2">{stat.value}</h3>
+                <p className="text-gray-400 text-sm font-medium">{stat.label}</p>
+                
+                {/* Decorative gradient */}
+                <div className="absolute -bottom-2 -right-2 w-20 h-20 bg-gradient-to-br from-blue-600/10 to-transparent rounded-full" />
+              </div>
             ))}
           </div>
+        </section>
 
-          {/* Tab Content */}
-          <div className="min-h-[200px]">
-            {activeTab === 'strengths' && (
-              <div>
-                <p className="text-white text-base mb-4">
-                  Your strengths include solid opening principles and tactical awareness in the middlegame. Continue to reinforce these areas through practice and analysis.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {strengths.map((strength, index) => (
-                    <div key={index} className="flex items-center gap-3 p-3 bg-green-900/20 rounded-lg border border-green-700/30">
-                      <Award className="w-5 h-5 text-green-400" />
+        {/* Enhanced Navigation Tabs */}
+        <section className="mb-16">
+          <div className="bg-[#272e45] p-2 rounded-3xl border border-gray-700/50 backdrop-blur-sm">
+            <div className="flex flex-wrap gap-2">
+              {[
+                { id: 'overview', label: 'Overview', icon: BarChart3 },
+                { id: 'analysis', label: 'Game Analysis', icon: Brain },
+                { id: 'lessons', label: 'Lessons', icon: BookOpen },
+                { id: 'achievements', label: 'Achievements', icon: Award }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-3 px-6 py-4 rounded-2xl font-medium transition-all duration-300 ${
+                    activeTab === tab.id
+                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-xl shadow-blue-600/20 transform scale-[1.02]'
+                      : 'text-gray-400 hover:text-white hover:bg-[#374162]/80'
+                  }`}
+                >
+                  <tab.icon className="w-5 h-5" />
+                  <span className="font-semibold">{tab.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Tab Content */}
+        {activeTab === 'overview' && (
+          <div className="space-y-8">
+            {/* Quick Actions */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[
+                {
+                  icon: Upload,
+                  title: 'Analyze Your Game',
+                  description: 'Upload PGN files for instant AI analysis with move suggestions and insights',
+                  action: 'Upload Game'
+                },
+                {
+                  icon: Target,
+                  title: 'Daily Puzzle',
+                  description: 'Solve personalized puzzles tailored to your skill level and weaknesses',
+                  action: 'Solve Puzzle'
+                },
+                {
+                  icon: BookOpen,
+                  title: 'Study Plan',
+                  description: 'Follow your AI-generated study plan based on your playing style',
+                  action: 'Continue Learning'
+                }
+              ].map((action, index) => (
+                <div key={index} className="group cursor-pointer">
+                  <div className="bg-gradient-to-br from-blue-900/20 to-blue-800/10 border border-blue-700/30 rounded-2xl p-8 hover:border-blue-500/50 transition-all duration-300 group-hover:scale-105 group-hover:shadow-2xl">
+                    <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                      <action.icon className="w-8 h-8 text-white" />
+                    </div>
+                    <h3 className="text-xl font-bold text-white mb-3">{action.title}</h3>
+                    <p className="text-gray-400 text-sm mb-6 leading-relaxed">{action.description}</p>
+                    <button className="flex items-center gap-2 text-blue-400 font-medium group-hover:text-blue-300 transition-colors">
+                      {action.action}
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* AI Insights */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Strengths */}
+              <div className="bg-[#272e45] rounded-2xl p-8 border border-green-700/30">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-12 h-12 bg-gradient-to-br from-green-600 to-green-700 rounded-xl flex items-center justify-center">
+                    <CheckCircle className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Your Strengths</h3>
+                    <p className="text-green-400 text-sm">AI-identified strong areas</p>
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  {[
+                    'Excellent tactical awareness',
+                    'Strong endgame technique', 
+                    'Good opening preparation',
+                    'Effective time management'
+                  ].map((strength, index) => (
+                    <div key={index} className="flex items-center gap-3 p-4 bg-green-900/20 rounded-xl border border-green-700/30">
+                      <Award className="w-5 h-5 text-green-400 flex-shrink-0" />
                       <span className="text-white">{strength}</span>
                     </div>
                   ))}
                 </div>
               </div>
-            )}
-            
-            {activeTab === 'improvements' && (
-              <div>
-                <p className="text-white text-base mb-4">
-                  Focus on these areas to accelerate your improvement and reach the next level in your chess journey.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {improvements.map((improvement, index) => (
-                    <div key={index} className="flex items-center gap-3 p-3 bg-blue-900/20 rounded-lg border border-blue-700/30">
-                      <Target className="w-5 h-5 text-blue-400" />
-                      <span className="text-white">{improvement}</span>
+
+              {/* Focus Areas */}
+              <div className="bg-[#272e45] rounded-2xl p-8 border border-blue-700/30">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center">
+                    <Target className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Focus Areas</h3>
+                    <p className="text-blue-400 text-sm">Recommended improvements</p>
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  {[
+                    { area: 'Positional understanding', progress: 65 },
+                    { area: 'Pattern recognition', progress: 45 },
+                    { area: 'Complex calculation', progress: 30 },
+                    { area: 'Opening theory depth', progress: 55 }
+                  ].map((item, index) => (
+                    <div key={index} className="p-4 bg-blue-900/20 rounded-xl border border-blue-700/30">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-white font-medium">{item.area}</span>
+                        <span className="text-blue-400 text-sm">{item.progress}%</span>
+                      </div>
+                      <div className="w-full bg-[#374162] rounded-full h-2">
+                        <div
+                          className="h-2 bg-gradient-to-r from-blue-600 to-blue-400 rounded-full transition-all duration-1000"
+                          style={{ width: `${item.progress}%` }}
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
-            )}
-            
-            {activeTab === 'patterns' && (
-              <div>
-                <p className="text-white text-base mb-4">
-                  Pattern recognition exercises tailored to your playing style and common position types from your games.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 bg-[#374162] rounded-lg">
-                    <h4 className="text-white font-semibold mb-2">Tactical Patterns</h4>
-                    <p className="text-gray-300 text-sm">Focus on pins, forks, and discovered attacks</p>
+            </div>
+          </div>
+        )}
+
+        {/* Recent Activity */}
+        <section className="mt-16">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-2">Recent Learning Activity</h2>
+              <p className="text-gray-400">Your progress over the last 7 days</p>
+            </div>
+            <button className="text-blue-400 hover:text-blue-300 font-medium flex items-center gap-2">
+              View All
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              { 
+                type: 'Game Analysis', 
+                title: 'Sicilian Defense Study', 
+                time: '45 minutes', 
+                date: 'Today', 
+                icon: Brain
+              },
+              { 
+                type: 'Puzzle Session', 
+                title: 'Tactical Patterns #3', 
+                time: '25 minutes', 
+                date: 'Yesterday', 
+                icon: Target
+              },
+              { 
+                type: 'Lesson', 
+                title: 'Endgame Principles', 
+                time: '30 minutes', 
+                date: '2 days ago', 
+                icon: BookOpen
+              }
+            ].map((activity, index) => (
+              <div
+                key={index}
+                className="bg-[#272e45] rounded-xl p-6 border border-[#374162] hover:border-[#4a5568] transition-all duration-300 cursor-pointer group"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                    <activity.icon className="w-6 h-6 text-white" />
                   </div>
-                  <div className="p-4 bg-[#374162] rounded-lg">
-                    <h4 className="text-white font-semibold mb-2">Positional Themes</h4>
-                    <p className="text-gray-300 text-sm">Weak squares, pawn structures, piece coordination</p>
+                  <span className="text-xs text-gray-400 bg-[#374162] px-2 py-1 rounded-full">
+                    {activity.date}
+                  </span>
+                </div>
+                
+                <div className="mb-3">
+                  <p className="text-blue-400 text-sm font-medium mb-1">{activity.type}</p>
+                  <h3 className="text-white font-semibold group-hover:text-blue-400 transition-colors">
+                    {activity.title}
+                  </h3>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-gray-400 text-sm">
+                    <Clock className="w-4 h-4" />
+                    {activity.time}
                   </div>
+                  <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-blue-400 group-hover:translate-x-1 transition-all duration-300" />
                 </div>
               </div>
-            )}
-            
-            {activeTab === 'recommendations' && (
-              <div>
-                <p className="text-white text-base mb-4">
-                  Personalized study recommendations based on your game analysis and improvement areas.
-                </p>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 p-4 bg-[#374162] rounded-lg">
-                    <BookOpen className="w-6 h-6 text-blue-400" />
-                    <div>
-                      <h4 className="text-white font-semibold">Study: Endgame Principles</h4>
-                      <p className="text-gray-300 text-sm">Focus on king and pawn endgames</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-4 bg-[#374162] rounded-lg">
-                    <Zap className="w-6 h-6 text-yellow-400" />
-                    <div>
-                      <h4 className="text-white font-semibold">Practice: Tactical Puzzles</h4>
-                      <p className="text-gray-300 text-sm">Pin and fork combinations</p>
-                    </div>
-                  </div>
-                </div>              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Learning Dashboard */}
-        <div className="bg-[#272e45] rounded-xl p-6 mb-8">
-          <h2 className="text-xl font-bold text-white mb-4">Learning Dashboard</h2>
-          
-          {/* Progress Tab Navigation */}
-          <div className="flex border-b border-[#374162] mb-6">
-            {[
-              { id: 'rating', label: 'Rating Progress' },
-              { id: 'weakAreas', label: 'Weak Areas' },
-              { id: 'timeSpent', label: 'Time Spent' }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveProgressTab(tab.id)}
-                className={`pb-3 pt-4 px-4 text-sm font-bold tracking-wide border-b-3 transition-colors ${
-                  activeProgressTab === tab.id
-                    ? 'border-blue-800 text-white'
-                    : 'border-transparent text-gray-400 hover:text-white'
-                }`}
-              >
-                {tab.label}
-              </button>
             ))}
           </div>
+        </section>
 
-          {/* Chart Area */}
-          <div className="h-64 bg-[#374162] rounded-lg p-4 flex items-center justify-center">
-            {activeProgressTab === 'rating' && (
-              <div className="w-full h-full">
-                <div className="flex justify-between items-end h-full">
-                  {chartData.map((point, index) => (
-                    <div key={index} className="flex flex-col items-center">
-                      <div 
-                        className="bg-blue-500 w-8 mb-2 rounded-t"
-                        style={{ height: `${((point.rating - 1500) / 200) * 100}%` }}
-                      />
-                      <span className="text-gray-400 text-xs">{point.date}</span>
-                    </div>
-                  ))}
-                </div>
+        {/* CTA Section */}
+        <section className="mt-16 text-center">
+          <div className="bg-gradient-to-r from-blue-900/50 to-purple-900/50 rounded-3xl p-12 border border-blue-700/30">
+            <div className="max-w-3xl mx-auto">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                <Zap className="w-10 h-10 text-white" />
               </div>
-            )}
-            
-            {activeProgressTab === 'weakAreas' && (
-              <div className="text-center">
-                <BarChart3 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-400">Weak area analysis will be displayed here</p>
+              
+              <h2 className="text-3xl font-bold text-white mb-4">
+                Ready to Accelerate Your Chess Growth?
+              </h2>
+              
+              <p className="text-xl text-gray-300 mb-8 leading-relaxed">
+                Join thousands of players who've improved their game with our AI-powered learning system. 
+                Get personalized coaching, detailed analysis, and structured learning paths.
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-full font-bold text-lg shadow-2xl flex items-center justify-center gap-2 transform hover:scale-105 transition-all duration-300">
+                  <Gift className="w-5 h-5" />
+                  Start Free Trial
+                </button>
+                
+                <button className="border-2 border-blue-400 text-blue-400 hover:bg-blue-400 hover:text-white px-8 py-4 rounded-full font-bold text-lg transition-all duration-300 flex items-center justify-center gap-2 transform hover:scale-105">
+                  <Eye className="w-5 h-5" />
+                  Watch Demo
+                </button>
               </div>
-            )}
-            
-            {activeProgressTab === 'timeSpent' && (
-              <div className="text-center">
-                <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-400">Time tracking visualization will be displayed here</p>
-              </div>
-            )}          </div>
-        </div>        {/* AI Learning Coach */}
-        <div className="bg-[#272e45] rounded-xl p-6">
-          <h2 className="text-xl font-bold text-white mb-4">AI Learning Coach</h2>
-          <p className="text-white text-base mb-6">
-            Your AI Learning Coach provides personalized insights based on your game analysis. It identifies key areas for improvement, suggests smart recommendations, tracks your progress, and offers custom training options to enhance your chess skills.
-          </p>
-            <div className="flex justify-end">
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full flex items-center gap-2 transition-colors">
-              <Plus className="w-5 h-5" />
-              Get Personalized Plan
-            </button>          </div>
-        </div>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   )
