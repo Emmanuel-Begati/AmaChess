@@ -11,14 +11,42 @@ const Login: React.FC = () => {
     password: ''
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
   const { login } = useAuth()
   const navigate = useNavigate()
 
+  const validateForm = () => {
+    const newErrors: { email?: string; password?: string } = {}
+    
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required'
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email'
+    }
+    
+    if (!formData.password.trim()) {
+      newErrors.password = 'Password is required'
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters'
+    }
+    
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!validateForm()) {
+      return
+    }
+    
     setIsLoading(true)
+    setErrors({})
+    
     try {
-      await login(formData.email, formData.password)
+      console.log('Submitting login with:', { email: formData.email, password: '[HIDDEN]' })
+      await login(formData.email.trim(), formData.password)
       navigate('/dashboard')
     } catch (error) {
       console.error('Login failed:', error)
@@ -28,10 +56,15 @@ const Login: React.FC = () => {
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
-      [e.target.name]: e.target.value
+      [name]: value
     }))
+    // Clear error when user starts typing
+    if (errors[name as keyof typeof errors]) {
+      setErrors(prev => ({ ...prev, [name]: undefined }))
+    }
   }
 
   return (
@@ -66,10 +99,15 @@ const Login: React.FC = () => {
                 required
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full bg-[#374162] text-white pl-10 pr-4 py-3 rounded-lg border border-[#4a5568] focus:outline-none focus:border-blue-400"
+                className={`w-full bg-[#374162] text-white pl-10 pr-4 py-3 rounded-lg border ${
+                  errors.email ? 'border-red-500' : 'border-[#4a5568]'
+                } focus:outline-none focus:border-blue-400`}
                 placeholder="Enter your email"
               />
             </div>
+            {errors.email && (
+              <p className="mt-1 text-sm text-red-500">{errors.email}</p>
+            )}
           </div>
 
           <div>
@@ -85,7 +123,9 @@ const Login: React.FC = () => {
                 required
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full bg-[#374162] text-white pl-10 pr-12 py-3 rounded-lg border border-[#4a5568] focus:outline-none focus:border-blue-400"
+                className={`w-full bg-[#374162] text-white pl-10 pr-12 py-3 rounded-lg border ${
+                  errors.password ? 'border-red-500' : 'border-[#4a5568]'
+                } focus:outline-none focus:border-blue-400`}
                 placeholder="Enter your password"
               />
               <button
@@ -96,6 +136,9 @@ const Login: React.FC = () => {
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
+            {errors.password && (
+              <p className="mt-1 text-sm text-red-500">{errors.password}</p>
+            )}
           </div>
 
           <div className="flex items-center justify-between">

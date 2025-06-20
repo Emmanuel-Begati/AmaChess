@@ -54,10 +54,9 @@ const Dashboard: React.FC = () => {
     { opponent: 'ChessMaster99', result: 'Loss', rating: '-8', time: '1 day ago' },
     { opponent: 'RookiePlayer', result: 'Win', rating: '+15', time: '2 days ago' },
   ]
-
   return (
-    <div className="min-h-screen bg-[#121621] px-4 sm:px-6 lg:px-40 py-5">
-      <div className="max-w-[960px] mx-auto">
+    <div className="min-h-screen bg-[#121621]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome Section */}
         <div className="mb-6">
           <div className="flex flex-wrap justify-between gap-3 p-4">

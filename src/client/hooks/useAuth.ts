@@ -57,7 +57,8 @@ export const useAuth = () => {
     }
   )
 
-  const login = async (credentials: LoginForm) => {
+  const login = async (email: string, password: string) => {
+    const credentials: LoginForm = { email, password }
     return loginMutation.mutateAsync(credentials)
   }
 
