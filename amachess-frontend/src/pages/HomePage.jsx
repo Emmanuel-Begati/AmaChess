@@ -2,7 +2,6 @@ import React from 'react';
 import Header from '../components/Header';
 import HeroSection from '../components/HeroSection';
 import FeatureCard from '../components/FeatureCard';
-import Testimonial from '../components/Testimonial';
 import Footer from '../components/Footer';
 
 const HomePage = () => {
@@ -24,33 +23,36 @@ const HomePage = () => {
     }
   ];
 
-  const testimonials = [
+  const benefits = [
     {
-      avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuDq3PBITPPc-s_utNnKQAAXCJA9K0vFPH7nRDkQuIEE3Lo2dfEPF5gXNycpz24TA2rQ-VgtGGvHxZpwL2pf-9U4cKMp2sQhXMFsDEXug2bu5Ucgb9xztJIMEGF_Ox4eUHY8WGj6QNnupJCXM7OOAjZzSD0sFE7bniDztkNDRQEwRSYSAPmClrjDG5PA_qWlPwluVbfgcLF6sC5lE3T53I6BslENf8x1WewFjeg8nEuhDjPOdeAPhHNQMWBNKq_cDR3UQnh0qnbFvm8",
-      name: "Aisha Diallo",
-      date: "2023-11-15",
-      rating: 5,
-      review: "AmaChess has transformed my game! The AI tutor is incredibly insightful, and the refined design is both beautiful and motivating.",
-      likes: 25,
-      dislikes: 2
+      icon: "🎯",
+      title: "Accelerated Learning",
+      description: "Learn chess faster with AI-guided lessons tailored to your skill level and learning pace."
     },
     {
-      avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuAZV9VyZjPMaiIGL5mRMUXSfCdh8GCRN2gBH4LND6nzuTX3tl5Hc0MJdMxZz9zbq0dSWJgoRF1UKTjUf-0v-bSB-rsZ2iYJH0A7q9Bl0VrZhJZBF2Le8LU-_ddezI0Fa1Kbkrx-7jUK47IJYtyXCe_NH7arlsVVT3yGr04GNfkFkGHplbetze_ozDPnj97qB8OtB8nR6JLTqkT6X3zAzPrYf5Vlo6M2iiMEMAymhw9UPF1e0UvzagjN-gcVTXdMTAJlUWLrX1g4vag",
-      name: "Kwame Mensah",
-      date: "2023-12-20",
-      rating: 5,
-      review: "I love the progress tracking feature. It's so rewarding to see my improvement over time. The community is also very supportive.",
-      likes: 30,
-      dislikes: 1
+      icon: "📈",
+      title: "Measurable Progress",
+      description: "Track your improvement with detailed analytics and see your rating climb over time."
     },
     {
-      avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuDUVBuJji4HeuowrIgDv0G5WuJfW4mC1CR7ld1h3ZoX9OIHwZz83F9oq1IegD6UAfIxLbGGSsOKVLeovBme5OwmSmwQd6p_-abKy-BzM3pNUoOmckoeeHQ4PXa_NZXMwVVyUgnGpnaB9yU7nQ5UZTIQbNQT5dPZNrA1gxkwwiwJnr34drszPceKCc_3DKIJvFs_Fqh3aLFU822EzUpMaAsULdFGmniFv-VxvcjjeDVb9njBu2_0kC9TB0AXrCS3JjQLifOSWpZ-7l8",
-      name: "Fatima Hassan",
-      date: "2024-01-10",
-      rating: 4,
-      review: "Great platform for learning chess. The AI tutor is helpful, but I wish there were more advanced tutorials available.",
-      likes: 15,
-      dislikes: 3
+      icon: "🤖",
+      title: "24/7 AI Coach",
+      description: "Get instant feedback and coaching from our advanced AI tutor anytime, anywhere."
+    },
+    {
+      icon: "📚",
+      title: "Comprehensive Library",
+      description: "Read chess books in a more fun and engaging way, with interactive positions that set up automatically - no manual board arrangement needed."
+    },
+    {
+      icon: "🌍",
+      title: "Global Community",
+      description: "Connect with chess players worldwide and participate in tournaments and discussions."
+    },
+    {
+      icon: "🏆",
+      title: "Achievement System",
+      description: "Stay motivated with badges, achievements, and milestone celebrations as you progress."
     }
   ];
 
@@ -62,12 +64,36 @@ const HomePage = () => {
         <main className="w-full">
           <HeroSection />
           
+          {/* Benefits Section */}
+          <section className="w-full py-16 lg:py-24 bg-[#111822]">
+            <div className="w-full px-4 sm:px-6 lg:px-8">
+              <div className="text-center mb-16">
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6 bg-gradient-to-r from-white to-[#92a8c9] bg-clip-text text-transparent">
+                  Why Choose AmaChess?
+                </h2>
+                <p className="text-lg md:text-xl text-[#92a8c9] max-w-3xl mx-auto leading-relaxed">
+                  Join thousands of players who have transformed their chess game with our innovative platform.
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+                {benefits.map((benefit, index) => (
+                  <div key={index} className="bg-gradient-to-br from-[#233248] to-[#1a2636] rounded-xl p-6 text-center shadow-xl border border-[#233248]/50 hover:border-[#115fd4]/30 transition-all duration-300 hover:transform hover:scale-105">
+                    <div className="text-4xl mb-4">{benefit.icon}</div>
+                    <h3 className="text-xl font-bold text-white mb-3">{benefit.title}</h3>
+                    <p className="text-[#92a8c9] leading-relaxed">{benefit.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+          
           {/* Key Features Section */}
           <section className="w-full py-16 lg:py-24 bg-gradient-to-r from-[#0f1419] to-[#111822]">
             <div className="w-full px-4 sm:px-6 lg:px-8">
               <div className="text-center mb-16">
                 <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6 bg-gradient-to-r from-white to-[#92a8c9] bg-clip-text text-transparent">
-                  Unlock Your Chess Potential
+                  Our Core Services
                 </h2>
                 <p className="text-lg md:text-xl text-[#92a8c9] max-w-3xl mx-auto leading-relaxed">
                   Explore our innovative features designed to enhance your chess skills and understanding with cutting-edge AI technology.
@@ -114,23 +140,36 @@ const HomePage = () => {
             </div>
           </section>
 
-          {/* Testimonials Section */}
+          {/* Call to Action Section */}
           <section className="w-full py-16 lg:py-24 bg-gradient-to-r from-[#0f1419] to-[#111822]">
             <div className="w-full px-4 sm:px-6 lg:px-8">
-              <h2 className="text-3xl md:text-4xl font-bold text-center mb-16">What Our Users Say</h2>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-                {testimonials.map((testimonial, index) => (
-                  <Testimonial
-                    key={index}
-                    avatar={testimonial.avatar}
-                    name={testimonial.name}
-                    date={testimonial.date}
-                    rating={testimonial.rating}
-                    review={testimonial.review}
-                    likes={testimonial.likes}
-                    dislikes={testimonial.dislikes}
-                  />
-                ))}
+              <div className="max-w-4xl mx-auto text-center">
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6 bg-gradient-to-r from-white to-[#92a8c9] bg-clip-text text-transparent">
+                  Ready to Master Chess?
+                </h2>
+                <p className="text-lg md:text-xl text-[#92a8c9] mb-12 max-w-2xl mx-auto leading-relaxed">
+                  Join AmaChess today and start your journey to becoming a better chess player with AI-powered learning and analysis.
+                </p>
+                
+                <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
+                  <button className="group relative px-8 py-4 bg-gradient-to-r from-[#115fd4] to-[#4a90e2] text-white text-lg font-bold rounded-xl hover:shadow-2xl hover:shadow-[#115fd4]/30 transition-all duration-300 hover:scale-105 overflow-hidden">
+                    <span className="relative z-10">Start Your Free Trial</span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#4a90e2] to-[#115fd4] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  </button>
+                  
+                  <button className="group px-8 py-4 bg-white/10 backdrop-blur-sm text-white text-lg font-bold rounded-xl border border-white/20 hover:border-[#115fd4]/50 hover:bg-white/20 transition-all duration-300 hover:scale-105">
+                    <span className="flex items-center gap-2">
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                      Learn More
+                    </span>
+                  </button>
+                </div>
+                
+                <p className="text-sm text-[#92a8c9] mt-6">
+                  No credit card required • 14-day free trial • Cancel anytime
+                </p>
               </div>
             </div>
           </section>
