@@ -7,19 +7,18 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        'newsreader': ['Newsreader', 'serif'],
-        'noto': ['Noto Sans', 'sans-serif'],
+        'sans': ['Lexend', 'Noto Sans', 'sans-serif'],
+        'serif': ['Newsreader', 'serif'],
       },
-      colors: {
-        'chess-dark': '#111822',
-        'chess-border': '#233248',
-        'chess-blue': '#115fd4',
-        'chess-gray': '#92a8c9',
-        'chess-secondary': '#45618c',
-      }
+      screens: {
+        'xs': '475px',
+        'sm': '640px',
+        'md': '768px',
+        'lg': '1024px',
+        'xl': '1280px',
+        '2xl': '1536px',
+      },
     },
   },
-  plugins: [
-    require('@tailwindcss/container-queries'),
-  ],
+  plugins: [],
 }

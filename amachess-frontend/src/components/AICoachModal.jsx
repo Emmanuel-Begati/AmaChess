@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ChessBoard from './ChessBoard';
 
 const AICoachModal = ({ onClose }) => {
   const [gameStarted, setGameStarted] = useState(false);
@@ -19,10 +20,11 @@ const AICoachModal = ({ onClose }) => {
     setCoachMessage("Let's begin! Play 1.e4 to control the center and develop quickly.");
   };
 
-  const handleMove = () => {
+  const handleMove = (move, newFen) => {
     const randomInstruction = coachInstructions[Math.floor(Math.random() * coachInstructions.length)];
     setCoachMessage(randomInstruction);
     setMoveNumber(prev => prev + 1);
+    setCurrentPosition(newFen);
   };
 
   return (
@@ -72,20 +74,15 @@ const AICoachModal = ({ onClose }) => {
                   </button>
                 </div>
               ) : (
-                <div className="w-full h-full">
-                  {/* Chess board placeholder - you'll integrate your chess board component here */}
-                  <div className="w-full h-full bg-gradient-to-br from-amber-100 to-amber-800 rounded-lg flex items-center justify-center">
-                    <div className="text-center">
-                      <p className="text-amber-900 font-bold text-lg mb-2">Chess Board</p>
-                      <p className="text-amber-700">Move {moveNumber}</p>
-                      <button 
-                        onClick={handleMove}
-                        className="mt-4 bg-amber-900 text-white px-4 py-2 rounded hover:bg-amber-800 transition-colors"
-                      >
-                        Make Move
-                      </button>
-                    </div>
-                  </div>
+                <div className="w-full h-full flex items-center justify-center">
+                  <ChessBoard 
+                    position={currentPosition}
+                    onMove={handleMove}
+                    interactive={true}
+                    showNotation={true}
+                    engineEnabled={false}
+                    width={400}
+                  />
                 </div>
               )}
             </div>
