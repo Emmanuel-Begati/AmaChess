@@ -1,9 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import { useAuth } from '../contexts/AuthContext';
 
 const Dashboard = () => {
   const [puzzleCompleted, setPuzzleCompleted] = useState(false);
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { user } = useAuth();
   
   const currentDate = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
@@ -11,20 +17,47 @@ const Dashboard = () => {
     day: 'numeric'
   });
 
-  const playerStats = {
-    lichess: {
-      rating: 1650,
-      gamesPlayed: 235,
-      winRate: 68,
-      timeControl: 'Rapid'
-    },
-    chesscom: {
-      rating: 1580,
-      gamesPlayed: 189,
-      winRate: 64,
-      timeControl: 'Blitz'
-    }
+  // Fetch protected dashboard data from backend
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get('/user/dashboard');
+        setDashboardData(response.data.data);
+        setError(null);
+      } catch (err) {
+        console.error('Failed to fetch dashboard data:', err);
+        setError('Failed to load dashboard data. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  // Use backend data if available, fallback to static data
+  const playerStats = dashboardData?.stats || {
+    gamesPlayed: 235,
+    winRate: 68,
+    currentRating: 1650,
+    favoriteOpening: 'Sicilian Defense'
   };
+
+  const recentGamesData = dashboardData?.recentGames || [
+    { 
+      id: 1,
+      opponent: 'AlexChess92', 
+      result: 'Win', 
+      date: '2024-01-20'
+    },
+    { 
+      id: 2,
+      opponent: 'QueenGambit', 
+      result: 'Loss', 
+      date: '2024-01-19'
+    }
+  ];
 
   const ratingAnalytics = {
     change30Days: +45,
@@ -124,12 +157,50 @@ const Dashboard = () => {
       
       <main className="w-full">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Loading State */}
+          {loading && (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mr-3"></div>
+              <span className="text-gray-400">Loading dashboard data...</span>
+            </div>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-600/20 border border-red-600/50 rounded-lg">
+              <p className="text-red-400">{error}</p>
+            </div>
+          )}
+
+          {/* User Info Display */}
+          {user && (
+            <div className="mb-6 p-4 bg-blue-600/20 border border-blue-600/50 rounded-lg">
+              <p className="text-blue-400">
+                ✅ <strong>Authentication Status:</strong> Logged in as {user.email}
+              </p>
+              <p className="text-gray-400 text-sm mt-1">
+                User ID: {user.id} | Member since: {new Date(user.createdAt).toLocaleDateString()}
+              </p>
+            </div>
+          )}
+
+          {/* Stats Summary */}
+          {dashboardData && (
+            <div className="mb-6 p-4 bg-green-600/20 border border-green-600/50 rounded-lg">
+              <p className="text-green-400">
+                🔒 <strong>Protected Data Loaded:</strong> Welcome back! You have {dashboardData.stats?.gamesPlayed || 0} games played with a {dashboardData.stats?.winRate || 0}% win rate.
+              </p>
+              <p className="text-gray-400 text-sm mt-1">
+                Current Rating: {dashboardData.stats?.currentRating || 0} | Favorite Opening: {dashboardData.stats?.favoriteOpening || 'None'}
+              </p>
+            </div>
+          )}
           {/* Hero Section */}
           <div className="mb-12">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
               <div>
                 <h1 className="text-4xl lg:text-5xl font-bold text-white mb-3 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
-                  Welcome back, Aisha
+                  Welcome back, {user?.email?.split('@')[0] || 'Chess Player'}
                 </h1>
                 <p className="text-gray-400 text-lg">{currentDate}</p>
               </div>
@@ -164,13 +235,13 @@ const Dashboard = () => {
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <p className="text-gray-400 text-sm mb-1">Current Rating</p>
-                  <p className="text-3xl font-bold text-white">{playerStats.lichess.rating}</p>
+                  <p className="text-3xl font-bold text-white">{playerStats.currentRating || playerStats.lichess?.rating || 1650}</p>
                   <p className="text-green-400 text-sm">+{ratingAnalytics.change30Days} (30d)</p>
                 </div>
                 <div>
                   <p className="text-gray-400 text-sm mb-1">Games Played</p>
-                  <p className="text-3xl font-bold text-white">{playerStats.lichess.gamesPlayed}</p>
-                  <p className="text-gray-400 text-sm">{playerStats.lichess.winRate}% win rate</p>
+                  <p className="text-3xl font-bold text-white">{playerStats.gamesPlayed || playerStats.lichess?.gamesPlayed || 235}</p>
+                  <p className="text-gray-400 text-sm">{playerStats.winRate || playerStats.lichess?.winRate || 68}% win rate</p>
                 </div>
               </div>
             </div>
@@ -186,13 +257,13 @@ const Dashboard = () => {
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <p className="text-gray-400 text-sm mb-1">Current Rating</p>
-                  <p className="text-3xl font-bold text-white">{playerStats.chesscom.rating}</p>
+                  <p className="text-3xl font-bold text-white">{playerStats.currentRating || playerStats.chesscom?.rating || 1580}</p>
                   <p className="text-blue-400 text-sm">Top {ratingAnalytics.percentile}%</p>
                 </div>
                 <div>
                   <p className="text-gray-400 text-sm mb-1">Games Played</p>
-                  <p className="text-3xl font-bold text-white">{playerStats.chesscom.gamesPlayed}</p>
-                  <p className="text-gray-400 text-sm">{playerStats.chesscom.winRate}% win rate</p>
+                  <p className="text-3xl font-bold text-white">{playerStats.gamesPlayed || playerStats.chesscom?.gamesPlayed || 189}</p>
+                  <p className="text-gray-400 text-sm">{playerStats.winRate || playerStats.chesscom?.winRate || 64}% win rate</p>
                 </div>
               </div>
             </div>
