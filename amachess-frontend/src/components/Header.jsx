@@ -1,164 +1,309 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const Header = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const location = useLocation();
   
-  // Check if user is logged in (when on dashboard or other protected pages)
-  const isLoggedIn = ['/dashboard', '/learn', '/puzzles', '/library', '/settings'].includes(location.pathname) || location.pathname.startsWith('/library/book/');
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/');
+    } catch (error) {
+      console.error('Failed to logout:', error);
+    }
+  };
 
+  // Check if current path matches the given path
+  const isActive = (path) => {
+    if (path === '/') {
+      return location.pathname === '/';
+    }
+    return location.pathname.startsWith(path);
+  };
+  
   return (
-    <header className="w-full bg-[#111822]/95 backdrop-blur-sm border-b border-[#233248] sticky top-0 z-50">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-        <div className="flex items-center justify-between h-16 lg:h-20">
+    <header className="bg-[#1a1f2e] border-b border-[#374162]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 sm:h-20">
           {/* Logo */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            <Link to={isLoggedIn ? "/dashboard" : "/"} className="flex items-center gap-2 sm:gap-3">
-              <div className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 bg-gradient-to-br from-[#115fd4] to-[#4a90e2] rounded-lg flex items-center justify-center">
-                <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-white">
-                  <path
-                    fillRule="evenodd"
-                    clipRule="evenodd"
-                    d="M12.0799 24L4 19.2479L9.95537 8.75216L18.04 13.4961L18.0446 4H29.9554L29.96 13.4961L38.0446 8.75216L44 19.2479L35.92 24L44 28.7521L38.0446 39.2479L29.96 34.5039L29.9554 44H18.0446L18.04 34.5039L9.95537 39.2479L4 28.7521L12.0799 24Z"
-                    fill="currentColor"
-                  />
-                </svg>
-              </div>
-              <h2 className="text-white text-lg sm:text-xl lg:text-2xl font-bold">AmaChess</h2>
+          <div className="flex-shrink-0">
+            <Link to="/" className="flex items-center">
+              <span className="text-white font-bold text-xl sm:text-2xl">AmaChess</span>
             </Link>
           </div>
-
+          
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-6 xl:gap-8">
-            {isLoggedIn ? (
-              <>
-                <Link 
-                  className={`text-white/80 hover:text-white text-sm font-medium transition-colors duration-200 hover:underline decoration-[#115fd4] underline-offset-4 ${location.pathname === '/dashboard' ? 'text-white underline decoration-[#115fd4]' : ''}`} 
-                  to="/dashboard"
-                >
-                  Dashboard
-                </Link>
-                <Link 
-                  className={`text-white/80 hover:text-white text-sm font-medium transition-colors duration-200 hover:underline decoration-[#115fd4] underline-offset-4 ${location.pathname === '/learn' ? 'text-white underline decoration-[#115fd4]' : ''}`} 
-                  to="/learn"
-                >
-                  Learn
-                </Link>
-                <Link 
-                  className={`text-white/80 hover:text-white text-sm font-medium transition-colors duration-200 hover:underline decoration-[#115fd4] underline-offset-4 ${location.pathname === '/puzzles' ? 'text-white underline decoration-[#115fd4]' : ''}`} 
-                  to="/puzzles"
-                >
-                  Puzzles
-                </Link>
-                <Link 
-                  className={`text-white/80 hover:text-white text-sm font-medium transition-colors duration-200 hover:underline decoration-[#115fd4] underline-offset-4 ${location.pathname === '/library' ? 'text-white underline decoration-[#115fd4]' : ''}`} 
-                  to="/library"
-                >
-                  Library
-                </Link>
-                <Link 
-                  className={`text-white/80 hover:text-white text-sm font-medium transition-colors duration-200 hover:underline decoration-[#115fd4] underline-offset-4 ${location.pathname === '/settings' ? 'text-white underline decoration-[#115fd4]' : ''}`} 
-                  to="/settings"
-                >
-                  Settings
-                </Link>
-              </>
-            ) : (
-              <>
-                <Link className="text-white/80 hover:text-white text-sm font-medium transition-colors duration-200 hover:underline decoration-[#115fd4] underline-offset-4" to="/">
-                  Home
-                </Link>
-                <Link className="text-white/80 hover:text-white text-sm font-medium transition-colors duration-200 hover:underline decoration-[#115fd4] underline-offset-4" to="/chess">
-                  Play Chess
-                </Link>
-                <a className="text-white/80 hover:text-white text-sm font-medium transition-colors duration-200 hover:underline decoration-[#115fd4] underline-offset-4" href="#about">
-                  About
-                </a>
-                <Link className="text-white/80 hover:text-white text-sm font-medium transition-colors duration-200 hover:underline decoration-[#115fd4] underline-offset-4" to="/contact">
-                  Contact Us
-                </Link>
-              </>
-            )}
+          <nav className="hidden md:flex items-center space-x-1 lg:space-x-4">
+            <Link
+              to="/dashboard"
+              className={`px-3 lg:px-4 py-2 rounded-md text-sm font-medium ${
+                isActive('/dashboard')
+                  ? 'bg-[#115fd4] text-white'
+                  : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
+              }`}
+            >
+              Dashboard
+            </Link>
+            <Link
+              to="/learn"
+              className={`px-3 lg:px-4 py-2 rounded-md text-sm font-medium ${
+                isActive('/learn')
+                  ? 'bg-[#115fd4] text-white'
+                  : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
+              }`}
+            >
+              Learn
+            </Link>
+            <Link
+              to="/puzzles"
+              className={`px-3 lg:px-4 py-2 rounded-md text-sm font-medium ${
+                isActive('/puzzles')
+                  ? 'bg-[#115fd4] text-white'
+                  : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
+              }`}
+            >
+              Puzzles
+            </Link>
+            <Link
+              to="/library"
+              className={`px-3 lg:px-4 py-2 rounded-md text-sm font-medium ${
+                isActive('/library')
+                  ? 'bg-[#115fd4] text-white'
+                  : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
+              }`}
+            >
+              Library
+            </Link>
+            <Link
+              to="/contact"
+              className={`px-3 lg:px-4 py-2 rounded-md text-sm font-medium ${
+                isActive('/contact')
+                  ? 'bg-[#115fd4] text-white'
+                  : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
+              }`}
+            >
+              Contact
+            </Link>
           </nav>
-
-          {/* Desktop Action Buttons */}
-          <div className="hidden lg:flex items-center gap-3">
-            {isLoggedIn ? (
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-[#115fd4] to-[#4a90e2] rounded-full bg-cover bg-center"></div>
-                <span className="text-white text-sm font-medium">Aisha</span>
+          
+          {/* Desktop User Menu */}
+          <div className="hidden md:flex items-center">
+            {user ? (
+              <div className="ml-3 relative">
+                <div>
+                  <button
+                    onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                    className="flex items-center max-w-xs text-sm rounded-full focus:outline-none"
+                    id="user-menu-button"
+                  >
+                    <span className="sr-only">Open user menu</span>
+                    <div className="h-8 w-8 rounded-full bg-[#115fd4] flex items-center justify-center text-white">
+                      {user.name?.charAt(0) || user.email?.charAt(0) || 'U'}
+                    </div>
+                    <span className="ml-2 text-white truncate max-w-[100px]">
+                      {user.name || user.email?.split('@')[0]}
+                    </span>
+                    <svg
+                      className={`ml-1 h-4 w-4 text-white transition-transform ${profileMenuOpen ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
+                {profileMenuOpen && (
+                  <div
+                    className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-[#1a1f2e] ring-1 ring-black ring-opacity-5 z-50"
+                    role="menu"
+                    aria-orientation="vertical"
+                    aria-labelledby="user-menu-button"
+                    tabIndex="-1"
+                  >
+                    <Link
+                      to="/settings"
+                      className="block px-4 py-2 text-sm text-[#97a1c4] hover:bg-[#272e45] hover:text-white"
+                      role="menuitem"
+                      tabIndex="-1"
+                      onClick={() => setProfileMenuOpen(false)}
+                    >
+                      Settings
+                    </Link>
+                    <button
+                      onClick={() => {
+                        setProfileMenuOpen(false);
+                        handleLogout();
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-[#97a1c4] hover:bg-[#272e45] hover:text-white"
+                      role="menuitem"
+                      tabIndex="-1"
+                    >
+                      Sign out
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
-              <>
-                <button className="px-4 py-2 xl:px-6 xl:py-2.5 bg-gradient-to-r from-[#115fd4] to-[#4a90e2] text-white font-semibold rounded-lg hover:shadow-lg hover:shadow-[#115fd4]/25 transition-all duration-300 hover:scale-105 text-sm">
-                  Start Free Trial
-                </button>
-                <Link to="/dashboard" className="px-4 py-2 xl:px-6 xl:py-2.5 bg-[#233248] hover:bg-[#2a3b52] text-white font-semibold rounded-lg border border-[#233248] hover:border-[#115fd4]/30 transition-all duration-300 text-sm">
-                  Log In
+              <div className="space-x-2">
+                <Link
+                  to="/login"
+                  className="px-4 py-2 text-sm font-medium text-white bg-[#272e45] hover:bg-[#374162] rounded-md"
+                >
+                  Sign In
                 </Link>
-              </>
+                <Link
+                  to="/register"
+                  className="px-4 py-2 text-sm font-medium text-white bg-[#115fd4] hover:bg-blue-700 rounded-md"
+                >
+                  Sign Up
+                </Link>
+              </div>
             )}
           </div>
-
-          {/* Mobile Menu Button */}
-          <button
-            className="lg:hidden p-2 text-white focus:outline-none"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            aria-label="Toggle mobile menu"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {isMenuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          
+          {/* Mobile menu button */}
+          <div className="flex md:hidden">
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="inline-flex items-center justify-center p-2 rounded-md text-[#97a1c4] hover:text-white hover:bg-[#272e45] focus:outline-none"
+            >
+              <span className="sr-only">{mobileMenuOpen ? 'Close menu' : 'Open menu'}</span>
+              {mobileMenuOpen ? (
+                <svg className="block h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                <svg className="block h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
               )}
-            </svg>
-          </button>
-        </div>
-
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="lg:hidden py-4 border-t border-[#233248] bg-[#111822] absolute left-0 right-0 top-full shadow-lg">
-            <div className="container mx-auto px-4 sm:px-6">
-              <nav className="flex flex-col gap-4 mb-6">
-                {isLoggedIn ? (
-                  <>
-                    <Link className="text-white/80 hover:text-white font-medium py-2 px-2 rounded transition-colors" to="/dashboard" onClick={() => setIsMenuOpen(false)}>Dashboard</Link>
-                    <Link className="text-white/80 hover:text-white font-medium py-2 px-2 rounded transition-colors" to="/learn" onClick={() => setIsMenuOpen(false)}>Learn</Link>
-                    <Link className="text-white/80 hover:text-white font-medium py-2 px-2 rounded transition-colors" to="/puzzles" onClick={() => setIsMenuOpen(false)}>Puzzles</Link>
-                    <Link className="text-white/80 hover:text-white font-medium py-2 px-2 rounded transition-colors" to="/library" onClick={() => setIsMenuOpen(false)}>Library</Link>
-                    <Link className="text-white/80 hover:text-white font-medium py-2 px-2 rounded transition-colors" to="/settings" onClick={() => setIsMenuOpen(false)}>Settings</Link>
-                  </>
-                ) : (
-                  <>
-                    <Link className="text-white/80 hover:text-white font-medium py-2 px-2 rounded transition-colors" to="/" onClick={() => setIsMenuOpen(false)}>Home</Link>
-                    <Link className="text-white/80 hover:text-white font-medium py-2 px-2 rounded transition-colors" to="/chess" onClick={() => setIsMenuOpen(false)}>Play Chess</Link>
-                    <a className="text-white/80 hover:text-white font-medium py-2 px-2 rounded transition-colors" href="#about" onClick={() => setIsMenuOpen(false)}>About</a>
-                    <Link className="text-white/80 hover:text-white font-medium py-2 px-2 rounded transition-colors" to="/contact" onClick={() => setIsMenuOpen(false)}>Contact Us</Link>
-                  </>
-                )}
-              </nav>
-              {!isLoggedIn && (
-                <div className="flex flex-col gap-3">
-                  <button className="w-full py-3 bg-gradient-to-r from-[#115fd4] to-[#4a90e2] text-white font-semibold rounded-lg">
-                    Start Free Trial
-                  </button>
-                  <Link to="/dashboard" className="w-full py-3 bg-[#233248] text-white font-semibold rounded-lg border border-[#233248] text-center" onClick={() => setIsMenuOpen(false)}>
-                    Log In
-                  </Link>
-                </div>
-              )}
-              {isLoggedIn && (
-                <div className="flex items-center gap-3 pt-4 border-t border-[#233248]">
-                  <div className="w-8 h-8 bg-gradient-to-br from-[#115fd4] to-[#4a90e2] rounded-full bg-cover bg-center"></div>
-                  <span className="text-white text-sm font-medium">Aisha</span>
-                </div>
-              )}
-            </div>
+            </button>
           </div>
-        )}
+        </div>
       </div>
+      
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden bg-[#1a1f2e] border-t border-[#374162]">
+          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+            <Link
+              to="/dashboard"
+              className={`block px-3 py-2 rounded-md text-base font-medium ${
+                isActive('/dashboard')
+                  ? 'bg-[#115fd4] text-white'
+                  : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
+              }`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Dashboard
+            </Link>
+            <Link
+              to="/learn"
+              className={`block px-3 py-2 rounded-md text-base font-medium ${
+                isActive('/learn')
+                  ? 'bg-[#115fd4] text-white'
+                  : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
+              }`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Learn
+            </Link>
+            <Link
+              to="/puzzles"
+              className={`block px-3 py-2 rounded-md text-base font-medium ${
+                isActive('/puzzles')
+                  ? 'bg-[#115fd4] text-white'
+                  : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
+              }`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Puzzles
+            </Link>
+            <Link
+              to="/library"
+              className={`block px-3 py-2 rounded-md text-base font-medium ${
+                isActive('/library')
+                  ? 'bg-[#115fd4] text-white'
+                  : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
+              }`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Library
+            </Link>
+            <Link
+              to="/contact"
+              className={`block px-3 py-2 rounded-md text-base font-medium ${
+                isActive('/contact')
+                  ? 'bg-[#115fd4] text-white'
+                  : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
+              }`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Contact
+            </Link>
+          </div>
+          
+          {/* Mobile User Section */}
+          <div className="pt-4 pb-3 border-t border-[#374162]">
+            {user ? (
+              <>
+                <div className="flex items-center px-5">
+                  <div className="flex-shrink-0">
+                    <div className="h-10 w-10 rounded-full bg-[#115fd4] flex items-center justify-center text-white">
+                      {user.name?.charAt(0) || user.email?.charAt(0) || 'U'}
+                    </div>
+                  </div>
+                  <div className="ml-3">
+                    <div className="text-base font-medium text-white">{user.name || user.email?.split('@')[0]}</div>
+                    <div className="text-sm font-medium text-[#97a1c4]">{user.email}</div>
+                  </div>
+                </div>
+                <div className="mt-3 px-2 space-y-1">
+                  <Link
+                    to="/settings"
+                    className="block px-3 py-2 rounded-md text-base font-medium text-[#97a1c4] hover:bg-[#272e45] hover:text-white"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Settings
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      handleLogout();
+                    }}
+                    className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-[#97a1c4] hover:bg-[#272e45] hover:text-white"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="px-2 space-y-1">
+                <Link
+                  to="/login"
+                  className="block px-3 py-2 rounded-md text-base font-medium text-white bg-[#272e45] hover:bg-[#374162]"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to="/register"
+                  className="block px-3 py-2 rounded-md text-base font-medium text-white bg-[#115fd4] hover:bg-blue-700"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Sign Up
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </header>
   );
 };
