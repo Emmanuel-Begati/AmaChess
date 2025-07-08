@@ -291,95 +291,95 @@ const Puzzles = () => {
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col bg-[#121621] text-white">
-      <div className="layout-container flex h-full grow flex-col">
-        <Header />
-        
-        <div className="px-4 lg:px-8 flex flex-1 justify-center py-8">
-          <div className="layout-content-container flex flex-col max-w-7xl flex-1">
+    <div className="min-h-screen bg-[#121621] text-white" style={{fontFamily: 'Lexend, "Noto Sans", sans-serif'}}>
+      <Header />
+      
+      {/* Main Content Container - Fully Responsive */}
+      <main className="flex-1 w-full">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-6 lg:py-8">
+          <div className="max-w-[1400px] mx-auto">
             
             {/* Random Puzzle Solver Mode */}
             {randomPuzzleMode && (
-              <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                <div className="bg-gradient-to-br from-[#272e45] to-[#374162] rounded-2xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-[#455173]">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h2 className="text-3xl font-bold text-white mb-2">Random Puzzle Challenge</h2>
-                      <p className="text-[#97a1c4]">Solve puzzles to improve your tactical skills</p>
+              <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-2 xs:p-4">
+                <div className="bg-gradient-to-br from-[#272e45] to-[#374162] rounded-xl xs:rounded-2xl p-3 xs:p-4 sm:p-6 lg:p-8 w-full max-w-6xl max-h-[98vh] xs:max-h-[95vh] overflow-y-auto border border-[#455173]">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 xs:gap-4 mb-4 xs:mb-6">
+                    <div className="min-w-0">
+                      <h2 className="text-xl xs:text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2 leading-tight">Random Puzzle Challenge</h2>
+                      <p className="text-[#97a1c4] text-sm xs:text-base lg:text-lg">Solve puzzles to improve your tactical skills</p>
                     </div>
                     <button 
                       onClick={exitRandomPuzzleMode}
-                      className="text-[#97a1c4] hover:text-white transition-colors"
+                      className="text-[#97a1c4] hover:text-white transition-colors self-end sm:self-center p-1"
                     >
-                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </button>
                   </div>
 
                   {currentRandomPuzzle && (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 xs:gap-6 lg:gap-8">
                       {/* Puzzle Board */}
-                      <div className="bg-[#374162] rounded-xl p-6">
-                        <div className="flex justify-center mb-4">
+                      <div className="bg-[#374162] rounded-lg xs:rounded-xl p-3 xs:p-4 sm:p-6 order-2 lg:order-1">
+                        <div className="flex justify-center mb-3 xs:mb-4">
                           <ChessBoard
                             position={currentRandomPuzzle.fen}
                             onMove={handleRandomPuzzleMove}
                             interactive={!randomPuzzleCompleted}
                             showNotation={true}
-                            width={400}
                           />
                         </div>
                         
                         {/* Puzzle Status */}
                         <div className="text-center">
-                          <p className="text-[#97a1c4] text-sm mb-3">{currentRandomPuzzle.description}</p>
+                          <p className="text-[#97a1c4] text-sm xs:text-base mb-3 xs:mb-4 leading-relaxed">{currentRandomPuzzle.description}</p>
                           {!randomPuzzleCompleted ? (
-                            <p className="text-blue-400 text-sm font-medium">
+                            <p className="text-blue-400 text-sm xs:text-base font-medium">
                               Find the best move for White
                             </p>
                           ) : (
-                            <div className="bg-green-600 text-white p-3 rounded-lg mb-4">
-                              <p className="font-semibold">✓ Puzzle Solved!</p>
-                              <p className="text-sm opacity-90">Great job! +10 puzzle rating</p>
+                            <div className="bg-green-600 text-white p-3 xs:p-4 rounded-lg">
+                              <p className="font-semibold text-sm xs:text-base">✓ Puzzle Solved!</p>
+                              <p className="text-xs xs:text-sm opacity-90">Great job! +10 puzzle rating</p>
                             </div>
                           )}
                         </div>
                       </div>
 
                       {/* Puzzle Info & Controls */}
-                      <div className="space-y-6">
+                      <div className="space-y-4 xs:space-y-6 order-1 lg:order-2">
                         {/* Puzzle Details */}
-                        <div className="bg-[#374162] rounded-lg p-6">
-                          <h3 className="text-xl font-semibold text-white mb-4">Puzzle Details</h3>
-                          <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-[#374162] rounded-lg p-4 xs:p-6">
+                          <h3 className="text-lg xs:text-xl sm:text-2xl font-semibold text-white mb-4 xs:mb-6">Puzzle Details</h3>
+                          <div className="grid grid-cols-2 gap-3 xs:gap-4 sm:gap-6">
                             <div>
-                              <p className="text-[#97a1c4] text-sm">Theme</p>
-                              <p className="text-white font-semibold">{currentRandomPuzzle.theme}</p>
+                              <p className="text-[#97a1c4] text-sm xs:text-base">Theme</p>
+                              <p className="text-white font-semibold text-base xs:text-lg lg:text-xl break-words">{currentRandomPuzzle.theme}</p>
                             </div>
                             <div>
-                              <p className="text-[#97a1c4] text-sm">Rating</p>
-                              <p className="text-white font-semibold">{currentRandomPuzzle.rating}</p>
+                              <p className="text-[#97a1c4] text-sm xs:text-base">Rating</p>
+                              <p className="text-white font-semibold text-base xs:text-lg lg:text-xl">{currentRandomPuzzle.rating}</p>
                             </div>
                             <div>
-                              <p className="text-[#97a1c4] text-sm">Difficulty</p>
-                              <p className="text-white font-semibold">{currentRandomPuzzle.difficulty}</p>
+                              <p className="text-[#97a1c4] text-sm xs:text-base">Difficulty</p>
+                              <p className="text-white font-semibold text-base xs:text-lg lg:text-xl">{currentRandomPuzzle.difficulty}</p>
                             </div>
                             <div>
-                              <p className="text-[#97a1c4] text-sm">Moves</p>
-                              <p className="text-white font-semibold">{currentRandomPuzzle.moves}</p>
+                              <p className="text-[#97a1c4] text-sm xs:text-base">Moves</p>
+                              <p className="text-white font-semibold text-base xs:text-lg lg:text-xl">{currentRandomPuzzle.moves}</p>
                             </div>
                           </div>
                         </div>
 
                         {/* Action Buttons */}
-                        <div className="space-y-3">
+                        <div className="space-y-3 xs:space-y-4">
                           {randomPuzzleCompleted && (
                             <button
                               onClick={nextRandomPuzzle}
-                              className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white py-4 rounded-lg font-semibold transition-all duration-300 flex items-center justify-center gap-2"
+                              className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white py-3 xs:py-4 lg:py-5 rounded-lg font-semibold transition-all duration-300 flex items-center justify-center gap-2 text-base xs:text-lg lg:text-xl"
                             >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                               </svg>
                               Next Puzzle
@@ -388,14 +388,14 @@ const Puzzles = () => {
                           
                           <button
                             onClick={() => setShowSolution(!showSolution)}
-                            className="w-full bg-yellow-600 hover:bg-yellow-700 text-white py-3 rounded-lg font-semibold transition-colors"
+                            className="w-full bg-yellow-600 hover:bg-yellow-700 text-white py-3 xs:py-4 rounded-lg font-semibold transition-colors text-base xs:text-lg"
                           >
                             {showSolution ? 'Hide Solution' : 'Show Solution'}
                           </button>
 
                           <button
                             onClick={nextRandomPuzzle}
-                            className="w-full bg-[#455173] hover:bg-[#566280] text-white py-3 rounded-lg font-semibold transition-colors"
+                            className="w-full bg-[#455173] hover:bg-[#566280] text-white py-3 xs:py-4 rounded-lg font-semibold transition-colors text-base xs:text-lg"
                           >
                             Skip Puzzle
                           </button>
@@ -403,11 +403,11 @@ const Puzzles = () => {
 
                         {/* Solution Display */}
                         {showSolution && (
-                          <div className="bg-[#455173] rounded-lg p-4">
-                            <h4 className="text-white font-semibold mb-2">Solution:</h4>
-                            <div className="flex flex-wrap gap-2">
+                          <div className="bg-[#455173] rounded-lg p-4 xs:p-6">
+                            <h4 className="text-white font-semibold mb-3 xs:mb-4 text-base xs:text-lg">Solution:</h4>
+                            <div className="flex flex-wrap gap-2 xs:gap-3">
                               {currentRandomPuzzle.solution.map((move, index) => (
-                                <span key={index} className="bg-blue-800 text-white px-3 py-1 rounded text-sm font-medium">
+                                <span key={index} className="bg-blue-800 text-white px-3 xs:px-4 py-2 rounded text-sm xs:text-base font-medium">
                                   {index + 1}. {move}
                                 </span>
                               ))}
@@ -421,146 +421,146 @@ const Puzzles = () => {
               </div>
             )}
 
-            {/* Header Section */}
-            <div className="mb-8">
-              <h1 className="text-4xl lg:text-5xl font-bold text-white mb-4">Chess Puzzles</h1>
-              <p className="text-[#97a1c4] text-lg">Sharpen your tactical skills with our collection of chess puzzles</p>
-            </div>
-
-           
-
-            {/* User Statistics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <div className="bg-gradient-to-br from-[#272e45] to-[#374162] rounded-xl p-6 border border-[#374162]">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                    <span className="text-xl">🧩</span>
-                  </div>
-                  <div>
-                    <p className="text-[#97a1c4] text-sm">Puzzles Solved</p>
-                    <p className="text-2xl font-bold text-white">{userStats.puzzlesSolved.toLocaleString()}</p>
-                  </div>
-                </div>
-                <p className="text-green-400 text-sm">+{userStats.improvementThisMonth} this month</p>
-              </div>
-
-              <div className="bg-gradient-to-br from-[#272e45] to-[#374162] rounded-xl p-6 border border-[#374162]">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
-                    <span className="text-xl">⭐</span>
-                  </div>
-                  <div>
-                    <p className="text-[#97a1c4] text-sm">Puzzle Rating</p>
-                    <p className="text-2xl font-bold text-white">{userStats.puzzleRating}</p>
-                  </div>
-                </div>
-                <p className="text-purple-400 text-sm">Top 15% globally</p>
-              </div>
-
-              <div className="bg-gradient-to-br from-[#272e45] to-[#374162] rounded-xl p-6 border border-[#374162]">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 bg-orange-600 rounded-lg flex items-center justify-center">
-                    <span className="text-xl">🔥</span>
-                  </div>
-                  <div>
-                    <p className="text-[#97a1c4] text-sm">Best Streak</p>
-                    <p className="text-2xl font-bold text-white">{userStats.bestStreak}</p>
-                  </div>
-                </div>
-                <p className="text-orange-400 text-sm">Current: {userStats.currentStreak}</p>
-              </div>
-
-              <div className="bg-gradient-to-br from-[#272e45] to-[#374162] rounded-xl p-6 border border-[#374162]">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
-                    <span className="text-xl">🎯</span>
-                  </div>
-                  <div>
-                    <p className="text-[#97a1c4] text-sm">Accuracy Rate</p>
-                    <p className="text-2xl font-bold text-white">{userStats.accuracyRate}%</p>
-                  </div>
-                </div>
-                <p className="text-green-400 text-sm">Avg time: {userStats.averageTime}s</p>
+            {/* Header Section - Fluid Layout */}
+            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 lg:gap-8 mb-6 lg:mb-8">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-white leading-tight mb-3 lg:mb-4">Chess Puzzles</h1>
+                <p className="text-[#97a1c4] text-sm sm:text-base lg:text-lg max-w-2xl leading-relaxed">Sharpen your tactical skills with our collection of chess puzzles</p>
               </div>
             </div>
 
-            {/* Daily Challenge Section */}
-            <div className="bg-gradient-to-r from-[#272e45] to-[#1e293b] rounded-xl p-8 mb-8 border border-[#374162]">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl">👑</span>
+            {/* User Statistics Cards - Responsive Grid */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 xl:gap-8 mb-6 sm:mb-8">
+              <div className="bg-gradient-to-br from-[#272e45] to-[#374162] rounded-lg xs:rounded-xl p-3 sm:p-4 lg:p-6 border border-[#374162]">
+                <div className="flex items-start gap-2 sm:gap-3 mb-2 sm:mb-3">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <span className="text-base sm:text-lg lg:text-xl">🧩</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[#97a1c4] text-xs sm:text-sm lg:text-base">Puzzles Solved</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-white">{userStats.puzzlesSolved.toLocaleString()}</p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-white">{dailyChallenge.title}</h2>
-                  <p className="text-[#97a1c4]">{dailyChallenge.theme} • Rating: {dailyChallenge.rating}</p>
+                <p className="text-green-400 text-xs sm:text-sm">+{userStats.improvementThisMonth} this month</p>
+              </div>
+
+              <div className="bg-gradient-to-br from-[#272e45] to-[#374162] rounded-lg xs:rounded-xl p-3 sm:p-4 lg:p-6 border border-[#374162]">
+                <div className="flex items-start gap-2 sm:gap-3 mb-2 sm:mb-3">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <span className="text-base sm:text-lg lg:text-xl">⭐</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[#97a1c4] text-xs sm:text-sm lg:text-base">Puzzle Rating</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-white">{userStats.puzzleRating}</p>
+                  </div>
+                </div>
+                <p className="text-purple-400 text-xs sm:text-sm">Top 15% globally</p>
+              </div>
+
+              <div className="bg-gradient-to-br from-[#272e45] to-[#374162] rounded-lg xs:rounded-xl p-3 sm:p-4 lg:p-6 border border-[#374162]">
+                <div className="flex items-start gap-2 sm:gap-3 mb-2 sm:mb-3">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-orange-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <span className="text-base sm:text-lg lg:text-xl">🔥</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[#97a1c4] text-xs sm:text-sm lg:text-base">Best Streak</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-white">{userStats.bestStreak}</p>
+                  </div>
+                </div>
+                <p className="text-orange-400 text-xs sm:text-sm">Current: {userStats.currentStreak}</p>
+              </div>
+
+              <div className="bg-gradient-to-br from-[#272e45] to-[#374162] rounded-lg xs:rounded-xl p-3 sm:p-4 lg:p-6 border border-[#374162]">
+                <div className="flex items-start gap-2 sm:gap-3 mb-2 sm:mb-3">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-green-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <span className="text-base sm:text-lg lg:text-xl">🎯</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[#97a1c4] text-xs sm:text-sm lg:text-base">Accuracy Rate</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-white">{userStats.accuracyRate}%</p>
+                  </div>
+                </div>
+                <p className="text-green-400 text-xs sm:text-sm">Avg time: {userStats.averageTime}s</p>
+              </div>
+            </div>
+
+            {/* Daily Challenge Section - Responsive Layout */}
+            <div className="bg-gradient-to-r from-[#272e45] to-[#1e293b] rounded-xl p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8 border border-[#374162]">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+                <div className="w-10 h-10 xs:w-12 xs:h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <span className="text-xl xs:text-2xl sm:text-3xl">👑</span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-xl xs:text-2xl sm:text-3xl lg:text-4xl font-bold text-white leading-tight">{dailyChallenge.title}</h2>
+                  <p className="text-[#97a1c4] text-sm xs:text-base lg:text-lg break-words">{dailyChallenge.theme} • Rating: {dailyChallenge.rating}</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
                 {/* Chess Board */}
-                <div className="bg-[#374162] rounded-xl p-6">
-                  <div className="flex justify-center mb-4">
+                <div className="bg-[#374162] rounded-lg xs:rounded-xl p-3 sm:p-4 lg:p-6 order-2 lg:order-1">
+                  <div className="flex justify-center mb-3 sm:mb-4">
                     <ChessBoard
                       position={dailyChallenge.fen}
                       onMove={handleDailyPuzzleMove}
                       interactive={!dailyPuzzleCompleted}
                       showNotation={true}
-                      width={500}
+                      width={320}
                     />
                   </div>
                   <div className="text-center">
-                    <p className="text-[#97a1c4] text-sm mb-3">{dailyChallenge.description}</p>
+                    <p className="text-[#97a1c4] text-sm xs:text-base mb-3 xs:mb-4 leading-relaxed">{dailyChallenge.description}</p>
                     {!dailyPuzzleCompleted ? (
-                      <p className="text-blue-400 text-sm font-medium">
+                      <p className="text-blue-400 text-sm xs:text-base font-medium">
                         Make your move on the board above
                       </p>
                     ) : (
-                      <div className="bg-green-600 text-white p-3 rounded-lg">
-                        <p className="font-semibold">✓ Completed!</p>
-                        <p className="text-sm opacity-90">+25 rating points earned</p>
+                      <div className="bg-green-600 text-white p-3 xs:p-4 rounded-lg">
+                        <p className="font-semibold text-sm xs:text-base lg:text-lg">✓ Completed!</p>
+                        <p className="text-xs xs:text-sm opacity-90">+25 rating points earned</p>
                       </div>
                     )}
                   </div>
                 </div>
 
                 {/* Challenge Stats */}
-                <div className="space-y-4">
-                  <div className="bg-[#374162] rounded-lg p-4">
-                    <h4 className="text-white font-semibold mb-3">Challenge Statistics</h4>
-                    <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-4 xs:space-y-6 order-1 lg:order-2">
+                  <div className="bg-[#374162] rounded-lg xs:rounded-xl p-4 xs:p-6">
+                    <h4 className="text-white font-semibold mb-4 xs:mb-6 text-base xs:text-lg lg:text-xl">Challenge Statistics</h4>
+                    <div className="grid grid-cols-2 gap-3 xs:gap-4 sm:gap-6">
                       <div>
-                        <p className="text-[#97a1c4] text-sm">Average Time</p>
-                        <p className="text-xl font-bold text-blue-400">{dailyChallenge.averageTime}s</p>
+                        <p className="text-[#97a1c4] text-xs sm:text-sm lg:text-base">Average Time</p>
+                        <p className="text-lg xs:text-xl sm:text-2xl lg:text-3xl font-bold text-blue-400">{dailyChallenge.averageTime}s</p>
                       </div>
                       <div>
-                        <p className="text-[#97a1c4] text-sm">Success Rate</p>
-                        <p className="text-xl font-bold text-green-400">{dailyChallenge.successRate}%</p>
+                        <p className="text-[#97a1c4] text-xs sm:text-sm lg:text-base">Success Rate</p>
+                        <p className="text-lg xs:text-xl sm:text-2xl lg:text-3xl font-bold text-green-400">{dailyChallenge.successRate}%</p>
                       </div>
                       <div>
-                        <p className="text-[#97a1c4] text-sm">Solved By</p>
-                        <p className="text-xl font-bold text-purple-400">{dailyChallenge.solveCount.toLocaleString()}</p>
+                        <p className="text-[#97a1c4] text-xs sm:text-sm lg:text-base">Solved By</p>
+                        <p className="text-lg xs:text-xl sm:text-2xl lg:text-3xl font-bold text-purple-400">{dailyChallenge.solveCount.toLocaleString()}</p>
                       </div>
                       <div>
-                        <p className="text-[#97a1c4] text-sm">Attempts</p>
-                        <p className="text-xl font-bold text-orange-400">{dailyChallenge.attempts.toLocaleString()}</p>
+                        <p className="text-[#97a1c4] text-xs sm:text-sm lg:text-base">Attempts</p>
+                        <p className="text-lg xs:text-xl sm:text-2xl lg:text-3xl font-bold text-orange-400">{dailyChallenge.attempts.toLocaleString()}</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="bg-[#374162] rounded-lg p-4">
-                    <h4 className="text-white font-semibold mb-3">Puzzle Details</h4>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-[#97a1c4]">Theme:</span>
-                        <span className="text-white font-medium">{dailyChallenge.theme}</span>
+                  <div className="bg-[#374162] rounded-lg xs:rounded-xl p-4 xs:p-6">
+                    <h4 className="text-white font-semibold mb-4 xs:mb-6 text-base xs:text-lg lg:text-xl">Puzzle Details</h4>
+                    <div className="space-y-3 xs:space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[#97a1c4] text-sm xs:text-base">Theme:</span>
+                        <span className="text-white font-medium text-sm xs:text-base break-words text-right">{dailyChallenge.theme}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-[#97a1c4]">Moves to solve:</span>
-                        <span className="text-white font-medium">{dailyChallenge.movesToMate}</span>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[#97a1c4] text-sm xs:text-base">Moves to solve:</span>
+                        <span className="text-white font-medium text-sm xs:text-base">{dailyChallenge.movesToMate}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-[#97a1c4]">Rating:</span>
-                        <span className="text-white font-medium">{dailyChallenge.rating}</span>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[#97a1c4] text-sm xs:text-base">Rating:</span>
+                        <span className="text-white font-medium text-sm xs:text-base">{dailyChallenge.rating}</span>
                       </div>
                     </div>
                   </div>
@@ -568,35 +568,35 @@ const Puzzles = () => {
               </div>
             </div>
 
-            {/* Navigation Tabs */}
-            <div className="pb-3 mb-6">
-              <div className="flex border-b border-[#374162] gap-8">
+            {/* Navigation Tabs - Responsive with Scroll */}
+            <div className="pb-3 xs:pb-4 mb-4 xs:mb-6 sm:mb-8">
+              <div className="flex border-b border-[#374162] gap-4 sm:gap-6 lg:gap-8 xl:gap-12 overflow-x-auto scrollbar-hide">
                 {['All', 'Daily', 'Custom', 'Saved'].map((tab) => (
                   <button
                     key={tab}
-                    className={`flex flex-col items-center justify-center border-b-[3px] pb-[13px] pt-4 ${
+                    className={`flex flex-col items-center justify-center border-b-[3px] pb-3 xs:pb-4 pt-3 xs:pt-4 whitespace-nowrap min-w-0 ${
                       activeTab === tab 
                         ? 'border-b-blue-800 text-white' 
                         : 'border-b-transparent text-[#97a1c4] hover:text-white'
                     }`}
                     onClick={() => setActiveTab(tab)}
                   >
-                    <p className="text-sm font-bold leading-normal tracking-[0.015em]">{tab}</p>
+                    <p className="text-sm sm:text-base lg:text-lg font-bold leading-normal tracking-[0.015em]">{tab}</p>
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Featured Puzzles Section */}
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-white">Featured Puzzles</h2>
-                <div className="flex gap-2">
+            {/* Featured Puzzles Section - Responsive Layout */}
+            <div className="mb-6 sm:mb-8">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+                <h2 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-white">Featured Puzzles</h2>
+                <div className="flex flex-wrap gap-2">
                   {['All', 'Easy', 'Medium', 'Hard', 'Expert'].map((difficulty) => (
                     <button
                       key={difficulty}
                       onClick={() => setSelectedDifficulty(difficulty)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      className={`px-3 sm:px-4 lg:px-5 py-1.5 sm:py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${
                         selectedDifficulty === difficulty
                           ? 'bg-blue-800 text-white'
                           : 'bg-[#374162] text-[#97a1c4] hover:bg-[#455173] hover:text-white'
@@ -608,54 +608,54 @@ const Puzzles = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
                 {featuredPuzzles.map((puzzle) => (
                   <div key={puzzle.id} className="bg-gradient-to-br from-[#272e45] to-[#374162] rounded-xl overflow-hidden border border-[#374162] hover:border-blue-600 transition-all duration-300 hover:transform hover:scale-105">
                     {/* Chess Board for Puzzle */}
-                    <div className="p-4 bg-[#374162]">
+                    <div className="p-3 sm:p-4 lg:p-6 bg-[#374162]">
                       <div className="flex justify-center">
                         <ChessBoard
                           position={puzzle.fen}
                           onMove={(move, newFen) => handlePuzzleMove(move, newFen)}
                           interactive={false}
                           showNotation={false}
-                          width={340}
+                          width={280}
                         />
                       </div>
                       
                       {/* Rating badge overlay */}
-                      <div className="flex justify-between items-center mt-2">
-                        <span className="bg-black/30 backdrop-blur-sm rounded-lg px-3 py-1 text-white text-sm font-medium">
+                      <div className="flex justify-between items-center mt-3 sm:mt-4">
+                        <span className="bg-black/30 backdrop-blur-sm rounded-lg px-2 sm:px-3 py-1 sm:py-1.5 text-white text-xs sm:text-sm font-medium">
                           {puzzle.rating}
                         </span>
-                        <span className="bg-black/30 backdrop-blur-sm rounded-lg px-3 py-1 text-white text-xs font-medium">
+                        <span className="bg-black/30 backdrop-blur-sm rounded-lg px-2 sm:px-3 py-1 sm:py-1.5 text-white text-xs sm:text-sm font-medium">
                           {puzzle.difficulty}
                         </span>
                       </div>
                     </div>
 
-                    <div className="p-6">
-                      <h3 className="text-lg font-bold text-white mb-2">{puzzle.title}</h3>
-                      <p className="text-[#97a1c4] text-sm mb-4">{puzzle.description}</p>
+                    <div className="p-4 sm:p-6 lg:p-8">
+                      <h3 className="text-base sm:text-lg lg:text-xl font-bold text-white mb-2 sm:mb-3 leading-tight">{puzzle.title}</h3>
+                      <p className="text-[#97a1c4] text-sm sm:text-base mb-3 sm:mb-4 leading-relaxed">{puzzle.description}</p>
                       
                       {/* Theme badge */}
-                      <div className="flex justify-center mb-4">
-                        <span className="bg-blue-800/20 text-blue-400 px-3 py-1 rounded-full text-sm font-medium">
+                      <div className="flex justify-center mb-3 sm:mb-4">
+                        <span className="bg-blue-800/20 text-blue-400 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium">
                           {puzzle.theme}
                         </span>
                       </div>
                       
                       {/* Tactical themes */}
-                      <div className="flex flex-wrap gap-2 mb-4">
+                      <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-3 sm:mb-4">
                         {puzzle.subThemes.map((theme, index) => (
-                          <span key={index} className="bg-blue-800/20 text-blue-400 px-2 py-1 rounded text-xs font-medium">
+                          <span key={index} className="bg-blue-800/20 text-blue-400 px-2 sm:px-3 py-1 sm:py-1.5 rounded text-xs sm:text-sm font-medium">
                             {theme}
                           </span>
                         ))}
                       </div>
 
                       {/* Puzzle stats */}
-                      <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+                      <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6 text-sm sm:text-base">
                         <div>
                           <p className="text-[#97a1c4]">Success Rate</p>
                           <p className="text-white font-semibold">{puzzle.solveRate}%</p>
@@ -668,7 +668,7 @@ const Puzzles = () => {
 
                       <Link 
                         to={`/puzzle-solver?theme=${puzzle.theme}&difficulty=${puzzle.difficulty}`}
-                        className="w-full bg-blue-800 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition-colors block text-center"
+                        className="w-full bg-blue-800 hover:bg-blue-700 text-white py-2.5 sm:py-3 lg:py-4 rounded-lg font-semibold transition-colors block text-center text-sm sm:text-base lg:text-lg"
                       >
                         Solve Puzzle
                       </Link>
@@ -678,29 +678,29 @@ const Puzzles = () => {
               </div>
             </div>
 
-            {/* Performance Analytics */}
-            <div className="mb-8">
-              <h2 className="text-2xl font-bold text-white mb-6">Performance Analytics</h2>
+            {/* Performance Analytics - Responsive Grid */}
+            <div className="mb-6 sm:mb-8">
+              <h2 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-white mb-4 sm:mb-6 lg:mb-8">Performance Analytics</h2>
               
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
                 {/* Weekly Progress Chart */}
-                <div className="bg-[#272e45] rounded-xl p-6 border border-[#374162]">
-                  <h3 className="text-xl font-semibold text-white mb-4">This Week's Progress</h3>
-                  <div className="space-y-4">
+                <div className="bg-[#272e45] rounded-lg xs:rounded-xl lg:rounded-2xl p-4 sm:p-6 lg:p-8 border border-[#374162]">
+                  <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-white mb-4 sm:mb-6 lg:mb-8">This Week's Progress</h3>
+                  <div className="space-y-3 sm:space-y-4 lg:space-y-6">
                     {performanceData.weeklyProgress.map((day, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <span className="text-[#97a1c4] text-sm w-8">{day.day}</span>
-                          <div className="w-32 bg-[#374162] rounded-full h-2">
+                      <div key={index} className="flex items-center justify-between gap-3 sm:gap-4">
+                        <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                          <span className="text-[#97a1c4] text-sm sm:text-base w-8 sm:w-10 flex-shrink-0">{day.day}</span>
+                          <div className="flex-1 bg-[#374162] rounded-full h-2 sm:h-2.5 lg:h-3 min-w-0">
                             <div 
-                              className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full"
+                              className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 sm:h-2.5 lg:h-3 rounded-full transition-all duration-300"
                               style={{ width: `${(day.solved / 25) * 100}%` }}
                             ></div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-white font-semibold">{day.solved}</p>
-                          <p className="text-[#97a1c4] text-xs">{day.accuracy}% acc</p>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-white font-semibold text-sm sm:text-base lg:text-lg">{day.solved}</p>
+                          <p className="text-[#97a1c4] text-xs sm:text-sm">{day.accuracy}% acc</p>
                         </div>
                       </div>
                     ))}
@@ -708,18 +708,18 @@ const Puzzles = () => {
                 </div>
 
                 {/* Theme Performance */}
-                <div className="bg-[#272e45] rounded-xl p-6 border border-[#374162]">
-                  <h3 className="text-xl font-semibold text-white mb-4">Theme Performance</h3>
-                  <div className="space-y-3">
+                <div className="bg-[#272e45] rounded-lg xs:rounded-xl lg:rounded-2xl p-4 sm:p-6 lg:p-8 border border-[#374162]">
+                  <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-white mb-4 sm:mb-6 lg:mb-8">Theme Performance</h3>
+                  <div className="space-y-3 sm:space-y-4 lg:space-y-6">
                     {performanceData.themePerformance.map((theme, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-[#374162] rounded-lg">
-                        <div>
-                          <p className="text-white font-medium">{theme.theme}</p>
-                          <p className="text-[#97a1c4] text-sm">{theme.solved} solved</p>
+                      <div key={index} className="flex items-center justify-between p-3 sm:p-4 lg:p-5 bg-[#374162] rounded-lg lg:rounded-xl gap-3 sm:gap-4">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-white font-medium text-sm sm:text-base lg:text-lg leading-tight">{theme.theme}</p>
+                          <p className="text-[#97a1c4] text-xs sm:text-sm lg:text-base">{theme.solved} solved</p>
                         </div>
-                        <div className="text-right">
-                          <p className="text-white font-bold">{theme.rating}</p>
-                          <p className="text-green-400 text-sm">{theme.accuracy}%</p>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-white font-bold text-sm sm:text-base lg:text-lg">{theme.rating}</p>
+                          <p className="text-green-400 text-xs sm:text-sm lg:text-base">{theme.accuracy}%</p>
                         </div>
                       </div>
                     ))}
@@ -727,30 +727,30 @@ const Puzzles = () => {
                 </div>
               </div>
 
-              {/* Rating History */}
-              <div className="bg-[#272e45] rounded-xl p-6 border border-[#374162] mt-6">
-                <h3 className="text-xl font-semibold text-white mb-4">Rating History</h3>
-                <div className="flex items-end gap-4 h-32">
+              {/* Rating History - Full Width */}
+              <div className="bg-[#272e45] rounded-lg xs:rounded-xl lg:rounded-2xl p-4 sm:p-6 lg:p-8 border border-[#374162] mt-4 sm:mt-6 lg:mt-8">
+                <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-white mb-4 sm:mb-6 lg:mb-8">Rating History</h3>
+                <div className="flex items-end gap-2 sm:gap-4 lg:gap-6 h-24 sm:h-32 lg:h-40 px-2 sm:px-4">
                   {performanceData.ratingHistory.map((month, index) => (
-                    <div key={index} className="flex-1 flex flex-col items-center">
+                    <div key={index} className="flex-1 flex flex-col items-center min-w-0">
                       <div 
-                        className="bg-gradient-to-t from-blue-600 to-purple-600 w-full rounded-t-lg"
+                        className="bg-gradient-to-t from-blue-600 to-purple-600 w-full rounded-t-lg lg:rounded-t-xl transition-all duration-300"
                         style={{ height: `${((month.rating - 1500) / 200) * 100}%` }}
                       ></div>
-                      <p className="text-[#97a1c4] text-xs mt-2">{month.month}</p>
-                      <p className="text-white text-sm font-semibold">{month.rating}</p>
+                      <p className="text-[#97a1c4] text-xs sm:text-sm lg:text-base mt-2 sm:mt-3 truncate w-full text-center">{month.month}</p>
+                      <p className="text-white text-xs sm:text-sm lg:text-base font-semibold">{month.rating}</p>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
 
-            {/* Latest Achievements */}
-            <div className="mb-8">
-              <h2 className="text-2xl font-bold text-white mb-6">Latest Puzzle Achievements</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Latest Achievements - Responsive Grid */}
+            <div className="mb-6 sm:mb-8">
+              <h2 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-white mb-4 sm:mb-6 lg:mb-8">Latest Puzzle Achievements</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 xl:gap-8">
                 {achievements.map((achievement) => (
-                  <div key={achievement.id} className={`bg-gradient-to-br from-[#272e45] to-[#374162] rounded-xl p-6 border transition-all duration-300 hover:scale-105 ${
+                  <div key={achievement.id} className={`bg-gradient-to-br from-[#272e45] to-[#374162] rounded-lg xs:rounded-xl lg:rounded-2xl p-4 sm:p-6 lg:p-8 border transition-all duration-300 hover:scale-105 ${
                     achievement.unlocked 
                       ? achievement.rarity === 'Legendary' ? 'border-yellow-500 shadow-lg shadow-yellow-500/20' 
                         : achievement.rarity === 'Epic' ? 'border-purple-500 shadow-lg shadow-purple-500/20'
@@ -758,30 +758,30 @@ const Puzzles = () => {
                       : 'border-[#374162] opacity-75'
                   }`}>
                     <div className="text-center">
-                      <div className={`text-4xl mb-3 ${achievement.unlocked ? '' : 'grayscale'}`}>
+                      <div className={`text-2xl sm:text-3xl lg:text-4xl xl:text-5xl mb-3 sm:mb-4 lg:mb-6 ${achievement.unlocked ? '' : 'grayscale'}`}>
                         {achievement.icon}
                       </div>
-                      <h4 className={`font-bold text-lg mb-2 ${achievement.unlocked ? 'text-white' : 'text-gray-400'}`}>
+                      <h4 className={`font-bold text-sm sm:text-base lg:text-lg xl:text-xl mb-2 sm:mb-3 lg:mb-4 leading-tight ${achievement.unlocked ? 'text-white' : 'text-gray-400'}`}>
                         {achievement.title}
                       </h4>
-                      <p className="text-[#97a1c4] text-sm mb-3">{achievement.description}</p>
+                      <p className="text-[#97a1c4] text-xs sm:text-sm lg:text-base mb-3 sm:mb-4 lg:mb-6 leading-relaxed">{achievement.description}</p>
                       
                       {achievement.unlocked ? (
                         <div>
-                          <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                          <span className={`inline-block px-2 sm:px-3 lg:px-4 py-1 sm:py-1.5 lg:py-2 rounded text-xs sm:text-sm lg:text-base font-medium ${
                             achievement.rarity === 'Legendary' ? 'bg-yellow-600 text-white' :
                             achievement.rarity === 'Epic' ? 'bg-purple-600 text-white' :
                             'bg-blue-600 text-white'
                           }`}>
                             {achievement.rarity}
                           </span>
-                          <p className="text-green-400 text-xs mt-2">Unlocked {achievement.date}</p>
+                          <p className="text-green-400 text-xs sm:text-sm lg:text-base mt-2 sm:mt-3">Unlocked {achievement.date}</p>
                         </div>
                       ) : (
                         <div>
-                          <p className="text-gray-500 text-xs mb-2">Progress: {achievement.progress}/100</p>
-                          <div className="w-full bg-gray-700 rounded-full h-1.5">
-                            <div className="bg-blue-600 h-1.5 rounded-full" style={{width: `${achievement.progress}%`}}></div>
+                          <p className="text-gray-500 text-xs sm:text-sm lg:text-base mb-2 sm:mb-3">Progress: {achievement.progress}/100</p>
+                          <div className="w-full bg-gray-700 rounded-full h-1.5 sm:h-2 lg:h-2.5">
+                            <div className="bg-blue-600 h-1.5 sm:h-2 lg:h-2.5 rounded-full transition-all duration-300" style={{width: `${achievement.progress}%`}}></div>
                           </div>
                         </div>
                       )}
@@ -791,19 +791,19 @@ const Puzzles = () => {
               </div>
             </div>
 
-            {/* Leaderboard */}
-            <div className="mb-8">
-              <h2 className="text-2xl font-bold text-white mb-6">Puzzle Rating Leaderboard</h2>
-              <div className="bg-[#272e45] rounded-xl border border-[#374162] overflow-hidden">
+            {/* Leaderboard - Responsive Table */}
+            <div className="mb-6 sm:mb-8">
+              <h2 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-white mb-4 sm:mb-6 lg:mb-8">Puzzle Rating Leaderboard</h2>
+              <div className="bg-[#272e45] rounded-lg xs:rounded-xl lg:rounded-2xl border border-[#374162] overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full min-w-[600px]">
                     <thead>
                       <tr className="bg-[#374162] border-b border-[#455173]">
-                        <th className="px-6 py-4 text-left text-white text-sm font-semibold">Rank</th>
-                        <th className="px-6 py-4 text-left text-white text-sm font-semibold">Player</th>
-                        <th className="px-6 py-4 text-left text-white text-sm font-semibold">Rating</th>
-                        <th className="px-6 py-4 text-left text-white text-sm font-semibold">Solved</th>
-                        <th className="px-6 py-4 text-left text-white text-sm font-semibold">Country</th>
+                        <th className="px-3 sm:px-4 lg:px-6 xl:px-8 py-3 sm:py-4 lg:py-6 text-left text-white text-sm sm:text-base lg:text-lg font-semibold">Rank</th>
+                        <th className="px-3 sm:px-4 lg:px-6 xl:px-8 py-3 sm:py-4 lg:py-6 text-left text-white text-sm sm:text-base lg:text-lg font-semibold">Player</th>
+                        <th className="px-3 sm:px-4 lg:px-6 xl:px-8 py-3 sm:py-4 lg:py-6 text-left text-white text-sm sm:text-base lg:text-lg font-semibold">Rating</th>
+                        <th className="px-3 sm:px-4 lg:px-6 xl:px-8 py-3 sm:py-4 lg:py-6 text-left text-white text-sm sm:text-base lg:text-lg font-semibold">Solved</th>
+                        <th className="px-3 sm:px-4 lg:px-6 xl:px-8 py-3 sm:py-4 lg:py-6 text-left text-white text-sm sm:text-base lg:text-lg font-semibold">Country</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -813,25 +813,25 @@ const Puzzles = () => {
                             ? 'bg-blue-800/20 border-blue-600' 
                             : 'hover:bg-[#374162]/50'
                         }`}>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-2">
+                          <td className="px-3 sm:px-4 lg:px-6 xl:px-8 py-3 sm:py-4 lg:py-6">
+                            <div className="flex items-center gap-1 sm:gap-2 lg:gap-3">
                               {player.rank <= 3 && (
-                                <span className="text-lg">
+                                <span className="text-base sm:text-lg lg:text-xl">
                                   {player.rank === 1 ? '🥇' : player.rank === 2 ? '🥈' : '🥉'}
                                 </span>
                               )}
-                              <span className={`font-bold ${player.highlight ? 'text-blue-400' : 'text-white'}`}>
+                              <span className={`font-bold text-sm sm:text-base lg:text-lg ${player.highlight ? 'text-blue-400' : 'text-white'}`}>
                                 #{player.rank}
                               </span>
                             </div>
                           </td>
-                          <td className="px-6 py-4">
-                            <span className={`font-medium ${player.highlight ? 'text-blue-400' : 'text-white'}`}>
+                          <td className="px-3 sm:px-4 lg:px-6 xl:px-8 py-3 sm:py-4 lg:py-6">
+                            <span className={`font-medium text-sm sm:text-base lg:text-lg ${player.highlight ? 'text-blue-400' : 'text-white'} truncate block max-w-[150px] lg:max-w-[200px]`}>
                               {player.username}
                             </span>
                           </td>
-                          <td className="px-6 py-4">
-                            <span className={`font-bold text-lg ${
+                          <td className="px-3 sm:px-4 lg:px-6 xl:px-8 py-3 sm:py-4 lg:py-6">
+                            <span className={`font-bold text-sm sm:text-base lg:text-lg xl:text-xl ${
                               player.rating >= 2500 ? 'text-yellow-400' :
                               player.rating >= 2000 ? 'text-purple-400' :
                               player.rating >= 1500 ? 'text-blue-400' :
@@ -840,11 +840,11 @@ const Puzzles = () => {
                               {player.rating}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-[#97a1c4]">
+                          <td className="px-3 sm:px-4 lg:px-6 xl:px-8 py-3 sm:py-4 lg:py-6 text-[#97a1c4] text-sm sm:text-base lg:text-lg">
                             {player.solved.toLocaleString()}
                           </td>
-                          <td className="px-6 py-4">
-                            <span className="text-lg">{player.country}</span>
+                          <td className="px-3 sm:px-4 lg:px-6 xl:px-8 py-3 sm:py-4 lg:py-6">
+                            <span className="text-base sm:text-lg lg:text-xl xl:text-2xl">{player.country}</span>
                           </td>
                         </tr>
                       ))}
@@ -854,30 +854,30 @@ const Puzzles = () => {
               </div>
             </div>
 
-            {/* Puzzle Categories */}
-            <div className="mb-8">
-              <h2 className="text-2xl font-bold text-white mb-6">Practice by Theme</h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {/* Puzzle Categories - Responsive Grid */}
+            <div className="mb-6 sm:mb-8">
+              <h2 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-white mb-4 sm:mb-6 lg:mb-8">Practice by Theme</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 xl:gap-8">
                 {puzzleThemes.map((theme, index) => (
                   <Link 
                     key={index} 
                     to={`/puzzle-solver?theme=${theme.name}`}
-                    className="bg-[#272e45] hover:bg-[#374162] rounded-xl p-6 border border-[#374162] hover:border-blue-600 transition-all duration-300 hover:scale-105 text-left block"
+                    className="bg-[#272e45] hover:bg-[#374162] rounded-lg xs:rounded-xl lg:rounded-2xl p-4 sm:p-6 lg:p-8 border border-[#374162] hover:border-blue-600 transition-all duration-300 hover:scale-105 text-left block"
                   >
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className={`w-10 h-10 ${theme.color} rounded-lg flex items-center justify-center`}>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20px" height="20px" fill="currentColor" viewBox="0 0 256 256" className="text-white">
+                    <div className="flex items-center gap-3 sm:gap-4 lg:gap-5 mb-3 sm:mb-4 lg:mb-6">
+                      <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 xl:w-16 xl:h-16 ${theme.color} rounded-lg xl:rounded-xl flex items-center justify-center flex-shrink-0`}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20px" height="20px" className="sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-white" fill="currentColor" viewBox="0 0 256 256">
                           <path d="M136,100a12,12,0,1,1-12-12A12,12,0,0,1,136,100Zm96,29.48A104.29,104.29,0,0,1,130.1,232l-2.17,0a103.32,103.32,0,0,1-69.26-26A8,8,0,1,1,69.34,194a84.71,84.71,0,0,0,20.1,13.37L116,170.84c-22.78-9.83-47.47-5.65-61.4-3.29A31.84,31.84,0,0,1,23.3,154.72l-.3-.43-13.78-22a8,8,0,0,1,2.59-11.05L112,59.53V32a8,8,0,0,1,8-8h8A104,104,0,0,1,232,129.48Zm-16-.22A88,88,0,0,0,128,40V64a8,8,0,0,1-3.81,6.81L27.06,130.59l9.36,15A15.92,15.92,0,0,0,52,151.77c16-2.7,48.77-8.24,78.07,8.18A40.06,40.06,0,0,0,168,120a8,8,0,0,1,16,0,56.07,56.07,0,0,1-51.8,55.83l-27.11,37.28A90.89,90.89,0,0,0,129.78,216A88.29,88.29,0,0,0,216,129.26Z"></path>
                         </svg>
                       </div>
-                      <div>
-                        <h3 className="text-white font-bold text-lg">{theme.name}</h3>
-                        <p className="text-[#97a1c4] text-sm">{theme.difficulty}</p>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-white font-bold text-sm sm:text-base lg:text-lg xl:text-xl leading-tight">{theme.name}</h3>
+                        <p className="text-[#97a1c4] text-xs sm:text-sm lg:text-base">{theme.difficulty}</p>
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <p className="text-[#97a1c4] text-sm">{theme.count} puzzles</p>
-                      <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <p className="text-[#97a1c4] text-xs sm:text-sm lg:text-base">{theme.count} puzzles</p>
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </div>
@@ -886,21 +886,21 @@ const Puzzles = () => {
               </div>
             </div>
 
-            {/* Search and Filter Bar */}
-            <div className="bg-[#272e45] rounded-xl p-6 border border-[#374162]">
-              <h3 className="text-xl font-semibold text-white mb-4">Find Specific Puzzles</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Search and Filter Bar - Responsive */}
+            <div className="bg-[#272e45] rounded-xl lg:rounded-2xl p-4 sm:p-6 lg:p-8 border border-[#374162] mb-6">
+              <h3 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-semibold text-white mb-4 sm:mb-6 lg:mb-8">Find Specific Puzzles</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
                 <div>
-                  <label className="block text-[#97a1c4] text-sm mb-2">Search puzzles</label>
+                  <label className="block text-[#97a1c4] text-sm sm:text-base lg:text-lg mb-2 sm:mb-3">Search puzzles</label>
                   <input
                     type="text"
                     placeholder="Enter keywords..."
-                    className="w-full px-4 py-3 bg-[#374162] border border-[#455173] rounded-lg text-white placeholder-[#97a1c4] focus:outline-none focus:border-blue-600"
+                    className="w-full px-3 sm:px-4 lg:px-5 py-2.5 sm:py-3 lg:py-4 bg-[#374162] border border-[#455173] rounded-lg lg:rounded-xl text-white placeholder-[#97a1c4] focus:outline-none focus:border-blue-600 text-sm sm:text-base lg:text-lg"
                   />
                 </div>
                 <div>
-                  <label className="block text-[#97a1c4] text-sm mb-2">Rating range</label>
-                  <select className="w-full px-4 py-3 bg-[#374162] border border-[#455173] rounded-lg text-white focus:outline-none focus:border-blue-600">
+                  <label className="block text-[#97a1c4] text-sm sm:text-base lg:text-lg mb-2 sm:mb-3">Rating range</label>
+                  <select className="w-full px-3 sm:px-4 lg:px-5 py-2.5 sm:py-3 lg:py-4 bg-[#374162] border border-[#455173] rounded-lg lg:rounded-xl text-white focus:outline-none focus:border-blue-600 text-sm sm:text-base lg:text-lg">
                     <option>All ratings</option>
                     <option>1000-1400</option>
                     <option>1400-1800</option>
@@ -908,8 +908,8 @@ const Puzzles = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[#97a1c4] text-sm mb-2">Theme</label>
-                  <select className="w-full px-4 py-3 bg-[#374162] border border-[#455173] rounded-lg text-white focus:outline-none focus:border-blue-600">
+                  <label className="block text-[#97a1c4] text-sm sm:text-base lg:text-lg mb-2 sm:mb-3">Theme</label>
+                  <select className="w-full px-3 sm:px-4 lg:px-5 py-2.5 sm:py-3 lg:py-4 bg-[#374162] border border-[#455173] rounded-lg lg:rounded-xl text-white focus:outline-none focus:border-blue-600 text-sm sm:text-base lg:text-lg">
                     <option>All themes</option>
                     <option>Pin</option>
                     <option>Fork</option>
@@ -919,18 +919,26 @@ const Puzzles = () => {
                   </select>
                 </div>
               </div>
-              <Link 
-                to="/puzzle-solver"
-                className="mt-4 w-full md:w-auto px-8 py-3 bg-blue-800 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors inline-block text-center"
-              >
-                Start Solving Puzzles
-              </Link>
+              <div className="mt-4 sm:mt-6 lg:mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4 lg:gap-6">
+                <Link 
+                  to="/puzzle-solver"
+                  className="flex-1 px-6 sm:px-8 lg:px-10 py-3 sm:py-4 lg:py-5 bg-blue-800 hover:bg-blue-700 text-white font-semibold rounded-lg lg:rounded-xl transition-colors text-center text-sm sm:text-base lg:text-lg xl:text-xl"
+                >
+                  Start Solving Puzzles
+                </Link>
+                <button
+                  onClick={startRandomPuzzleMode}
+                  className="flex-1 px-6 sm:px-8 lg:px-10 py-3 sm:py-4 lg:py-5 bg-green-700 hover:bg-green-800 text-white font-semibold rounded-lg lg:rounded-xl transition-colors text-center text-sm sm:text-base lg:text-lg xl:text-xl"
+                >
+                  Random Challenge
+                </button>
+              </div>
             </div>
           </div>
         </div>
-        
-        <Footer />
-      </div>
+      </main>
+      
+      <Footer />
     </div>
   );
 };

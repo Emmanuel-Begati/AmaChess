@@ -27,14 +27,16 @@ const ChessBoard = ({
       const screenWidth = window.innerWidth;
       let newWidth;
       
-      if (screenWidth < 640) { // Mobile
-        newWidth = Math.min(screenWidth - 32, 350);
-      } else if (screenWidth < 768) { // Small tablet
-        newWidth = Math.min(screenWidth - 64, 400);
-      } else if (screenWidth < 1024) { // Tablet
-        newWidth = Math.min(screenWidth * 0.6, 450);
-      } else { // Desktop
-        newWidth = 500;
+      if (screenWidth < 475) { // xs
+        newWidth = Math.min(screenWidth - 24, 280);
+      } else if (screenWidth < 640) { // sm
+        newWidth = Math.min(screenWidth - 32, 320);
+      } else if (screenWidth < 768) { // md
+        newWidth = Math.min(screenWidth - 48, 360);
+      } else if (screenWidth < 1024) { // lg
+        newWidth = Math.min(screenWidth * 0.5, 400);
+      } else { // xl+
+        newWidth = 450;
       }
       
       setBoardWidth(newWidth);
@@ -136,17 +138,17 @@ const ChessBoard = ({
   const customLightSquareStyle = { backgroundColor: '#374162' };
 
   return (
-    <div className="flex flex-col items-center space-y-4 sm:space-y-6 w-full">
+    <div className="flex flex-col items-center space-y-2 sm:space-y-4 w-full">
       {/* Main Board Container */}
       <div 
-        style={{ maxWidth: `${boardWidth + 16}px` }} 
-        className="relative bg-gradient-to-br from-[#233248] to-[#1a2636] rounded-xl p-2 shadow-2xl border border-[#374162]/50 w-full"
+        style={{ maxWidth: `${boardWidth + 8}px` }} 
+        className="relative bg-gradient-to-br from-[#233248] to-[#1a2636] rounded-lg sm:rounded-xl p-1 sm:p-2 shadow-2xl border border-[#374162]/50 w-full"
       >
         {/* Decorative border elements */}
-        <div className="absolute -inset-1 bg-gradient-to-r from-[#115fd4] to-[#4a90e2] rounded-xl opacity-20 blur-sm"></div>
+        <div className="absolute -inset-0.5 bg-gradient-to-r from-[#115fd4] to-[#4a90e2] rounded-lg sm:rounded-xl opacity-20 blur-sm"></div>
         
         {/* Board wrapper with inner glow */}
-        <div className="relative bg-[#121621] rounded-lg p-1 sm:p-2 shadow-inner">
+        <div className="relative bg-[#121621] rounded p-0.5 sm:p-1 shadow-inner">
           <Chessboard
             position={gamePosition}
             onPieceDrop={interactive ? onDrop : undefined}
@@ -159,7 +161,7 @@ const ChessBoard = ({
             customDarkSquareStyle={customDarkSquareStyle}
             customLightSquareStyle={customLightSquareStyle}
             customNotationStyle={{
-              fontSize: boardWidth < 400 ? '10px' : '12px',
+              fontSize: boardWidth < 320 ? '8px' : boardWidth < 400 ? '10px' : '12px',
               fontWeight: '600',
               color: '#97a1c4'
             }}
@@ -172,7 +174,7 @@ const ChessBoard = ({
       
       {/* Game Status */}
       {interactive && (
-        <div className="bg-gradient-to-br from-[#233248] to-[#1a2636] rounded-xl p-3 sm:p-4 shadow-xl border border-[#374162]/50 w-full max-w-sm">
+        <div className="bg-gradient-to-br from-[#233248] to-[#1a2636] rounded-lg sm:rounded-xl p-2 sm:p-4 shadow-xl border border-[#374162]/50 w-full max-w-sm">
           <div className="text-center space-y-2">
             <div className="flex items-center justify-center gap-2">
               <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full ${game.turn() === 'w' ? 'bg-white' : 'bg-[#374162]'} shadow-sm`}></div>
@@ -218,7 +220,7 @@ const ChessBoard = ({
       
       {/* Engine Analysis */}
       {engineEnabled && (
-        <div className="bg-gradient-to-br from-[#233248] to-[#1a2636] rounded-xl p-3 sm:p-4 shadow-xl border border-[#374162]/50 w-full max-w-md">
+        <div className="bg-gradient-to-br from-[#233248] to-[#1a2636] rounded-lg sm:rounded-xl p-2 sm:p-4 shadow-xl border border-[#374162]/50 w-full max-w-md">
           <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
