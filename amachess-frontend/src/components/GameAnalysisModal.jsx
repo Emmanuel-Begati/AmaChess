@@ -1,196 +1,150 @@
 import React, { useState } from 'react';
 
-const GameAnalysisModal = ({ isOpen, onClose, gameData, analysis, isBulkAnalysis = false }) => {
+const GameAnalysisModal = ({ isOpen, onClose, gameData, analysis, isBulkAnalysis }) => {
   const [activeTab, setActiveTab] = useState('overview');
 
   if (!isOpen) return null;
 
-  // Enhanced bulk analysis data structure based on Chess.com analysis patterns
+  // Sample data for demonstration
+  const defaultSingleAnalysis = {
+    accuracy: 87,
+    blunders: 2,
+    mistakes: 3,
+    inaccuracies: 5,
+    openingName: "Sicilian Defense: Najdorf Variation",
+    openingEval: "+0.3",
+    tacticalThemes: ["Pin", "Fork", "Discovered Attack"],
+    weaknesses: ["Time management in middlegame", "Missed tactical opportunities"],
+    improvements: ["Study more endgame patterns", "Practice tactical puzzles daily"],
+    moveAccuracy: {
+      excellent: { count: 25, percentage: 45 },
+      good: { count: 15, percentage: 27 },
+      inaccuracies: { count: 8, percentage: 14 },
+      mistakes: { count: 5, percentage: 9 },
+      blunders: { count: 2, percentage: 4 }
+    },
+    phaseAnalysis: {
+      opening: { performance: "Excellent", eval: "+0.2", description: "Strong development and center control" },
+      middlegame: { performance: "Good", eval: "-0.5", description: "Some inaccuracies in pawn structure" },
+      endgame: { performance: "Excellent", eval: "+1.2", description: "Precise technique secured the win" }
+    },
+    tacticalAnalysis: {
+      themes: [
+        { theme: "Pin", occurrences: 3, success: 2 },
+        { theme: "Fork", occurrences: 2, success: 1 },
+        { theme: "Skewer", occurrences: 1, success: 1 }
+      ],
+      successful: ["Knight fork on move 23", "Pin defense on move 31"],
+      missed: ["Back rank mate threat on move 18", "Tactical shot on move 26"]
+    },
+    keyMoments: [
+      { 
+        move: 18, 
+        notation: "Rxd4", 
+        type: "blunder", 
+        evaluation: "-2.3", 
+        description: "Allowed opponent to gain material advantage" 
+      },
+      { 
+        move: 23, 
+        notation: "Nf5+", 
+        type: "excellent", 
+        evaluation: "+1.8", 
+        description: "Brilliant tactical shot that wins material" 
+      }
+    ]
+  };
+
   const bulkAnalysisData = {
-    gamesAnalyzed: 50,
+    gamesAnalyzed: 47,
     timeRange: "Last 3 months",
-    overallAccuracy: 84.2,
-    averageRating: 1487,
-    ratingProgress: 23,
-    totalBlunders: 47,
-    totalMistakes: 89,
-    totalInaccuracies: 156,
-    winRate: 0.62,
-    drawRate: 0.18,
-    lossRate: 0.20,
-    
-    // Opening analysis across all games
+    overallAccuracy: 84,
+    winRate: 0.64,
+    ratingProgress: 156,
+    totalBlunders: 44,
     openingPerformance: {
       mostPlayed: [
-        { name: "Sicilian Defense", games: 12, winRate: 0.67, avgAccuracy: 87.5 },
-        { name: "Italian Game", games: 8, winRate: 0.75, avgAccuracy: 89.2 },
-        { name: "French Defense", games: 6, winRate: 0.50, avgAccuracy: 82.1 }
-      ],
-      bestPerforming: [
-        { name: "Queen's Gambit", games: 4, winRate: 0.75, avgAccuracy: 91.3 },
-        { name: "Italian Game", games: 8, winRate: 0.75, avgAccuracy: 89.2 }
-      ],
-      worstPerforming: [
-        { name: "Caro-Kann Defense", games: 3, winRate: 0.33, avgAccuracy: 78.5 }
+        { name: "Sicilian Defense", games: 15, winRate: 0.67, avgAccuracy: 86 },
+        { name: "Queen's Gambit", games: 12, winRate: 0.58, avgAccuracy: 82 },
+        { name: "English Opening", games: 8, winRate: 0.75, avgAccuracy: 88 }
       ]
     },
-
-    // Time control analysis
     timeControlAnalysis: {
-      blitz: { games: 28, winRate: 0.64, avgAccuracy: 82.1 },
-      rapid: { games: 15, winRate: 0.60, avgAccuracy: 87.8 },
-      classical: { games: 7, winRate: 0.57, avgAccuracy: 89.5 }
+      blitz: { games: 28, winRate: 0.61, avgAccuracy: 82 },
+      rapid: { games: 15, winRate: 0.73, avgAccuracy: 87 },
+      classical: { games: 4, winRate: 0.5, avgAccuracy: 89 }
     },
-
-    // Phase-specific performance across all games
+    trends: {
+      monthlyProgress: [
+        { month: "October", rating: 1542, accuracy: 81 },
+        { month: "November", rating: 1598, accuracy: 84 },
+        { month: "December", rating: 1698, accuracy: 87 }
+      ]
+    },
+    opponentAnalysis: {
+      vsStronger: { games: 18, winRate: 0.39, avgRatingDiff: 127 },
+      vsSimilar: { games: 20, winRate: 0.70, avgRatingDiff: 15 },
+      vsWeaker: { games: 9, winRate: 0.89, avgRatingDiff: -98 }
+    },
     phaseAnalysis: {
       opening: { 
-        avgAccuracy: 88.7, 
-        commonMistakes: ["Premature piece development", "Ignoring center control"],
-        improvement: "Focus on controlling the center before developing minor pieces"
+        avgAccuracy: 89, 
+        commonMistakes: ["Premature attacks", "Neglecting development"], 
+        improvement: "Study opening principles more thoroughly" 
       },
       middlegame: { 
-        avgAccuracy: 81.4, 
-        commonMistakes: ["Missing tactical opportunities", "Poor piece coordination"],
-        improvement: "Practice tactical puzzles and study piece coordination patterns"
+        avgAccuracy: 78, 
+        commonMistakes: ["Poor pawn structure", "Tactical oversights"], 
+        improvement: "Focus on tactical pattern recognition" 
       },
       endgame: { 
-        avgAccuracy: 85.9, 
-        commonMistakes: ["King activity", "Pawn promotion timing"],
-        improvement: "Study basic endgame principles and king-pawn endgames"
+        avgAccuracy: 85, 
+        commonMistakes: ["Time pressure errors", "Basic technique"], 
+        improvement: "Practice fundamental endgames" 
       }
     },
-
-    // Most frequent tactical themes across games
     tacticalThemes: [
-      { theme: "Pin", frequency: 23, successRate: 0.65 },
-      { theme: "Fork", frequency: 18, successRate: 0.72 },
-      { theme: "Discovered Attack", frequency: 12, successRate: 0.58 },
-      { theme: "Back Rank Mate", frequency: 8, successRate: 0.75 },
-      { theme: "Deflection", frequency: 15, successRate: 0.60 }
+      { theme: "Pin", frequency: 23, successRate: 0.74 },
+      { theme: "Fork", frequency: 18, successRate: 0.67 },
+      { theme: "Skewer", frequency: 12, successRate: 0.83 },
+      { theme: "Discovered Attack", frequency: 8, successRate: 0.50 }
     ],
-
-    // Time management analysis
-    timeManagement: {
-      averageTimePerMove: 24.5,
-      timePressureGames: 18,
-      timePressureWinRate: 0.44,
-      recommendation: "Practice faster decision-making in familiar positions"
-    },
-
-    // Rating performance by opponent strength
-    opponentAnalysis: {
-      vsHigherRated: { games: 15, winRate: 0.40, avgRatingDiff: 127 },
-      vsSimilarRated: { games: 22, winRate: 0.68, avgRatingDiff: 5 },
-      vsLowerRated: { games: 13, winRate: 0.77, avgRatingDiff: -89 }
-    },
-
-    // Top improvement areas with specific recommendations
+    keyGamesForReview: [
+      {
+        opponent: "ChessMaster2000",
+        result: "Loss",
+        date: "Dec 15, 2024",
+        reason: "Missed winning combination in the middlegame",
+        lessonType: "Tactical Awareness"
+      },
+      {
+        opponent: "PositionalPlayer",
+        result: "Win",
+        date: "Dec 10, 2024",
+        reason: "Excellent endgame technique demonstration",
+        lessonType: "Endgame Mastery"
+      }
+    ],
     improvementAreas: [
       {
-        area: "Middlegame Tactics",
+        area: "Tactical Calculation",
         priority: "High",
-        description: "Missing 2-3 move tactical sequences",
-        recommendation: "Practice 15-20 tactical puzzles daily, focus on pins and forks",
+        description: "Missing tactical opportunities in complex positions",
+        recommendation: "Solve 20 tactical puzzles daily, focus on calculation depth",
         estimatedGain: "+50 rating points"
       },
       {
         area: "Time Management",
         priority: "Medium",
-        description: "Getting into time pressure in 36% of games",
-        recommendation: "Practice blitz games and use increment time controls",
+        description: "Spending too much time in opening and early middlegame",
+        recommendation: "Practice with increment time controls, develop opening repertoire",
         estimatedGain: "+30 rating points"
-      },
-      {
-        area: "Endgame Technique",
-        priority: "Medium",
-        description: "Converting winning positions to draws",
-        recommendation: "Study king-pawn and rook endgames",
-        estimatedGain: "+40 rating points"
-      }
-    ],
-
-    // Performance trends
-    trends: {
-      last10Games: { winRate: 0.70, avgAccuracy: 86.2 },
-      monthlyProgress: [
-        { month: "Nov", rating: 1464, accuracy: 82.1 },
-        { month: "Dec", rating: 1475, accuracy: 83.8 },
-        { month: "Jan", rating: 1487, accuracy: 84.2 }
-      ]
-    },
-
-    // Key games for review
-    keyGamesForReview: [
-      {
-        gameId: "game_001",
-        opponent: "StrongPlayer1",
-        result: "Loss",
-        date: "2024-01-15",
-        reason: "Missed winning combination on move 23",
-        lessonType: "Tactical awareness"
-      },
-      {
-        gameId: "game_002", 
-        opponent: "SolidPlayer2",
-        result: "Draw",
-        date: "2024-01-12",
-        reason: "Failed to convert rook endgame advantage",
-        lessonType: "Endgame technique"
       }
     ]
   };
 
-  // Single game analysis (existing structure)
-  const defaultSingleAnalysis = {
-    accuracy: 87.5,
-    blunders: 2,
-    mistakes: 4,
-    inaccuracies: 8,
-    openingName: "Sicilian Defense: Najdorf Variation",
-    openingEval: "+0.3",
-    middlegameEval: "-1.2", 
-    endgameEval: "+2.1",
-    timeManagement: "Good",
-    tacticalThemes: ["Pin", "Fork", "Discovered Attack", "Back Rank Mate", "Deflection"],
-    weaknesses: ["Endgame technique", "Time pressure decisions"],
-    improvements: ["Study rook endgames", "Practice tactical patterns", "Work on time management", "Focus on middlegame planning"],
-    keyMoments: [
-      { move: 23, notation: "Qf3", type: "blunder", description: "Allowed opponent's tactical shot with Rxd4", evaluation: "-2.5" },
-      { move: 34, notation: "Re7", type: "excellent", description: "Activated rook and seized initiative", evaluation: "+1.8" },
-      { move: 18, notation: "Bd2", type: "mistake", description: "Passive piece development", evaluation: "-0.8" },
-      { move: 41, notation: "Kg2", type: "inaccuracy", description: "Slightly inaccurate king move", evaluation: "-0.3" }
-    ],
-    phaseAnalysis: {
-      opening: { performance: "Good", eval: "+0.3", description: "Solid opening play with good development" },
-      middlegame: { performance: "Needs Work", eval: "-1.2", description: "Missed tactical opportunities and poor piece coordination" },
-      endgame: { performance: "Excellent", eval: "+2.1", description: "Strong technique in rook endgame conversion" }
-    },
-    moveAccuracy: {
-      excellent: { count: 12, percentage: 32 },
-      good: { count: 15, percentage: 40 },
-      inaccuracies: { count: 8, percentage: 21 },
-      mistakes: { count: 4, percentage: 11 },
-      blunders: { count: 2, percentage: 5 }
-    },
-    // Add tactical analysis for single games
-    tacticalAnalysis: {
-      successful: ["Pin on move 15", "Fork on move 28"],
-      missed: ["Back rank mate on move 31", "Discovered attack on move 19"],
-      themes: [
-        { theme: "Pin", occurrences: 3, success: 2 },
-        { theme: "Fork", occurrences: 2, success: 1 },
-        { theme: "Back Rank Mate", occurrences: 1, success: 0 },
-        { theme: "Discovered Attack", occurrences: 2, success: 1 }
-      ]
-    }
-  };
-
   // Use the appropriate data based on analysis type
   const analysisData = isBulkAnalysis ? bulkAnalysisData : (analysis || defaultSingleAnalysis);
-
-  // Debug log to check data
-  console.log('Modal data:', { isBulkAnalysis, analysisData, activeTab });
 
   const renderTabContent = () => {
     switch (activeTab) {
