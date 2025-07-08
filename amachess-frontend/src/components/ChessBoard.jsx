@@ -10,11 +10,26 @@ const ChessBoard = ({
   showNotation = true,
   engineEnabled = false 
 }) => {
-  const [game, setGame] = useState(new Chess(position || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'));
-  const [gamePosition, setGamePosition] = useState(game.fen());
+  const [game, setGame] = useState(() => new Chess(position || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'));
+  const [gamePosition, setGamePosition] = useState(() => position || game.fen());
   const [rightClickedSquares, setRightClickedSquares] = useState({});
   const [moveSquares, setMoveSquares] = useState({});
   const [boardWidth, setBoardWidth] = useState(width || 500);
+
+  // Update game position when position prop changes
+  useEffect(() => {
+    if (position && position !== gamePosition) {
+      try {
+        const newGame = new Chess(position);
+        setGame(newGame);
+        setGamePosition(position);
+        setMoveSquares({});
+        setRightClickedSquares({});
+      } catch (error) {
+        console.error('Invalid position provided:', position, error);
+      }
+    }
+  }, [position, gamePosition]);
 
   // Calculate responsive board width
   useEffect(() => {
@@ -49,12 +64,29 @@ const ChessBoard = ({
 
   const makeAMove = useCallback((move) => {
     const gameCopy = new Chess(game.fen());
-    const result = gameCopy.move(move);
+    let result;
+    
+    try {
+      // Handle both string notation (e.g., "e4") and object notation
+      if (typeof move === 'string') {
+        result = gameCopy.move(move);
+      } else {
+        // For object moves, try with promotion first
+        result = gameCopy.move(move);
+      }
+    } catch (error) {
+      console.log('Invalid move:', move, error);
+      return null;
+    }
     
     if (result) {
       setGame(gameCopy);
       setGamePosition(gameCopy.fen());
-      onMove?.(result, gameCopy.fen());
+      
+      // Call the onMove callback with move details and new FEN
+      if (onMove) {
+        onMove(result, gameCopy.fen());
+      }
       
       // Highlight the move
       setMoveSquares({
@@ -68,14 +100,77 @@ const ChessBoard = ({
   }, [game, onMove]);
 
   const onDrop = useCallback((sourceSquare, targetSquare) => {
-    const move = makeAMove({
-      from: sourceSquare,
-      to: targetSquare,
-      promotion: 'q' // Always promote to queen for simplicity
-    });
+    // Clear previous move highlights and right-clicked squares
+    setMoveSquares({});
+    setRightClickedSquares({});
     
-    return move !== null;
+    try {
+      // Create a copy of the current game to test the move
+      const gameCopy = new Chess(game.fen());
+      
+      // Check if it's a pawn promotion
+      const moves = gameCopy.moves({ verbose: true });
+      const possibleMove = moves.find(m => m.from === sourceSquare && m.to === targetSquare);
+      
+      if (!possibleMove) {
+        return false; // Invalid move
+      }
+      
+      let moveResult;
+      
+      // Handle pawn promotion
+      if (possibleMove.flags.includes('p')) {
+        // For now, always promote to queen. You can add a modal later for choice
+        moveResult = gameCopy.move({
+          from: sourceSquare,
+          to: targetSquare,
+          promotion: 'q'
+        });
+      } else {
+        // Regular move
+        moveResult = gameCopy.move({
+          from: sourceSquare,
+          to: targetSquare
+        });
+      }
+      
+      if (moveResult) {
+        // Update the game state
+        setGame(gameCopy);
+        setGamePosition(gameCopy.fen());
+        
+        // Highlight the move
+        setMoveSquares({
+          [moveResult.from]: { backgroundColor: 'rgba(17, 95, 212, 0.4)' },
+          [moveResult.to]: { backgroundColor: 'rgba(17, 95, 212, 0.6)' }
+        });
+        
+        // Call the onMove callback with move details and new FEN
+        if (onMove) {
+          onMove(moveResult, gameCopy.fen());
+        }
+        
+        return true;
+      }
+    } catch (error) {
+      console.error('Move error:', error);
+    }
+    
+    return false;
+  }, [game, onMove]);
+
+  // Method to make a move programmatically (for AI moves)
+  const makeAIMove = useCallback((moveString) => {
+    return makeAMove(moveString);
   }, [makeAMove]);
+
+  // Expose the makeAIMove method through ref or callback
+  useEffect(() => {
+    if (onMove && typeof onMove === 'function') {
+      // Store the makeAIMove function for external access
+      onMove.makeAIMove = makeAIMove;
+    }
+  }, [makeAIMove, onMove]);
 
   const onSquareClick = useCallback((square) => {
     setRightClickedSquares({});
