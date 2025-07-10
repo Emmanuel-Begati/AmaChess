@@ -4,6 +4,150 @@ const StockfishService = require('../services/stockfishService');
 
 const stockfishService = new StockfishService();
 
+// Play against Stockfish with configurable difficulty - IMPROVED VERSION
+router.post('/play/move-difficulty', async (req, res) => {
+  try {
+    const { fen, difficulty = 'intermediate', timeLimit = 3000 } = req.body;
+    
+    console.log('Received move request:', { fen: fen?.substring(0, 30), difficulty, timeLimit });
+    
+    if (!fen) {
+      return res.status(400).json({ error: 'FEN position is required' });
+    }
+
+    // Validate FEN format
+    try {
+      const Chess = require('chess.js').Chess;
+      const testGame = new Chess(fen);
+      if (testGame.isGameOver()) {
+        return res.json({
+          success: true,
+          game: {
+            move: null,
+            gameOver: true,
+            result: testGame.isCheckmate() ? 'checkmate' : 'draw',
+            winner: testGame.isCheckmate() ? (testGame.turn() === 'w' ? 'black' : 'white') : null
+          }
+        });
+      }
+    } catch (error) {
+      return res.status(400).json({ error: 'Invalid FEN position' });
+    }
+
+    // Get move from Stockfish
+    const result = await stockfishService.getBestMoveWithDifficulty(fen, difficulty, timeLimit);
+    
+    if (!result.bestMove || result.bestMove === '(none)') {
+      return res.status(500).json({ error: 'No valid move found' });
+    }
+
+    // Prepare response
+    const response = {
+      success: true,
+      bestMove: result.bestMove,
+      evaluation: result.evaluation,
+      game: {
+        move: result.bestMove,
+        evaluation: result.evaluation,
+        principalVariation: result.principalVariation || [],
+        depth: result.depth || 0,
+        calculationTime: result.timeUsed || 0,
+        difficulty: result.difficulty,
+        skillLevel: result.skillLevel,
+        fen: fen
+      }
+    };
+
+    console.log('Sending response:', { 
+      move: response.bestMove, 
+      difficulty: response.game.difficulty,
+      time: response.game.calculationTime 
+    });
+
+    res.json(response);
+
+  } catch (error) {
+    console.error('Stockfish move error:', error);
+    res.status(500).json({ 
+      error: 'Failed to get Stockfish move',
+      details: error.message 
+    });
+  }
+});
+
+// Analyze position endpoint
+router.post('/analyze', async (req, res) => {
+  try {
+    const { fen, depth = 15, time = 2000 } = req.body;
+    
+    if (!fen) {
+      return res.status(400).json({ error: 'FEN position is required' });
+    }
+
+    console.log('Analyzing position:', fen.substring(0, 30));
+
+    const analysis = await stockfishService.analyzePosition(fen, depth, time);
+    
+    res.json({
+      success: true,
+      analysis: {
+        bestMove: analysis.bestMove,
+        evaluation: analysis.evaluation,
+        principalVariation: analysis.principalVariation,
+        depth: analysis.depth,
+        fen: fen
+      }
+    });
+
+  } catch (error) {
+    console.error('Analysis error:', error);
+    res.status(500).json({ 
+      error: 'Failed to analyze position',
+      details: error.message 
+    });
+  }
+});
+
+// Health check endpoint
+router.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    stockfish: 'available',
+    activeEngines: stockfishService.engines.size
+  });
+});
+
+// Test Stockfish installation
+router.get('/test', async (req, res) => {
+  try {
+    const engineId = 'test_' + Date.now();
+    const engine = await stockfishService.createEngine(engineId);
+    
+    // Test with starting position
+    const testFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+    const result = await stockfishService.getBestMoveWithDifficulty(testFen, 'beginner', 2000);
+    
+    engine.close();
+    
+    res.json({
+      status: 'success',
+      message: 'Stockfish is working correctly',
+      testResult: {
+        move: result.bestMove,
+        evaluation: result.evaluation,
+        time: result.timeUsed
+      }
+    });
+    
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Stockfish test failed',
+      error: error.message
+    });
+  }
+});
+
 // Analyze chess position
 router.post('/analyze', async (req, res) => {
   try {

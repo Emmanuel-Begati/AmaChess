@@ -19,119 +19,231 @@ class StockfishService {
 
     for (const stockfishPath of possiblePaths) {
       if (fs.existsSync(stockfishPath)) {
+        console.log(`Found Stockfish at: ${stockfishPath}`);
         return stockfishPath;
       }
     }
 
+    console.log('Using Stockfish from PATH');
     return 'stockfish'; // Fallback to PATH
   }
 
-  // Create a new Stockfish engine instance
+  // Create a new Stockfish engine instance with improved error handling
   createEngine(engineId = 'default') {
     return new Promise((resolve, reject) => {
       try {
+        console.log(`Creating Stockfish engine: ${engineId}`);
         const engine = spawn(this.stockfishPath);
         
         engine.stdin.setEncoding('utf8');
         engine.stdout.setEncoding('utf8');
 
         let initialized = false;
-        let currentPosition = '';
         let bestMove = '';
         let evaluation = null;
         let principalVariation = [];
+        let depth = 0;
 
         const engineWrapper = {
           engine,
           send: (command) => {
-            console.log(`Sending command: ${command}`);
-            engine.stdin.write(command + '\n');
+            console.log(`[${engineId}] Sending: ${command}`);
+            try {
+              engine.stdin.write(command + '\n');
+            } catch (error) {
+              console.error(`[${engineId}] Error sending command:`, error);
+            }
           },
           close: () => {
             try {
+              console.log(`[${engineId}] Closing engine`);
               engine.stdin.write('quit\n');
-              setTimeout(() => engine.kill(), 1000);
+              setTimeout(() => {
+                if (!engine.killed) {
+                  engine.kill();
+                }
+              }, 1000);
             } catch (error) {
+              console.log(`[${engineId}] Force killing engine`);
               engine.kill();
             }
           },
-          getCurrentPosition: () => currentPosition,
           getBestMove: () => bestMove,
           getEvaluation: () => evaluation,
-          getPrincipalVariation: () => principalVariation
+          getPrincipalVariation: () => principalVariation,
+          getDepth: () => depth
         };
 
         engine.stdout.on('data', (data) => {
           const lines = data.toString().split('\n');
-          console.log(`Stockfish output: ${data.toString().trim()}`);
           
           lines.forEach(line => {
             line = line.trim();
             if (!line) return;
 
+            console.log(`[${engineId}] Output: ${line}`);
+
             if (line.includes('uciok') && !initialized) {
               initialized = true;
-              console.log('Stockfish engine initialized successfully');
+              console.log(`[${engineId}] Engine initialized successfully`);
               resolve(engineWrapper);
             }
 
             // Parse best move
             if (line.startsWith('bestmove')) {
-              bestMove = line.split(' ')[1];
-              console.log(`Best move found: ${bestMove}`);
+              const parts = line.split(' ');
+              bestMove = parts[1];
+              console.log(`[${engineId}] Best move: ${bestMove}`);
             }
 
-            // Parse evaluation
-            if (line.includes('score cp')) {
-              const match = line.match(/score cp (-?\d+)/);
-              if (match) {
+            // Parse evaluation and depth
+            if (line.includes('depth') && line.includes('score')) {
+              const depthMatch = line.match(/depth (\d+)/);
+              if (depthMatch) {
+                depth = parseInt(depthMatch[1]);
+              }
+
+              // Parse centipawn evaluation
+              const cpMatch = line.match(/score cp (-?\d+)/);
+              if (cpMatch) {
                 evaluation = {
                   type: 'centipawn',
-                  value: parseInt(match[1])
+                  value: parseInt(cpMatch[1])
                 };
               }
-            }
 
-            // Parse mate score
-            if (line.includes('score mate')) {
-              const match = line.match(/score mate (-?\d+)/);
-              if (match) {
+              // Parse mate evaluation
+              const mateMatch = line.match(/score mate (-?\d+)/);
+              if (mateMatch) {
                 evaluation = {
                   type: 'mate',
-                  value: parseInt(match[1])
+                  value: parseInt(mateMatch[1])
                 };
               }
-            }
 
-            // Parse principal variation
-            if (line.includes('pv ')) {
+              // Parse principal variation
               const pvIndex = line.indexOf('pv ');
-              principalVariation = line.substring(pvIndex + 3).trim().split(' ');
+              if (pvIndex !== -1) {
+                principalVariation = line.substring(pvIndex + 3).trim().split(' ').filter(move => move.length > 0);
+              }
             }
           });
         });
 
         engine.stderr.on('data', (data) => {
-          console.error('Stockfish stderr:', data.toString());
+          console.error(`[${engineId}] stderr:`, data.toString());
         });
 
         engine.on('close', (code) => {
-          console.log(`Stockfish process ${engineId} exited with code ${code}`);
+          console.log(`[${engineId}] Process exited with code ${code}`);
           this.engines.delete(engineId);
+        });
+
+        engine.on('error', (error) => {
+          console.error(`[${engineId}] Process error:`, error);
+          reject(new Error(`Failed to start Stockfish: ${error.message}`));
         });
 
         // Initialize UCI protocol
         engine.stdin.write('uci\n');
 
-        this.engines.set(engineId, {
-          process: engine,
-          initialized: false
-        });
+        // Timeout for initialization
+        setTimeout(() => {
+          if (!initialized) {
+            reject(new Error('Stockfish initialization timeout'));
+          }
+        }, 10000);
+
+        this.engines.set(engineId, engineWrapper);
 
       } catch (error) {
         reject(new Error(`Failed to start Stockfish: ${error.message}`));
       }
     });
+  }
+
+  // Get best move with configurable difficulty
+  async getBestMoveWithDifficulty(fen, difficulty = 'intermediate', timeLimit = 3000) {
+    const engineId = `move_${Date.now()}`;
+    
+    try {
+      console.log(`Getting move for difficulty: ${difficulty}, position: ${fen.substring(0, 30)}...`);
+      
+      const engine = await this.createEngine(engineId);
+      
+      // Configure difficulty settings
+      const difficultySettings = {
+        beginner: { skillLevel: 1, depth: 8, hash: 16 },
+        intermediate: { skillLevel: 10, depth: 12, hash: 64 },
+        advanced: { skillLevel: 15, depth: 16, hash: 128 },
+        expert: { skillLevel: 18, depth: 20, hash: 256 },
+        maximum: { skillLevel: 20, depth: 25, hash: 512 }
+      };
+
+      const settings = difficultySettings[difficulty] || difficultySettings.intermediate;
+      
+      return new Promise((resolve, reject) => {
+        let isComplete = false;
+        let startTime = Date.now();
+
+        const timeout = setTimeout(() => {
+          if (!isComplete) {
+            isComplete = true;
+            console.log(`[${engineId}] Move calculation timeout`);
+            engine.close();
+            reject(new Error('Move calculation timeout'));
+          }
+        }, timeLimit + 5000);
+
+        const checkForResult = () => {
+          if (isComplete) return;
+          
+          const move = engine.getBestMove();
+          if (move && move !== '(none)') {
+            isComplete = true;
+            clearTimeout(timeout);
+            
+            const result = {
+              bestMove: move,
+              evaluation: engine.getEvaluation(),
+              principalVariation: engine.getPrincipalVariation(),
+              depth: engine.getDepth(),
+              timeUsed: Date.now() - startTime,
+              difficulty: difficulty,
+              skillLevel: settings.skillLevel
+            };
+            
+            console.log(`[${engineId}] Move calculation complete:`, result);
+            engine.close();
+            resolve(result);
+          }
+        };
+
+        // Check for result periodically
+        const resultChecker = setInterval(() => {
+          checkForResult();
+          if (isComplete) {
+            clearInterval(resultChecker);
+          }
+        }, 100);
+
+        // Configure engine
+        engine.send('ucinewgame');
+        engine.send(`setoption name Hash value ${settings.hash}`);
+        engine.send(`setoption name Skill Level value ${settings.skillLevel}`);
+        engine.send(`setoption name UCI_LimitStrength value false`);
+        engine.send(`setoption name MultiPV value 1`);
+        engine.send(`position fen ${fen}`);
+        engine.send(`go depth ${settings.depth} movetime ${timeLimit}`);
+
+        // Also check immediately in case move is already available
+        setTimeout(checkForResult, 500);
+      });
+
+    } catch (error) {
+      console.error('Error getting best move:', error);
+      throw new Error(`Move calculation failed: ${error.message}`);
+    }
   }
 
   // Analyze a chess position
@@ -378,9 +490,10 @@ class StockfishService {
 
   // Close all engines
   closeAllEngines() {
+    console.log('Closing all Stockfish engines');
     this.engines.forEach((engine, id) => {
       try {
-        engine.process.kill();
+        engine.close();
       } catch (error) {
         console.error(`Error closing engine ${id}:`, error);
       }
