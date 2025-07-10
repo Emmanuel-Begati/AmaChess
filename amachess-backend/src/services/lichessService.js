@@ -258,25 +258,25 @@ class LichessService {
   }
 
   // Analyze multiple games
-  async analyzeBulkGames(games) {
+  async analyzeBulkGames(games, username) {
     const analysis = {
       gamesAnalyzed: games.length,
       timeRange: this.getTimeRange(games),
-      overallAccuracy: this.calculateOverallAccuracy(games),
-      averageRating: this.calculateAverageRating(games),
-      ratingProgress: this.calculateRatingProgress(games),
+      overallAccuracy: this.calculateOverallAccuracy(games, username),
+      averageRating: this.calculateAverageRating(games, username),
+      ratingProgress: this.calculateRatingProgress(games, username),
       totalBlunders: this.countMoveTypes(games, 'blunder'),
       totalMistakes: this.countMoveTypes(games, 'mistake'),
       totalInaccuracies: this.countMoveTypes(games, 'inaccuracy'),
-      winRate: this.calculateWinRate(games),
+      winRate: this.calculateWinRate(games, username),
       drawRate: this.calculateDrawRate(games),
-      lossRate: this.calculateLossRate(games),
-      openingPerformance: this.analyzeOpenings(games),
-      timeControlAnalysis: this.analyzeTimeControls(games),
+      lossRate: this.calculateLossRate(games, username),
+      openingPerformance: this.analyzeOpenings(games, username),
+      timeControlAnalysis: this.analyzeTimeControls(games, username),
       phaseAnalysis: this.analyzeGamePhases(games),
       tacticalThemes: this.analyzeTacticalThemes(games),
       timeManagement: this.analyzeTimeManagement(games),
-      opponentAnalysis: this.analyzeOpponentStrength(games),
+      opponentAnalysis: this.analyzeOpponentStrength(games, username),
       improvementAreas: this.identifyImprovementAreas(games),
       trends: this.analyzeTrends(games),
       keyGamesForReview: this.identifyKeyGames(games)
@@ -285,11 +285,11 @@ class LichessService {
     return analysis;
   }
 
-  calculateOverallAccuracy(games) {
+  calculateOverallAccuracy(games, username) {
     const accuracies = games
       .filter(game => game.accuracy)
       .map(game => {
-        const userColor = this.getUserColor(game);
+        const userColor = this.getUserColor(game, username);
         return game.accuracy[userColor];
       })
       .filter(acc => acc !== undefined);
@@ -299,9 +299,9 @@ class LichessService {
       : 0;
   }
 
-  calculateAverageRating(games) {
+  calculateAverageRating(games, username) {
     const ratings = games.map(game => {
-      const userColor = this.getUserColor(game);
+      const userColor = this.getUserColor(game, username);
       return game.players[userColor].rating;
     }).filter(rating => rating);
 
@@ -310,14 +310,14 @@ class LichessService {
       : 0;
   }
 
-  calculateRatingProgress(games) {
+  calculateRatingProgress(games, username) {
     if (games.length < 2) return 0;
     
     const sortedGames = games.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     const firstGame = sortedGames[0];
     const lastGame = sortedGames[sortedGames.length - 1];
     
-    const userColor = this.getUserColor(firstGame);
+    const userColor = this.getUserColor(firstGame, username);
     const startRating = firstGame.players[userColor].rating;
     const endRating = lastGame.players[userColor].rating;
     
@@ -334,9 +334,9 @@ class LichessService {
     }, 0);
   }
 
-  calculateWinRate(games) {
+  calculateWinRate(games, username) {
     const wins = games.filter(game => {
-      const userColor = this.getUserColor(game);
+      const userColor = this.getUserColor(game, username);
       return game.winner === userColor;
     }).length;
     
@@ -348,23 +348,23 @@ class LichessService {
     return games.length > 0 ? draws / games.length : 0;
   }
 
-  calculateLossRate(games) {
+  calculateLossRate(games, username) {
     const losses = games.filter(game => {
-      const userColor = this.getUserColor(game);
+      const userColor = this.getUserColor(game, username);
       return game.winner && game.winner !== userColor;
     }).length;
     
     return games.length > 0 ? losses / games.length : 0;
   }
 
-  analyzeOpenings(games) {
+  analyzeOpenings(games, username) {
     const openingStats = {};
     
     games.forEach(game => {
       if (!game.opening) return;
       
       const opening = game.opening.name;
-      const userColor = this.getUserColor(game);
+      const userColor = this.getUserColor(game, username);
       const isWin = game.winner === userColor;
       const accuracy = game.accuracy ? game.accuracy[userColor] : null;
       
@@ -403,7 +403,7 @@ class LichessService {
     };
   }
 
-  analyzeTimeControls(games) {
+  analyzeTimeControls(games, username) {
     const timeControls = {
       blitz: { games: 0, wins: 0, accuracySum: 0, accuracyCount: 0 },
       rapid: { games: 0, wins: 0, accuracySum: 0, accuracyCount: 0 },
@@ -412,7 +412,7 @@ class LichessService {
 
     games.forEach(game => {
       const speed = this.categorizeTimeControl(game.speed);
-      const userColor = this.getUserColor(game);
+      const userColor = this.getUserColor(game, username);
       const isWin = game.winner === userColor;
       const accuracy = game.accuracy ? game.accuracy[userColor] : null;
 
@@ -452,9 +452,14 @@ class LichessService {
     }
   }
 
-  getUserColor(game) {
-    // This should be determined based on the authenticated user
-    // For now, we'll assume white, but this needs to be properly implemented
+  getUserColor(game, username) {
+    // Determine user color based on the username
+    if (game.players.white.user?.name === username) {
+      return 'white';
+    } else if (game.players.black.user?.name === username) {
+      return 'black';
+    }
+    // Fallback to white if username not found
     return 'white';
   }
 
@@ -505,8 +510,8 @@ class LichessService {
     };
   }
 
-  analyzeOpponentStrength(games) {
-    const userRating = this.calculateAverageRating(games);
+  analyzeOpponentStrength(games, username) {
+    const userRating = this.calculateAverageRating(games, username);
     
     const categories = {
       vsHigherRated: { games: 0, wins: 0, ratingDiffs: [] },
@@ -515,7 +520,7 @@ class LichessService {
     };
 
     games.forEach(game => {
-      const userColor = this.getUserColor(game);
+      const userColor = this.getUserColor(game, username);
       const opponentColor = userColor === 'white' ? 'black' : 'white';
       const opponentRating = game.players[opponentColor].rating;
       const userGameRating = game.players[userColor].rating;
