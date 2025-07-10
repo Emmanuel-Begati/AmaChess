@@ -8,7 +8,11 @@ const ChessBoard = ({
   onMove, 
   interactive = true,
   showNotation = true,
-  engineEnabled = false 
+  engineEnabled = false,
+  customSquareStyles = {},
+  orientation = 'white',
+  disabled = false,
+  lastMove = null
 }) => {
   const [game, setGame] = useState(() => new Chess(position || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'));
   const [gamePosition, setGamePosition] = useState(() => position || game.fen());
@@ -19,17 +23,20 @@ const ChessBoard = ({
   // Update game position when position prop changes
   useEffect(() => {
     if (position && position !== gamePosition) {
+      console.log('ChessBoard position update:', position);
+      console.log('Current gamePosition:', gamePosition);
       try {
         const newGame = new Chess(position);
         setGame(newGame);
         setGamePosition(position);
         setMoveSquares({});
         setRightClickedSquares({});
+        console.log('Position updated successfully');
       } catch (error) {
         console.error('Invalid position provided:', position, error);
       }
     }
-  }, [position, gamePosition]);
+  }, [position, gamePosition]); // Add gamePosition to dependency array
 
   // Calculate responsive board width
   useEffect(() => {
@@ -63,7 +70,7 @@ const ChessBoard = ({
   }, [width]);
 
   const makeAMove = useCallback((move) => {
-    const gameCopy = new Chess(game.fen());
+    const gameCopy = new Chess(gamePosition); // Use current position instead of game.fen()
     let result;
     
     try {
@@ -71,8 +78,16 @@ const ChessBoard = ({
       if (typeof move === 'string') {
         result = gameCopy.move(move);
       } else {
-        // For object moves, try with promotion first
-        result = gameCopy.move(move);
+        // For object moves with possible promotion
+        if (move.promotion) {
+          result = gameCopy.move({
+            from: move.from,
+            to: move.to,
+            promotion: move.promotion
+          });
+        } else {
+          result = gameCopy.move(move);
+        }
       }
     } catch (error) {
       console.log('Invalid move:', move, error);
@@ -97,37 +112,51 @@ const ChessBoard = ({
       return result;
     }
     return null;
-  }, [game, onMove]);
+  }, [gamePosition, onMove]); // Update dependencies
 
   const onDrop = useCallback((sourceSquare, targetSquare) => {
+    console.log('ChessBoard onDrop called:', { sourceSquare, targetSquare, disabled, interactive });
+    console.log('Current gamePosition:', gamePosition);
+    console.log('Current game FEN:', game.fen());
+    
+    if (disabled || !interactive) {
+      console.log('Move blocked: disabled or not interactive');
+      return false;
+    }
+    
     // Clear previous move highlights and right-clicked squares
     setMoveSquares({});
     setRightClickedSquares({});
     
     try {
       // Create a copy of the current game to test the move
-      const gameCopy = new Chess(game.fen());
+      const gameCopy = new Chess(gamePosition);
+      console.log('Created game copy with position:', gamePosition);
       
       // Check if it's a pawn promotion
       const moves = gameCopy.moves({ verbose: true });
+      console.log('Available moves:', moves.length);
+      
       const possibleMove = moves.find(m => m.from === sourceSquare && m.to === targetSquare);
       
       if (!possibleMove) {
+        console.log('No valid move found from', sourceSquare, 'to', targetSquare);
+        console.log('Available moves from', sourceSquare, ':', moves.filter(m => m.from === sourceSquare));
         return false; // Invalid move
       }
       
+      console.log('Found valid move:', possibleMove);
+      
       let moveResult;
       
-      // Handle pawn promotion
-      if (possibleMove.flags.includes('p')) {
-        // For now, always promote to queen. You can add a modal later for choice
+      // If it's a promotion, default to queen (you could add promotion selection UI)
+      if (possibleMove.promotion) {
         moveResult = gameCopy.move({
           from: sourceSquare,
           to: targetSquare,
           promotion: 'q'
         });
       } else {
-        // Regular move
         moveResult = gameCopy.move({
           from: sourceSquare,
           to: targetSquare
@@ -135,33 +164,53 @@ const ChessBoard = ({
       }
       
       if (moveResult) {
-        // Update the game state
-        setGame(gameCopy);
-        setGamePosition(gameCopy.fen());
-        
-        // Highlight the move
-        setMoveSquares({
-          [moveResult.from]: { backgroundColor: 'rgba(17, 95, 212, 0.4)' },
-          [moveResult.to]: { backgroundColor: 'rgba(17, 95, 212, 0.6)' }
-        });
+        console.log('Move result:', moveResult);
+        console.log('Current gamePosition before callback:', gamePosition);
         
         // Call the onMove callback with move details and new FEN
         if (onMove) {
-          onMove(moveResult, gameCopy.fen());
+          console.log('Calling onMove callback');
+          try {
+            const result = onMove(moveResult, gameCopy.fen());
+            
+            // Handle both sync and async callbacks
+            if (result && typeof result.then === 'function') {
+              // For async callbacks, return true and let parent handle state
+              return true;
+            } else {
+              // For sync callbacks, return the result
+              return result !== false;
+            }
+          } catch (error) {
+            console.error('Callback error:', error);
+            return false;
+          }
+        } else {
+          // If no callback, update our internal state
+          console.log('No callback provided, updating internal state');
+          setGame(gameCopy);
+          setGamePosition(gameCopy.fen());
+          // Highlight the move
+          setMoveSquares({
+            [moveResult.from]: { backgroundColor: 'rgba(17, 95, 212, 0.4)' },
+            [moveResult.to]: { backgroundColor: 'rgba(17, 95, 212, 0.6)' }
+          });
+          return true;
         }
-        
-        return true;
       }
     } catch (error) {
-      console.error('Move error:', error);
+      console.log('Move error:', error);
     }
     
     return false;
-  }, [game, onMove]);
+  }, [gamePosition, onMove, disabled, interactive]);
 
   // Method to make a move programmatically (for AI moves)
   const makeAIMove = useCallback((moveString) => {
-    return makeAMove(moveString);
+    console.log('Making AI move:', moveString);
+    const result = makeAMove(moveString);
+    console.log('AI move result:', result);
+    return result;
   }, [makeAMove]);
 
   // Expose the makeAIMove method through ref or callback
@@ -169,10 +218,23 @@ const ChessBoard = ({
     if (onMove && typeof onMove === 'function') {
       // Store the makeAIMove function for external access
       onMove.makeAIMove = makeAIMove;
+      
+      // Also expose current game position if needed
+      onMove.getCurrentPosition = () => gamePosition;
+      
+      // Expose game object for checking status
+      onMove.getGameObject = () => {
+        return new Chess(gamePosition);
+      };
     }
-  }, [makeAIMove, onMove]);
+  }, [makeAIMove, onMove, gamePosition]);
 
   const onSquareClick = useCallback((square) => {
+    // Don't show moves if board is disabled
+    if (disabled || !interactive) {
+      return;
+    }
+
     setRightClickedSquares({});
     
     // Get possible moves for the clicked square
@@ -198,7 +260,7 @@ const ChessBoard = ({
     } else {
       setMoveSquares({});
     }
-  }, [game]);
+  }, [game, disabled, interactive]);
 
   const onSquareRightClick = useCallback((square) => {
     const colour = 'rgba(17, 95, 212, 0.8)';
@@ -222,9 +284,10 @@ const ChessBoard = ({
   };
 
   // Custom square styles with your color palette
-  const customSquareStyles = {
+  const combinedSquareStyles = {
     ...moveSquares,
-    ...rightClickedSquares
+    ...rightClickedSquares,
+    ...customSquareStyles
   };
 
   // Dark square color (matching your site's dark theme)
@@ -246,13 +309,13 @@ const ChessBoard = ({
         <div className="relative bg-[#121621] rounded p-0.5 sm:p-1 shadow-inner">
           <Chessboard
             position={gamePosition}
-            onPieceDrop={interactive ? onDrop : undefined}
-            onSquareClick={interactive ? onSquareClick : undefined}
+            onPieceDrop={onDrop}
+            onSquareClick={interactive && !disabled ? onSquareClick : undefined}
             onSquareRightClick={onSquareRightClick}
             boardWidth={boardWidth}
             showBoardNotation={showNotation}
             customBoardStyle={boardStyles}
-            customSquareStyles={customSquareStyles}
+            customSquareStyles={combinedSquareStyles}
             customDarkSquareStyle={customDarkSquareStyle}
             customLightSquareStyle={customLightSquareStyle}
             customNotationStyle={{
@@ -263,6 +326,7 @@ const ChessBoard = ({
             animationDuration={300}
             areArrowsAllowed={true}
             arrowColor='#115fd4'
+            boardOrientation={orientation}
           />
         </div>
       </div>
