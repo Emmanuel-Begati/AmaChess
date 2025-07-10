@@ -223,4 +223,97 @@ router.get('/status', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/lichess/:username/analyze
+ * Fetch games from Lichess and analyze them
+ */
+router.get('/:username/analyze', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const { max = 10 } = req.query;
+
+    // Validate username
+    if (!username || username.length < 3) {
+      return res.status(400).json({
+        error: 'Invalid username',
+        message: 'Username must be at least 3 characters long'
+      });
+    }
+
+    console.log(`Fetching and analyzing games for user: ${username}`);
+
+    // First, get games in JSON format
+    const games = await lichessService.getUserGames(username, parseInt(max));
+    
+    if (!games || games.length === 0) {
+      return res.json({
+        username,
+        games: [],
+        analysis: null,
+        message: 'No games found for this user'
+      });
+    }
+
+    // Analyze the bulk games
+    const bulkAnalysis = await lichessService.analyzeBulkGames(games, username);
+
+    // Format games for frontend
+    const formattedGames = games.map(game => ({
+      id: game.id,
+      url: `https://lichess.org/${game.id}`,
+      opponent: game.players.white.user?.name === username 
+        ? game.players.black.user?.name || 'Anonymous'
+        : game.players.white.user?.name || 'Anonymous',
+      result: game.winner === 'white' 
+        ? (game.players.white.user?.name === username ? 'Win' : 'Loss')
+        : game.winner === 'black'
+        ? (game.players.black.user?.name === username ? 'Win' : 'Loss')
+        : 'Draw',
+      rating: game.players.white.user?.name === username 
+        ? game.players.white.rating
+        : game.players.black.rating,
+      opponentRating: game.players.white.user?.name === username 
+        ? game.players.black.rating
+        : game.players.white.rating,
+      ratingChange: game.players.white.user?.name === username 
+        ? (game.players.white.ratingDiff || 0)
+        : (game.players.black.ratingDiff || 0),
+      timeControl: `${Math.floor(game.clock?.initial / 60)}+${game.clock?.increment || 0}`,
+      opening: game.opening?.name || 'Unknown',
+      date: new Date(game.createdAt).toISOString().split('T')[0],
+      accuracy: game.accuracy 
+        ? (game.players.white.user?.name === username 
+           ? game.accuracy.white 
+           : game.accuracy.black)
+        : null,
+      platform: 'lichess',
+      moves: game.moves,
+      pgn: game.pgn
+    }));
+
+    res.json({
+      success: true,
+      username,
+      games: formattedGames,
+      analysis: bulkAnalysis,
+      fetchedAt: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Error fetching and analyzing Lichess games:', error);
+    
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        error: 'User not found',
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
+      error: 'Failed to fetch and analyze games',
+      message: error.message
+    });
+  }
+});
+
 module.exports = router;

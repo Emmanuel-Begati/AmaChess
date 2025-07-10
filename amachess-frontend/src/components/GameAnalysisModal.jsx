@@ -5,6 +5,106 @@ const GameAnalysisModal = ({ isOpen, onClose, gameData, analysis, isBulkAnalysis
 
   if (!isOpen) return null;
 
+  // Function to format backend analysis data to match frontend expectations
+  const formatAnalysisData = (backendAnalysis) => {
+    if (!backendAnalysis) return null;
+    
+    return {
+      accuracy: backendAnalysis.accuracy || 0,
+      blunders: backendAnalysis.blunders || 0,
+      mistakes: backendAnalysis.mistakes || 0,
+      inaccuracies: backendAnalysis.inaccuracies || 0,
+      excellentMoves: backendAnalysis.excellentMoves || 0,
+      goodMoves: backendAnalysis.goodMoves || 0,
+      centipawnLoss: backendAnalysis.centipawnLoss || 0,
+      totalMoves: backendAnalysis.totalMoves || 0,
+      openingName: backendAnalysis.metadata?.opening || "Unknown Opening",
+      openingEval: backendAnalysis.openingEval || "0.00",
+      result: backendAnalysis.metadata?.result || "*",
+      playerSide: backendAnalysis.playerSide || "white",
+      
+      // Phase analysis
+      phaseAnalysis: backendAnalysis.phaseAnalysis ? {
+        opening: {
+          accuracy: backendAnalysis.phaseAnalysis.opening?.accuracy || 0,
+          movesAnalyzed: backendAnalysis.phaseAnalysis.opening?.movesAnalyzed || 0,
+          performance: backendAnalysis.phaseAnalysis.opening?.accuracy > 85 ? "Excellent" : 
+                      backendAnalysis.phaseAnalysis.opening?.accuracy > 70 ? "Good" : "Needs Work"
+        },
+        middlegame: {
+          accuracy: backendAnalysis.phaseAnalysis.middlegame?.accuracy || 0,
+          movesAnalyzed: backendAnalysis.phaseAnalysis.middlegame?.movesAnalyzed || 0,
+          performance: backendAnalysis.phaseAnalysis.middlegame?.accuracy > 85 ? "Excellent" : 
+                      backendAnalysis.phaseAnalysis.middlegame?.accuracy > 70 ? "Good" : "Needs Work"
+        },
+        endgame: {
+          accuracy: backendAnalysis.phaseAnalysis.endgame?.accuracy || 0,
+          movesAnalyzed: backendAnalysis.phaseAnalysis.endgame?.movesAnalyzed || 0,
+          performance: backendAnalysis.phaseAnalysis.endgame?.accuracy > 85 ? "Excellent" : 
+                      backendAnalysis.phaseAnalysis.endgame?.accuracy > 70 ? "Good" : "Needs Work"
+        }
+      } : null,
+      
+      // Key moments
+      keyMoments: backendAnalysis.keyMoments?.map(moment => ({
+        move: moment.moveNumber || 0,
+        notation: moment.move || "N/A",
+        type: moment.type || "unknown",
+        evaluation: moment.evaluation?.toString() || "0.00",
+        description: moment.description || "No description available"
+      })) || [],
+      
+      // Move quality breakdown
+      moveAccuracy: {
+        excellent: { 
+          count: backendAnalysis.excellentMoves || 0, 
+          percentage: backendAnalysis.totalMoves > 0 ? 
+            Math.round((backendAnalysis.excellentMoves || 0) / backendAnalysis.totalMoves * 100) : 0
+        },
+        good: { 
+          count: backendAnalysis.goodMoves || 0, 
+          percentage: backendAnalysis.totalMoves > 0 ? 
+            Math.round((backendAnalysis.goodMoves || 0) / backendAnalysis.totalMoves * 100) : 0
+        },
+        inaccuracies: { 
+          count: backendAnalysis.inaccuracies || 0, 
+          percentage: backendAnalysis.totalMoves > 0 ? 
+            Math.round((backendAnalysis.inaccuracies || 0) / backendAnalysis.totalMoves * 100) : 0
+        },
+        mistakes: { 
+          count: backendAnalysis.mistakes || 0, 
+          percentage: backendAnalysis.totalMoves > 0 ? 
+            Math.round((backendAnalysis.mistakes || 0) / backendAnalysis.totalMoves * 100) : 0
+        },
+        blunders: { 
+          count: backendAnalysis.blunders || 0, 
+          percentage: backendAnalysis.totalMoves > 0 ? 
+            Math.round((backendAnalysis.blunders || 0) / backendAnalysis.totalMoves * 100) : 0
+        }
+      },
+      
+      // Performance rating
+      performanceRating: backendAnalysis.performanceRating || null,
+      
+      // Analysis info
+      analysisInfo: backendAnalysis.analysisInfo || {},
+      
+      // Generate suggestions based on analysis
+      improvements: [
+        backendAnalysis.blunders > 2 ? "Focus on reducing blunders through tactical training" : null,
+        backendAnalysis.mistakes > 3 ? "Practice calculation to reduce mistakes" : null,
+        backendAnalysis.accuracy < 80 ? "Work on positional understanding" : null,
+        backendAnalysis.phaseAnalysis?.endgame?.accuracy < 70 ? "Study endgame fundamentals" : null
+      ].filter(Boolean),
+      
+      tacticalThemes: ["Pin", "Fork", "Discovered Attack"], // Would come from backend analysis
+      weaknesses: [
+        backendAnalysis.centipawnLoss > 100 ? "High centipawn loss indicates calculation errors" : null,
+        backendAnalysis.phaseAnalysis?.opening?.accuracy < 85 ? "Opening preparation needs work" : null
+      ].filter(Boolean)
+    };
+  };
+
   // Sample data for demonstration
   const defaultSingleAnalysis = {
     accuracy: 87,
@@ -144,7 +244,10 @@ const GameAnalysisModal = ({ isOpen, onClose, gameData, analysis, isBulkAnalysis
   };
 
   // Use the appropriate data based on analysis type
-  const analysisData = isBulkAnalysis ? bulkAnalysisData : (analysis || defaultSingleAnalysis);
+  const analysisData = isBulkAnalysis ? 
+    bulkAnalysisData : 
+    (formatAnalysisData(analysis) || defaultSingleAnalysis);
+  const formattedAnalysisData = formatAnalysisData(analysisData);
 
   const renderTabContent = () => {
     switch (activeTab) {
