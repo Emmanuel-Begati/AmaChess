@@ -93,39 +93,41 @@ const ImprovedStockfishGame = () => {
         thinking: true
       }));
       
-      // For now, use a simple random move instead of Stockfish API
-      // This ensures the game works while you fix your backend
-      const tempGame = new Chess(fen);
-      const possibleMoves = tempGame.moves();
+      const response = await fetch('http://localhost:3001/api/stockfish/play/move-difficulty', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fen,
+          difficulty: gameState.difficulty,
+          timeLimit: getDifficultyTimeLimit(gameState.difficulty)
+        })
+      });
       
-      if (possibleMoves.length === 0) {
-        console.log('No moves available');
-        setGameState(prev => ({
-          ...prev,
-          thinking: false,
-          status: 'draw'
-        }));
-        return;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to get Stockfish move');
       }
       
-      // Pick a random move for testing
-      const randomMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
-      console.log('Selected random move:', randomMove);
+      const data = await response.json();
+      console.log('Stockfish response:', data);
       
-      // Apply the move after a delay
+      if (!data.success || !data.bestMove) {
+        throw new Error('Invalid response from Stockfish');
+      }
+      
+      // Apply Stockfish move after a short delay for better UX
       setTimeout(() => {
-        if (chessBoardRef.current) {
-          console.log('Making AI move:', randomMove);
+        if (chessBoardRef.current && data.bestMove) {
+          console.log('Making AI move:', data.bestMove);
           
           // Make the AI move on the board
-          const moveResult = chessBoardRef.current.makeAIMove(randomMove);
+          const moveResult = chessBoardRef.current.makeAIMove(data.bestMove);
           
           if (moveResult) {
             console.log('AI move made:', moveResult);
             
             // Get the new position from the board
             const newPosition = chessBoardRef.current.getCurrentPosition();
-            console.log('New position after AI move:', newPosition);
             
             // Add move to history
             setMoveHistory(prev => [...prev, moveResult]);
@@ -142,14 +144,14 @@ const ImprovedStockfishGame = () => {
               fen: newPosition,
               isPlayerTurn: true,
               thinking: false,
-              evaluation: { value: 0, type: 'cp' } // Mock evaluation
+              evaluation: data.evaluation || data.game?.evaluation
             }));
             
             // Check for game end
             const gameObj = chessBoardRef.current.getGameObject();
             checkGameEnd(gameObj);
           } else {
-            console.error('AI move failed');
+            console.error('Failed to make AI move on board');
             setGameState(prev => ({
               ...prev,
               thinking: false,
@@ -157,69 +159,66 @@ const ImprovedStockfishGame = () => {
             }));
           }
         }
-      }, 1000); // 1 second delay to simulate thinking
-      
-      /* 
-      // Original Stockfish API code - uncomment when your backend is working
-      const response = await fetch('http://localhost:3001/api/stockfish/play/move-difficulty', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fen,
-          difficulty: gameState.difficulty,
-          timeLimit: 1000
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to get Stockfish move');
-      }
-      
-      const data = await response.json();
-      console.log('Stockfish response:', data);
-      
-      // Apply Stockfish move after a short delay
-      setTimeout(() => {
-        if (chessBoardRef.current && data.bestMove) {
-          console.log('Making AI move:', data.bestMove);
-          
-          const moveResult = chessBoardRef.current.makeAIMove(data.bestMove);
-          
-          if (moveResult) {
-            console.log('AI move made:', moveResult);
-            
-            const newPosition = chessBoardRef.current.getCurrentPosition();
-            
-            setMoveHistory(prev => [...prev, moveResult]);
-            
-            setCustomSquareStyles({
-              [moveResult.from]: { backgroundColor: 'rgba(17, 95, 212, 0.4)' },
-              [moveResult.to]: { backgroundColor: 'rgba(17, 95, 212, 0.6)' }
-            });
-            
-            setGameState(prev => ({
-              ...prev,
-              fen: newPosition,
-              isPlayerTurn: true,
-              thinking: false,
-              evaluation: data.evaluation
-            }));
-            
-            const gameObj = chessBoardRef.current.getGameObject();
-            checkGameEnd(gameObj);
-          }
-        }
-      }, 500);
-      */
+      }, 300);
       
     } catch (error) {
       console.error('Error getting computer move:', error);
-      setGameState(prev => ({
-        ...prev,
-        thinking: false,
-        isPlayerTurn: true
-      }));
+      
+      // Fallback to random move if Stockfish fails
+      console.log('Falling back to random move');
+      const tempGame = new Chess(fen);
+      const possibleMoves = tempGame.moves();
+      
+      if (possibleMoves.length > 0) {
+        const randomMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+        console.log('Using random move:', randomMove);
+        
+        setTimeout(() => {
+          if (chessBoardRef.current) {
+            const moveResult = chessBoardRef.current.makeAIMove(randomMove);
+            
+            if (moveResult) {
+              const newPosition = chessBoardRef.current.getCurrentPosition();
+              
+              setMoveHistory(prev => [...prev, moveResult]);
+              setCustomSquareStyles({
+                [moveResult.from]: { backgroundColor: 'rgba(17, 95, 212, 0.4)' },
+                [moveResult.to]: { backgroundColor: 'rgba(17, 95, 212, 0.6)' }
+              });
+              
+              setGameState(prev => ({
+                ...prev,
+                fen: newPosition,
+                isPlayerTurn: true,
+                thinking: false,
+                evaluation: { value: 0, type: 'cp' }
+              }));
+              
+              const gameObj = chessBoardRef.current.getGameObject();
+              checkGameEnd(gameObj);
+            }
+          }
+        }, 1000);
+      } else {
+        setGameState(prev => ({
+          ...prev,
+          thinking: false,
+          status: 'draw'
+        }));
+      }
     }
+  };
+  
+  // Get time limit based on difficulty
+  const getDifficultyTimeLimit = (difficulty) => {
+    const timeLimits = {
+      beginner: 1000,
+      intermediate: 2000,
+      advanced: 4000,
+      expert: 6000,
+      maximum: 10000
+    };
+    return timeLimits[difficulty] || 2000;
   };
   
   // Check if the game has ended
