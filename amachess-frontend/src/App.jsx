@@ -12,11 +12,6 @@ import Library from './pages/Library';
 import BookReader from './pages/BookReader';
 import Settings from './pages/Settings';
 import ChessBoard from './components/ChessBoard';
-import ChessBoardTest from './test/ChessBoardTest';
-import MinimalChessTest from './test/MinimalChessTest';
-import SimpleDropTest from './test/SimpleDropTest';
-// import FixedChessTest from './test/FixedChessTest';
-// import TestChessApp from './test/TestChessApp';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -111,13 +106,6 @@ function App() {
                     <Settings />
                   </ProtectedRoute>
                 } />
-                {/* Test Routes */}
-                <Route path="/drop" element={<SimpleDropTest />} />
-                <Route path="/minimal" element={<MinimalChessTest />} />
-                <Route path="/test" element={<ChessBoardTest />} />
-                <Route path="/fixed" element={<MissingComponent name="FixedChessTest" />} />
-                <Route path="/test-app" element={<MissingComponent name="TestChessApp" />} />
-                <Route path="/test-page" element={<TestPage />} />
                 
                 {/* Example ChessBoard route */}
                 <Route 
