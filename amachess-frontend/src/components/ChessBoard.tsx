@@ -1,10 +1,21 @@
 import React, { useState, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { Chess } from 'chess.js';
+import { Chess, Move, Square } from 'chess.js';
+import { ChessBoardProps } from '../types';
 
 // Import react-chessboard properly
 import { Chessboard } from 'react-chessboard';
 
-const ChessBoard = forwardRef(({ 
+interface ChessBoardRef {
+  makeAIMove: (moveString: string) => Move | null;
+  getCurrentPosition: () => string;
+  getGameObject: () => Chess;
+}
+
+interface SquareStyles {
+  [square: string]: React.CSSProperties | undefined;
+}
+
+const ChessBoard = forwardRef<ChessBoardRef, ChessBoardProps>(({ 
   width, 
   position, 
   onMove, 
@@ -13,8 +24,7 @@ const ChessBoard = forwardRef(({
   engineEnabled = false,
   customSquareStyles = {},
   orientation = 'white',
-  disabled = false,
-  lastMove = null
+  disabled = false
 }, ref) => {
   console.log('ChessBoard component rendering with props:', { 
     width, 
@@ -33,10 +43,10 @@ const ChessBoard = forwardRef(({
     }
   });
   
-  const [gamePosition, setGamePosition] = useState(() => position || game.fen());
-  const [rightClickedSquares, setRightClickedSquares] = useState({});
-  const [moveSquares, setMoveSquares] = useState({});
-  const [boardWidth, setBoardWidth] = useState(width || 500);
+  const [gamePosition, setGamePosition] = useState<string>(() => position || game.fen());
+  const [rightClickedSquares, setRightClickedSquares] = useState<SquareStyles>({});
+  const [moveSquares, setMoveSquares] = useState<SquareStyles>({});
+  const [boardWidth, setBoardWidth] = useState<number>(width || 500);
 
   // Update game position when position prop changes
   useEffect(() => {
@@ -86,18 +96,18 @@ const ChessBoard = forwardRef(({
     return () => window.removeEventListener('resize', calculateBoardWidth);
   }, [width]);
 
-  const makeAMove = useCallback((move) => {
+  const makeAMove = useCallback((move: string | { from: string; to: string; promotion?: string }) => {
     console.log('makeAMove called with:', move);
     const gameCopy = new Chess(gamePosition);
-    let result;
+    let result: Move | null;
     
     try {
       if (typeof move === 'string') {
         result = gameCopy.move(move);
       } else {
         result = gameCopy.move({
-          from: move.from,
-          to: move.to,
+          from: move.from as Square,
+          to: move.to as Square,
           promotion: move.promotion || 'q'
         });
       }
@@ -125,7 +135,7 @@ const ChessBoard = forwardRef(({
     return null;
   }, [gamePosition]);
 
-  const onDrop = useCallback((sourceSquare, targetSquare) => {
+  const onDrop = useCallback((sourceSquare: Square, targetSquare: Square): boolean => {
     console.log('ChessBoard onDrop called:', { sourceSquare, targetSquare, disabled, interactive });
     
     if (disabled || !interactive) {
@@ -168,7 +178,7 @@ const ChessBoard = forwardRef(({
   }, [makeAMove, onMove, disabled, interactive, gamePosition]);
 
   // Method to make a move programmatically (for AI moves)
-  const makeAIMove = useCallback((moveString) => {
+  const makeAIMove = useCallback((moveString: string): Move | null => {
     console.log('Making AI move:', moveString);
     const result = makeAMove(moveString);
     return result;
@@ -181,7 +191,7 @@ const ChessBoard = forwardRef(({
     getGameObject: () => new Chess(gamePosition)
   }), [makeAIMove, gamePosition]);
 
-  const onSquareClick = useCallback((square) => {
+  const onSquareClick = useCallback((square: Square) => {
     // Don't show moves if board is disabled
     if (disabled || !interactive) {
       return;
@@ -199,10 +209,13 @@ const ChessBoard = forwardRef(({
     });
     
     if (moves.length > 0) {
-      const newSquares = {};
+      const newSquares: SquareStyles = {};
       moves.forEach((move) => {
+        const toPiece = currentGame.get(move.to);
+        const fromPiece = currentGame.get(square);
+        
         newSquares[move.to] = {
-          background: currentGame.get(move.to) && currentGame.get(move.to).color !== currentGame.get(square).color
+          background: toPiece && fromPiece && toPiece.color !== fromPiece.color
             ? 'radial-gradient(circle, rgba(239, 68, 68, 0.8) 85%, transparent 85%)'
             : 'radial-gradient(circle, rgba(74, 144, 226, 0.8) 25%, transparent 25%)',
           borderRadius: '50%'
@@ -217,16 +230,17 @@ const ChessBoard = forwardRef(({
     }
   }, [gamePosition, disabled, interactive]);
 
-  const onSquareRightClick = useCallback((square) => {
+  const onSquareRightClick = useCallback((square: Square) => {
     const colour = 'rgba(17, 95, 212, 0.8)';
-    setRightClickedSquares({
-      ...rightClickedSquares,
-      [square]:
-        rightClickedSquares[square] &&
-        rightClickedSquares[square].backgroundColor === colour
-          ? undefined
-          : { backgroundColor: colour }
-    });
+    const newSquares = { ...rightClickedSquares };
+    
+    if (newSquares[square]?.backgroundColor === colour) {
+      delete newSquares[square];
+    } else {
+      newSquares[square] = { backgroundColor: colour };
+    }
+    
+    setRightClickedSquares(newSquares);
   }, [rightClickedSquares]);
 
   // Custom board styling to match your site's theme
@@ -265,25 +279,27 @@ const ChessBoard = forwardRef(({
         {/* Board wrapper with inner glow */}
         <div className="relative bg-[#121621] rounded p-0.5 sm:p-1 shadow-inner">
           <Chessboard
-            position={gamePosition}
-            onPieceDrop={onDrop}
-            onSquareClick={interactive && !disabled ? onSquareClick : undefined}
-            onSquareRightClick={onSquareRightClick}
-            boardWidth={boardWidth}
-            showBoardNotation={showNotation}
-            customBoardStyle={boardStyles}
-            customSquareStyles={combinedSquareStyles}
-            customDarkSquareStyle={customDarkSquareStyle}
-            customLightSquareStyle={customLightSquareStyle}
-            customNotationStyle={{
-              fontSize: boardWidth < 320 ? '8px' : boardWidth < 400 ? '10px' : '12px',
-              fontWeight: '600',
-              color: '#97a1c4'
-            }}
-            animationDuration={300}
-            areArrowsAllowed={true}
-            arrowColor='#115fd4'
-            boardOrientation={orientation}
+            {...({
+              position: gamePosition,
+              onPieceDrop: onDrop,
+              onSquareClick: interactive && !disabled ? onSquareClick : undefined,
+              onSquareRightClick: onSquareRightClick,
+              boardWidth: boardWidth,
+              showBoardNotation: showNotation,
+              customBoardStyle: boardStyles,
+              customSquareStyles: combinedSquareStyles,
+              customDarkSquareStyle: customDarkSquareStyle,
+              customLightSquareStyle: customLightSquareStyle,
+              customNotationStyle: {
+                fontSize: boardWidth < 320 ? '8px' : boardWidth < 400 ? '10px' : '12px',
+                fontWeight: '600',
+                color: '#97a1c4'
+              },
+              animationDuration: 300,
+              areArrowsAllowed: true,
+              arrowColor: '#115fd4',
+              boardOrientation: orientation
+            } as any)}
           />
         </div>
       </div>

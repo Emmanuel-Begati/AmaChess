@@ -16,24 +16,34 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ProtectedRoute from './components/ProtectedRoute';
 import TestPage from './pages/TestPage';
+import { ChessMove } from './types';
 import './App.css';
 
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error | null;
+}
+
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
 // Error Boundary Component
-class ErrorBoundary extends React.Component {
-  constructor(props) {
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null };
   }
 
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error, errorInfo) {
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
     console.error('App Error:', error, errorInfo);
   }
 
-  render() {
+  render(): React.ReactNode {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-red-50 flex items-center justify-center p-4">
@@ -58,7 +68,7 @@ class ErrorBoundary extends React.Component {
 }
 
 // Fallback components for missing routes
-const MissingComponent = ({ name }) => (
+const MissingComponent: React.FC<{ name: string }> = ({ name }) => (
   <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
     <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
       <h1 className="text-2xl font-bold text-gray-800 mb-4">Component Not Found</h1>
@@ -75,7 +85,7 @@ const MissingComponent = ({ name }) => (
 function App() {
   console.log('App component rendering...');
 
-  const handleMove = (move, fen) => {
+  const handleMove = (move: ChessMove, fen: string): void => {
     console.log('Move made:', move);
     console.log('New position:', fen);
   };
@@ -118,6 +128,7 @@ function App() {
                         </h1>
                         <ChessBoard
                           width={500}
+                          position="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
                           onMove={handleMove}
                           interactive={true}
                           showNotation={true}
