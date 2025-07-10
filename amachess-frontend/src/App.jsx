@@ -12,6 +12,9 @@ import Library from './pages/Library';
 import BookReader from './pages/BookReader';
 import Settings from './pages/Settings';
 import ChessBoard from './components/ChessBoard';
+import ChessBoardTest from './test/ChessBoardTest';
+import MinimalChessTest from './test/MinimalChessTest';
+import SimpleDropTest from './test/SimpleDropTest';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -48,6 +51,15 @@ function App() {
                   <Settings />
                 </ProtectedRoute>
               } />
+              {/* Simple Drop Test Route */}
+              <Route path="/drop" element={<SimpleDropTest />} />
+              
+              {/* Minimal Chess Test Route */}
+              <Route path="/minimal" element={<MinimalChessTest />} />
+              
+              {/* ChessBoard Test Route */}
+              <Route path="/test" element={<ChessBoardTest />} />
+              
               {/* Example ChessBoard route */}
               <Route 
                 path="/chess" 
