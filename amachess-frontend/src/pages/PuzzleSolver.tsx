@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import ChessBoard from '../components/ChessBoard';
+import ChessBoard from '../components/ChessGame';
 
 const PuzzleSolver = () => {
   const navigate = useNavigate();
