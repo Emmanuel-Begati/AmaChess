@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import BookChatModal from '../components/BookChatModal';
-import ChessBoard from '../components/ChessBoard';
+import ChessBoard from '../components/ChessGame';
 
 const BookReader = () => {
   const { bookId } = useParams();

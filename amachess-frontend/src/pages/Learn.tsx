@@ -5,7 +5,6 @@ import Footer from '../components/Footer';
 import GameAnalysisModal from '../components/GameAnalysisModal';
 import AICoachModal from '../components/AICoachModal';
 import GameChatModal from '../components/GameChatModal';
-import StockfishGame from '../components/StockfishGame';
 
 const Learn = () => {
   const navigate = useNavigate();
@@ -14,7 +13,6 @@ const Learn = () => {
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
   const [showAICoachModal, setShowAICoachModal] = useState(false);
   const [showGameChatModal, setShowGameChatModal] = useState(false);
-  const [showStockfishGame, setShowStockfishGame] = useState(false);
   const [selectedGame, setSelectedGame] = useState(null);
   const [isBulkAnalysis, setIsBulkAnalysis] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -522,43 +520,6 @@ ${game.moves}`;
                 </div>
               </div>
 
-              {/* Challenge Stockfish Section */}
-              <div className="bg-gradient-to-r from-[#8b1538] to-[#c2185b] rounded-xl p-4 sm:p-6 mx-3 sm:mx-4 mb-4 sm:mb-6">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 mb-4">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-red-600 to-pink-600 rounded-full flex items-center justify-center shrink-0">
-                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="text-lg sm:text-xl font-bold text-white">Challenge Stockfish</h3>
-                    <p className="text-pink-100 text-sm sm:text-base">Test your skills against the world's strongest chess engine</p>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                  <button 
-                    onClick={() => setShowStockfishGame(true)}
-                    className="bg-red-800 hover:bg-red-700 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
-                  >
-                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                    <span>Play Stockfish</span>
-                  </button>
-                  
-                  <div className="bg-red-900 bg-opacity-50 rounded-lg p-3 sm:p-4 text-center">
-                    <p className="text-pink-100 text-xs sm:text-sm mb-1">Multiple Difficulty Levels</p>
-                    <p className="text-pink-200 text-xs">From 800 to 3200+ Elo</p>
-                  </div>
-                  
-                  <div className="bg-red-900 bg-opacity-50 rounded-lg p-3 sm:p-4 text-center">
-                    <p className="text-pink-100 text-xs sm:text-sm mb-1">Advanced Features</p>
-                    <p className="text-pink-200 text-xs">Real-time analysis</p>
-                  </div>
-                </div>
-              </div>
-
               {/* Puzzles to Practice */}
               <div className="bg-[#272e45] rounded-xl p-4 sm:p-6 mx-3 sm:mx-4 mb-4 sm:mb-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-4">
@@ -823,21 +784,6 @@ ${game.moves}`;
         />
       )}
 
-      {showStockfishGame && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full h-full max-w-none max-h-none relative">
-            <button 
-              onClick={() => setShowStockfishGame(false)}
-              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 z-10"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            <StockfishGame />
-          </div>
-        </div>
-      )}
     </div>
   );
 };
