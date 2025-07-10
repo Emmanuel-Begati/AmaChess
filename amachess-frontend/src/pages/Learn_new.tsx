@@ -5,6 +5,7 @@ import Footer from '../components/Footer';
 import GameAnalysisModal from '../components/GameAnalysisModal';
 import AICoachModal from '../components/AICoachModal';
 import GameChatModal from '../components/GameChatModal';
+import StockfishGame from '../components/StockfishGame';
 
 const Learn = () => {
   const navigate = useNavigate();

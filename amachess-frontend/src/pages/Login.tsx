@@ -1,22 +1,23 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { LoginFormData, FormErrors } from '../types';
 
-const Login = () => {
-  const [formData, setFormData] = useState({
+const Login: React.FC = () => {
+  const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: ''
   });
-  const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [loading, setLoading] = useState<boolean>(false);
   
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   
-  const from = location.state?.from?.pathname || '/dashboard';
+  const from = (location.state as any)?.from?.pathname || '/dashboard';
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -32,8 +33,8 @@ const Login = () => {
     }
   };
 
-  const validateForm = () => {
-    const newErrors = {};
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
     
     if (!formData.email) {
       newErrors.email = 'Email is required';
@@ -49,7 +50,7 @@ const Login = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     
     if (!validateForm()) {
