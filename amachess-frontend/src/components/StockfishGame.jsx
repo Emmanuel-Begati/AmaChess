@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import ChessBoard from './ChessBoard';
 import { Chess } from 'chess.js';
 
-const ImprovedStockfishGame = () => {
+const StockfishGame = () => {
   // Game state
   const [gameState, setGameState] = useState({
     fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
@@ -18,42 +18,67 @@ const ImprovedStockfishGame = () => {
   const [customSquareStyles, setCustomSquareStyles] = useState({});
   const [showEvaluation, setShowEvaluation] = useState(true);
   
+
+  
   // Ref for accessing ChessBoard methods
   const chessBoardRef = useRef(null);
   
   // Initialize a new game
-  useEffect(() => {
-    startNewGame('white');
-  }, []);
+useEffect(() => {
+  console.log('✅ gameState.fen =', gameState.fen);
+}, [gameState.fen]);
+
 
   // Start a new chess game
   const startNewGame = (playerColor = 'white') => {
     const newFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
     
-    setGameState({
+    setGameState(prev => ({
+      ...prev,
       fen: newFen,
       playerColor,
       isPlayerTurn: playerColor === 'white',
       status: 'active',
       thinking: false,
-      difficulty: gameState.difficulty,
       evaluation: null
-    });
+    }));
     
     setMoveHistory([]);
     setCustomSquareStyles({});
     
     // If computer moves first (player is black)
     if (playerColor === 'black') {
+      // Set thinking state immediately
+      setGameState(prev => ({
+        ...prev,
+        thinking: true,
+        isPlayerTurn: false
+      }));
+      
       // Short timeout to allow board to render
-      setTimeout(() => getComputerMove(newFen), 500);
+      setTimeout(() => getComputerMove(newFen), 100);
     }
   };
   
   // Handle player moves
-  const handleMove = async (moveDetails, newFen) => {
+  const handleMove = async (moveDetails) => {
     console.log('Move received in StockfishGame:', moveDetails);
-    console.log('New position:', newFen);
+    
+    // Create a new Chess instance from current FEN to validate and get new FEN
+    const tempGame = new Chess(gameState.fen);
+    const validatedMove = tempGame.move({
+      from: moveDetails.from,
+      to: moveDetails.to,
+      promotion: moveDetails.promotion || 'q'
+    });
+    
+    if (!validatedMove) {
+      console.error('Invalid move:', moveDetails);
+      return false;
+    }
+    
+    const newFen = tempGame.fen();
+    console.log('New position after player move:', newFen);
     
     // Update last move highlighting
     setCustomSquareStyles({
@@ -62,7 +87,7 @@ const ImprovedStockfishGame = () => {
     });
     
     // Add move to history
-    setMoveHistory(prev => [...prev, moveDetails]);
+    setMoveHistory(prev => [...prev, validatedMove]);
     
     // Update game state with new position
     setGameState(prev => ({
@@ -73,8 +98,7 @@ const ImprovedStockfishGame = () => {
     }));
     
     // Check for game end
-    const gameObj = new Chess(newFen);
-    if (checkGameEnd(gameObj)) {
+    if (checkGameEnd(tempGame)) {
       return true;
     }
     
@@ -83,131 +107,100 @@ const ImprovedStockfishGame = () => {
     return true;
   };
   
-  // Get computer's move from Stockfish API
-  const getComputerMove = async (fen) => {
-    try {
-      console.log('Getting computer move for position:', fen);
-      
+const getComputerMove = async (fen) => {
+  try {
+    console.log('Getting computer move for position:', fen);
+
+    setGameState(prev => ({
+      ...prev,
+      thinking: true
+    }));
+
+    const response = await fetch('http://localhost:3001/api/stockfish/play/move-difficulty', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fen,
+        difficulty: gameState.difficulty,
+        timeLimit: getDifficultyTimeLimit(gameState.difficulty)
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to get Stockfish move');
+    }
+
+    const data = await response.json();
+    console.log('Stockfish response:', data);
+
+    if (!data.success || !data.bestMove) {
+      throw new Error('Invalid response from Stockfish');
+    }
+
+    // Use chess.js to apply Stockfish move
+    const tempGame = new Chess(fen);
+    const move = tempGame.move({
+      from: data.bestMove.slice(0, 2),
+      to: data.bestMove.slice(2, 4),
+      promotion: 'q', // always promote to queen for simplicity
+    });
+
+    if (move) {
       setGameState(prev => ({
         ...prev,
-        thinking: true
+        fen: tempGame.fen(),
+        isPlayerTurn: true,
+        thinking: false,
+        evaluation: data.evaluation || data.game?.evaluation
       }));
-      
-      const response = await fetch('http://localhost:3001/api/stockfish/play/move-difficulty', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fen,
-          difficulty: gameState.difficulty,
-          timeLimit: getDifficultyTimeLimit(gameState.difficulty)
-        })
+      setMoveHistory(prev => [...prev, move]);
+      setCustomSquareStyles({
+        [move.from]: { backgroundColor: 'rgba(17, 95, 212, 0.4)' },
+        [move.to]: { backgroundColor: 'rgba(17, 95, 212, 0.6)' }
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to get Stockfish move');
-      }
-      
-      const data = await response.json();
-      console.log('Stockfish response:', data);
-      
-      if (!data.success || !data.bestMove) {
-        throw new Error('Invalid response from Stockfish');
-      }
-      
-      // Apply Stockfish move after a short delay for better UX
-      setTimeout(() => {
-        if (chessBoardRef.current && data.bestMove) {
-          console.log('Making AI move:', data.bestMove);
-          
-          // Make the AI move on the board
-          const moveResult = chessBoardRef.current.makeAIMove(data.bestMove);
-          
-          if (moveResult) {
-            console.log('AI move made:', moveResult);
-            
-            // Get the new position from the board
-            const newPosition = chessBoardRef.current.getCurrentPosition();
-            
-            // Add move to history
-            setMoveHistory(prev => [...prev, moveResult]);
-            
-            // Update square highlighting
-            setCustomSquareStyles({
-              [moveResult.from]: { backgroundColor: 'rgba(17, 95, 212, 0.4)' },
-              [moveResult.to]: { backgroundColor: 'rgba(17, 95, 212, 0.6)' }
-            });
-            
-            // Update game state
-            setGameState(prev => ({
-              ...prev,
-              fen: newPosition,
-              isPlayerTurn: true,
-              thinking: false,
-              evaluation: data.evaluation || data.game?.evaluation
-            }));
-            
-            // Check for game end
-            const gameObj = chessBoardRef.current.getGameObject();
-            checkGameEnd(gameObj);
-          } else {
-            console.error('Failed to make AI move on board');
-            setGameState(prev => ({
-              ...prev,
-              thinking: false,
-              isPlayerTurn: true
-            }));
-          }
-        }
-      }, 300);
-      
-    } catch (error) {
-      console.error('Error getting computer move:', error);
-      
-      // Fallback to random move if Stockfish fails
-      console.log('Falling back to random move');
-      const tempGame = new Chess(fen);
-      const possibleMoves = tempGame.moves();
-      
-      if (possibleMoves.length > 0) {
-        const randomMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
-        console.log('Using random move:', randomMove);
-        
-        setTimeout(() => {
-          if (chessBoardRef.current) {
-            const moveResult = chessBoardRef.current.makeAIMove(randomMove);
-            
-            if (moveResult) {
-              const newPosition = chessBoardRef.current.getCurrentPosition();
-              
-              setMoveHistory(prev => [...prev, moveResult]);
-              setCustomSquareStyles({
-                [moveResult.from]: { backgroundColor: 'rgba(17, 95, 212, 0.4)' },
-                [moveResult.to]: { backgroundColor: 'rgba(17, 95, 212, 0.6)' }
-              });
-              
-              setGameState(prev => ({
-                ...prev,
-                fen: newPosition,
-                isPlayerTurn: true,
-                thinking: false,
-                evaluation: { value: 0, type: 'cp' }
-              }));
-              
-              const gameObj = chessBoardRef.current.getGameObject();
-              checkGameEnd(gameObj);
-            }
-          }
-        }, 1000);
-      } else {
+      checkGameEnd(tempGame);
+    } else {
+      console.error('Stockfish returned invalid move:', data.bestMove);
+      setGameState(prev => ({ ...prev, thinking: false, isPlayerTurn: true }));
+    }
+  } catch (error) {
+    console.error('Error getting computer move:', error);
+
+    // Fallback to random move if Stockfish fails
+    console.log('Falling back to random move');
+    const tempGame = new Chess(fen);
+    const possibleMoves = tempGame.moves();
+
+    if (possibleMoves.length > 0) {
+      const randomMoveSAN = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+      const move = tempGame.move(randomMoveSAN);
+
+      if (move) {
         setGameState(prev => ({
           ...prev,
+          fen: tempGame.fen(),
+          isPlayerTurn: true,
           thinking: false,
-          status: 'draw'
+          evaluation: { value: 0, type: 'cp' }
         }));
+        setMoveHistory(prev => [...prev, move]);
+        setCustomSquareStyles({
+          [move.from]: { backgroundColor: 'rgba(17, 95, 212, 0.4)' },
+          [move.to]: { backgroundColor: 'rgba(17, 95, 212, 0.6)' }
+        });
+        checkGameEnd(tempGame);
       }
+    } else {
+      setGameState(prev => ({
+        ...prev,
+        thinking: false,
+        status: 'draw'
+      }));
     }
-  };
+  }
+};
+
   
   // Get time limit based on difficulty
   const getDifficultyTimeLimit = (difficulty) => {
@@ -315,6 +308,7 @@ const ImprovedStockfishGame = () => {
     { value: 'expert', label: 'Expert', elo: '2500 Elo' },
     { value: 'maximum', label: 'Maximum', elo: '3200+ Elo' }
   ];
+console.log('🧠 FEN passed to ChessBoard:', gameState.fen);
 
   return (
     <div className="p-4 max-w-5xl mx-auto">
@@ -327,8 +321,8 @@ const ImprovedStockfishGame = () => {
             ref={chessBoardRef}
             position={gameState.fen}
             onMove={handleMove}
-            interactive={gameState.isPlayerTurn && gameState.status === 'active'}
-            disabled={!gameState.isPlayerTurn || gameState.status !== 'active'}
+            interactive={gameState.isPlayerTurn && gameState.status === 'active' && !gameState.thinking}
+            disabled={!gameState.isPlayerTurn || gameState.status !== 'active' || gameState.thinking}
             orientation={gameState.playerColor}
             customSquareStyles={customSquareStyles}
             showNotation={true}
@@ -416,12 +410,20 @@ const ImprovedStockfishGame = () => {
                 <div className="font-medium text-center border-b border-gray-700 pb-1">White</div>
                 <div className="font-medium text-center border-b border-gray-700 pb-1">Black</div>
                 
-                {Array.from({ length: Math.ceil(moveHistory.length / 2) }).map((_, i) => (
-                  <React.Fragment key={i}>
-                    <div className="text-center py-1 bg-[#1a2636] rounded">{moveHistory[i*2]?.san || ''}</div>
-                    <div className="text-center py-1 bg-[#1a2636] rounded">{moveHistory[i*2+1]?.san || ''}</div>
-                  </React.Fragment>
-                ))}
+                {Array.from({ length: Math.ceil(moveHistory.length / 2) }).map((_, i) => {
+                  const whiteMove = moveHistory[i * 2];
+                  const blackMove = moveHistory[i * 2 + 1];
+                  return (
+                    <React.Fragment key={i}>
+                      <div className="text-center py-1 bg-[#1a2636] rounded">
+                        {whiteMove ? `${i + 1}. ${whiteMove.san}` : ''}
+                      </div>
+                      <div className="text-center py-1 bg-[#1a2636] rounded">
+                        {blackMove ? blackMove.san : ''}
+                      </div>
+                    </React.Fragment>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -431,4 +433,4 @@ const ImprovedStockfishGame = () => {
   );
 };
 
-export default ImprovedStockfishGame;
+export default StockfishGame;

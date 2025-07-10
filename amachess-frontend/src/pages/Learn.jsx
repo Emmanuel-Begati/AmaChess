@@ -5,7 +5,6 @@ import Footer from '../components/Footer';
 import GameAnalysisModal from '../components/GameAnalysisModal';
 import AICoachModal from '../components/AICoachModal';
 import GameChatModal from '../components/GameChatModal';
-import StockfishGame from '../components/StockfishGame';
 
 const Learn = () => {
   const navigate = useNavigate();
@@ -18,6 +17,21 @@ const Learn = () => {
   const [selectedGame, setSelectedGame] = useState(null);
   const [isBulkAnalysis, setIsBulkAnalysis] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  
+  // New state for Lichess integration
+  const [lichessUsername, setLichessUsername] = useState('');
+  const [userGames, setUserGames] = useState([]);
+  const [gameAnalysis, setGameAnalysis] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // Get user's lichess username from registration
+  useEffect(() => {
+    const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+    if (userData.lichessUsername) {
+      setLichessUsername(userData.lichessUsername);
+    }
+  }, []);
 
   // Authentication check
   useEffect(() => {
@@ -35,11 +49,19 @@ const Learn = () => {
 
   // Lichess API integration functions
   const importFromLichess = async (username) => {
+    if (!username) {
+      setError('Please enter a Lichess username');
+      return;
+    }
+
     setIsImporting(true);
+    setError('');
+    setLoading(true);
+    
     try {
-      // This would connect to your backend which then calls Lichess API
-      const response = await fetch(`/api/import/lichess/${username}`, {
-        method: 'POST',
+      console.log('Fetching games for:', username);
+      const response = await fetch(`http://localhost:3001/api/games/${username}/analyze?max=20`, {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         }
@@ -47,15 +69,26 @@ const Learn = () => {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('Imported games:', data);
-        // Refresh the game library
+        console.log('Imported games and analysis:', data);
+        
+        setUserGames(data.games || []);
+        setGameAnalysis(data.analysis);
+        
+        // Store lichess username for future use
+        const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+        userData.lichessUsername = username;
+        localStorage.setItem('userData', JSON.stringify(userData));
+        
       } else {
-        console.error('Import failed');
+        const errorData = await response.json();
+        setError(errorData.message || 'Failed to import games');
       }
     } catch (error) {
       console.error('Error importing from Lichess:', error);
+      setError('Failed to connect to server. Please try again.');
     } finally {
       setIsImporting(false);
+      setLoading(false);
     }
   };
 
@@ -63,7 +96,7 @@ const Learn = () => {
     setIsImporting(true);
     try {
       // Similar to Lichess import but for Chess.com
-      const response = await fetch(`/api/import/chesscom/${username}`, {
+      const response = await fetch(`http://localhost:3001/api/import/chesscom/${username}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -83,15 +116,127 @@ const Learn = () => {
     }
   };
 
-  const handleBulkAnalysis = () => {
-    setIsBulkAnalysis(true);
-    setShowAnalysisModal(true);
+  const analyzeGame = async (game) => {
+    if (!game.pgn && !game.moves) {
+      setError('No game data available for analysis');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // First get the PGN if we only have moves
+      let pgnData = game.pgn;
+      if (!pgnData && game.moves) {
+        // Convert moves to PGN format
+        pgnData = `[Event "Lichess game"]
+[Site "${game.url}"]
+[Date "${game.date}"]
+[White "${game.opponent}"]
+[Black "You"]
+[Result "*"]
+
+${game.moves}`;
+      }
+
+      const response = await fetch('http://localhost:3001/api/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          pgn: pgnData,
+          username: lichessUsername,
+          depth: 15,
+          timePerMove: 2000,
+          enableCache: true
+        })
+      });
+
+      if (response.ok) {
+        const analysisData = await response.json();
+        console.log('Game analysis completed:', analysisData);
+        
+        // Update the game with analysis data
+        const updatedGame = {
+          ...game,
+          analysis: analysisData.analysis
+        };
+        
+        setSelectedGame(updatedGame);
+        setIsBulkAnalysis(false);
+        setShowAnalysisModal(true);
+      } else {
+        const errorData = await response.json();
+        setError(errorData.message || 'Failed to analyze game');
+      }
+    } catch (error) {
+      console.error('Error analyzing game:', error);
+      setError('Failed to analyze game. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleGameAnalysis = (game) => {
-    setSelectedGame(game);
-    setIsBulkAnalysis(false);
-    setShowAnalysisModal(true);
+  const handleBulkAnalysis = () => {
+    if (gameAnalysis) {
+      setIsBulkAnalysis(true);
+      setShowAnalysisModal(true);
+    } else {
+      setError('Please import games first to perform bulk analysis');
+    }
+  };
+
+  const handleGameAnalysis = async (game) => {
+    await analyzeGame(game);
+  };
+
+  const handleSingleGameUpload = (event) => {
+    const file = event.target.files[0];
+    if (file && file.name.endsWith('.pgn')) {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const pgnContent = e.target.result;
+        try {
+          const response = await fetch('http://localhost:3001/api/analyze', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              pgn: pgnContent,
+              username: lichessUsername,
+              depth: 15,
+              timePerMove: 2000,
+              enableCache: true
+            })
+          });
+
+          if (response.ok) {
+            const analysisData = await response.json();
+            console.log('Single game analysis completed:', analysisData);
+            
+            const gameData = {
+              id: Date.now(),
+              analysis: analysisData.analysis,
+              source: 'upload'
+            };
+            
+            setSelectedGame(gameData);
+            setIsBulkAnalysis(false);
+            setShowAnalysisModal(true);
+          } else {
+            const errorData = await response.json();
+            setError(errorData.message || 'Failed to analyze uploaded game');
+          }
+        } catch (error) {
+          console.error('Error analyzing uploaded game:', error);
+          setError('Failed to analyze uploaded game. Please try again.');
+        }
+      };
+      reader.readAsText(file);
+    } else {
+      setError('Please upload a valid PGN file');
+    }
   };
 
   const sampleAnalysis = {
@@ -140,7 +285,13 @@ const Learn = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
                   <p className="text-[#97a1c4] text-xs sm:text-sm mb-2 sm:mb-3">Drop PGN file or paste game</p>
-                  <input type="file" className="hidden" id="single-game" accept=".pgn" />
+                  <input 
+                    type="file" 
+                    className="hidden" 
+                    id="single-game" 
+                    accept=".pgn" 
+                    onChange={handleSingleGameUpload}
+                  />
                   <label htmlFor="single-game" className="cursor-pointer bg-blue-800 hover:bg-blue-700 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm transition-colors inline-block">
                     Upload PGN
                   </label>
@@ -153,27 +304,53 @@ const Learn = () => {
                 <button 
                   onClick={handleBulkAnalysis}
                   className="w-full bg-[#374162] hover:bg-[#455173] text-white px-4 py-2.5 sm:py-3 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
-                  disabled={isImporting}
+                  disabled={isImporting || !gameAnalysis}
                 >
                   <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
-                  <span className="truncate">{isImporting ? 'Analyzing...' : 'Analyze Last 50 Games'}</span>
+                  <span className="truncate">
+                    {isImporting ? 'Analyzing...' : 
+                     gameAnalysis ? 'Analyze Imported Games' : 'Import Games First'}
+                  </span>
                 </button>
+              </div>
+
+              {/* Lichess Import Section */}
+              <div className="bg-[#272e45] rounded-xl p-4 sm:p-6 mx-3 sm:mx-4 mb-3 sm:mb-4">
+                <h3 className="text-white font-semibold mb-3 sm:mb-4 text-sm sm:text-base">Import from Lichess</h3>
+                {error && (
+                  <div className="mb-3 p-2 bg-red-600/20 border border-red-600/50 rounded text-red-400 text-xs">
+                    {error}
+                    <button 
+                      onClick={() => setError('')}
+                      className="ml-2 text-red-300 hover:text-red-100"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+                <div className="flex flex-col gap-3">
+                  <input
+                    type="text"
+                    placeholder="Enter your Lichess username"
+                    value={lichessUsername}
+                    onChange={(e) => setLichessUsername(e.target.value)}
+                    className="w-full px-3 py-2 bg-[#374162] border border-[#455173] rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                  <button 
+                    onClick={() => importFromLichess(lichessUsername)}
+                    disabled={isImporting || !lichessUsername.trim()}
+                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    {isImporting ? 'Importing Games...' : 'Import Recent Games'}
+                  </button>
+                </div>
               </div>
 
               {/* Import Buttons */}
               <div className="flex justify-stretch">
                 <div className="flex flex-1 gap-2 sm:gap-3 flex-wrap px-3 sm:px-4 py-2 sm:py-3 justify-start">
-                  <button 
-                    onClick={() => importFromLichess('username')}
-                    disabled={isImporting}
-                    className="flex min-w-0 flex-1 sm:min-w-[84px] sm:max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-8 sm:h-10 px-2 sm:px-4 bg-[#272e45] text-white text-xs sm:text-sm font-bold leading-normal tracking-[0.015em] disabled:opacity-50"
-                  >
-                    <span className="truncate">
-                      {isImporting ? 'Importing...' : 'Import from Lichess'}
-                    </span>
-                  </button>
                   <button 
                     onClick={() => importFromChessCom('username')}
                     disabled={isImporting}
@@ -190,15 +367,21 @@ const Learn = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-4 p-3 sm:p-4">
                 <div className="flex flex-col gap-2 rounded-xl p-4 sm:p-6 border border-[#374162]">
                   <p className="text-white text-sm sm:text-base font-medium leading-normal">Total Games Imported</p>
-                  <p className="text-white tracking-light text-xl sm:text-2xl font-bold leading-tight">234</p>
+                  <p className="text-white tracking-light text-xl sm:text-2xl font-bold leading-tight">
+                    {userGames.length || 0}
+                  </p>
                 </div>
                 <div className="flex flex-col gap-2 rounded-xl p-4 sm:p-6 border border-[#374162]">
-                  <p className="text-white text-sm sm:text-base font-medium leading-normal">Games Analyzed</p>
-                  <p className="text-white tracking-light text-xl sm:text-2xl font-bold leading-tight">187</p>
+                  <p className="text-white text-sm sm:text-base font-medium leading-normal">Average Accuracy</p>
+                  <p className="text-white tracking-light text-xl sm:text-2xl font-bold leading-tight">
+                    {gameAnalysis ? `${Math.round(gameAnalysis.overallAccuracy)}%` : '0%'}
+                  </p>
                 </div>
                 <div className="flex flex-col gap-2 rounded-xl p-4 sm:p-6 border border-[#374162] sm:col-span-2 lg:col-span-1 xl:col-span-2">
-                  <p className="text-white text-sm sm:text-base font-medium leading-normal">Learning Points</p>
-                  <p className="text-white tracking-light text-xl sm:text-2xl font-bold leading-tight">456</p>
+                  <p className="text-white text-sm sm:text-base font-medium leading-normal">Current Rating</p>
+                  <p className="text-white tracking-light text-xl sm:text-2xl font-bold leading-tight">
+                    {gameAnalysis ? gameAnalysis.averageRating : 'N/A'}
+                  </p>
                 </div>
               </div>
 
@@ -215,7 +398,7 @@ const Learn = () => {
                       </svg>
                     </div>
                     <input
-                      placeholder="Search"
+                      placeholder="Search games..."
                       className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-white focus:outline-0 focus:ring-0 border-none bg-[#272e45] focus:border-none h-full placeholder:text-[#97a1c4] px-3 sm:px-4 rounded-l-none border-l-0 pl-2 text-sm sm:text-base font-normal leading-normal"
                     />
                   </div>
@@ -233,97 +416,63 @@ const Learn = () => {
 
               {/* Game List */}
               <div className="space-y-1 sm:space-y-0">
-                {/*
-                  { rating: "1500 (+15)", result: "Win", date: "2024-01-15", timeControl: "10+0", opponent: "Opponent 1 (1650)" },
-                  { rating: "1515 (-10)", result: "Loss", date: "2024-01-10", timeControl: "5+0", opponent: "Opponent 2 (1800)" },
-                  { rating: "1505 (+5)", result: "Draw", date: "2024-01-05", timeControl: "15+10", opponent: "Opponent 3 (1700)" }
-                ].map((game, index) => (
-                  <div key={index} className="flex flex-col sm:flex-row gap-3 sm:gap-4 bg-[#121621] px-3 sm:px-4 py-3 justify-between">
-                    <div className="flex flex-1 flex-col justify-center min-w-0">
-                      <p className="text-white text-sm sm:text-base font-medium leading-normal truncate">Your Rating: {game.rating}</p>
-                      <p className="text-[#97a1c4] text-xs sm:text-sm font-normal leading-normal truncate">Result: {game.result}, Date: {game.date}, Time Control: {game.timeControl}</p>
-                      <p className="text-[#97a1c4] text-xs sm:text-sm font-normal leading-normal truncate">vs. {game.opponent}</p>
+                {loading ? (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                  </div>
+                ) : userGames.length > 0 ? (
+                  userGames.map((game, index) => (
+                    <div key={game.id || index} className="flex flex-col sm:flex-row gap-3 sm:gap-4 bg-[#121621] px-3 sm:px-4 py-3 justify-between">
+                      <div className="flex flex-1 flex-col justify-center min-w-0">
+                        <p className="text-white text-sm sm:text-base font-medium leading-normal truncate">
+                          Your Rating: {game.rating} ({game.ratingChange > 0 ? '+' : ''}{game.ratingChange})
+                        </p>
+                        <p className="text-[#97a1c4] text-xs sm:text-sm font-normal leading-normal truncate">
+                          Result: {game.result}, Date: {game.date}, Time Control: {game.timeControl}
+                        </p>
+                        <p className="text-[#97a1c4] text-xs sm:text-sm font-normal leading-normal truncate">
+                          vs. {game.opponent} ({game.opponentRating}) - {game.opening}
+                        </p>
+                        {game.accuracy && (
+                          <p className="text-green-400 text-xs sm:text-sm font-normal leading-normal">
+                            Accuracy: {Math.round(game.accuracy)}%
+                          </p>
+                        )}
+                      </div>
+                      <div className="shrink-0 flex flex-row sm:flex-col gap-3 sm:gap-1 justify-end sm:justify-center">
+                        <button 
+                          onClick={() => handleGameAnalysis(game)}
+                          className="text-sm sm:text-base font-medium leading-normal text-blue-400 hover:text-blue-300 px-2 py-1 sm:px-0 sm:py-0"
+                          disabled={loading}
+                        >
+                          {loading ? 'Analyzing...' : 'Analyze'}
+                        </button>
+                        <button 
+                          onClick={() => {setSelectedGame(game); setShowGameChatModal(true);}}
+                          className="text-xs sm:text-sm font-medium leading-normal text-green-400 hover:text-green-300 px-2 py-1 sm:px-0 sm:py-0"
+                        >
+                          Chat
+                        </button>
+                        <a
+                          href={game.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs sm:text-sm font-medium leading-normal text-purple-400 hover:text-purple-300 px-2 py-1 sm:px-0 sm:py-0"
+                        >
+                          View
+                        </a>
+                      </div>
                     </div>
-                    <div className="shrink-0 flex flex-row sm:flex-col gap-3 sm:gap-1 justify-end sm:justify-center">
-                      <button 
-                        onClick={() => handleGameAnalysis(game)}
-                        className="text-sm sm:text-base font-medium leading-normal text-blue-400 hover:text-blue-300 px-2 py-1 sm:px-0 sm:py-0"
-                      >
-                        Analyze
-                      </button>
-                      <button 
-                        onClick={() => {setSelectedGame(game); setShowGameChatModal(true);}}
-                        className="text-xs sm:text-sm font-medium leading-normal text-green-400 hover:text-green-300 px-2 py-1 sm:px-0 sm:py-0"
-                      >
-                        Chat
-                      </button>
-                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-[#97a1c4] text-sm">
+                      {lichessUsername 
+                        ? 'Import your games from Lichess to see them here' 
+                        : 'Enter your Lichess username to import games'}
+                    </p>
                   </div>
-                ))}
-                */}
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 bg-[#121621] px-3 sm:px-4 py-3 justify-between">
-                  <div className="flex flex-1 flex-col justify-center min-w-0">
-                    <p className="text-white text-sm sm:text-base font-medium leading-normal truncate">Your Rating: 1500 (+15)</p>
-                    <p className="text-[#97a1c4] text-xs sm:text-sm font-normal leading-normal truncate">Result: Win, Date: 2024-01-15, Time Control: 10+0</p>
-                    <p className="text-[#97a1c4] text-xs sm:text-sm font-normal leading-normal truncate">vs. Opponent 1 (1650)</p>
-                  </div>
-                  <div className="shrink-0 flex flex-row sm:flex-col gap-3 sm:gap-1 justify-end sm:justify-center">
-                    <button 
-                      onClick={() => handleGameAnalysis({ rating: "1500 (+15)", result: "Win", date: "2024-01-15", timeControl: "10+0", opponent: "Opponent 1 (1650)" })}
-                      className="text-sm sm:text-base font-medium leading-normal text-blue-400 hover:text-blue-300 px-2 py-1 sm:px-0 sm:py-0"
-                    >
-                      Analyze
-                    </button>
-                    <button 
-                      onClick={() => {setSelectedGame({ rating: "1500 (+15)", result: "Win", date: "2024-01-15", timeControl: "10+0", opponent: "Opponent 1 (1650)" }); setShowGameChatModal(true);}}
-                      className="text-xs sm:text-sm font-medium leading-normal text-green-400 hover:text-green-300 px-2 py-1 sm:px-0 sm:py-0"
-                    >
-                      Chat
-                    </button>
-                  </div>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 bg-[#121621] px-3 sm:px-4 py-3 justify-between">
-                  <div className="flex flex-1 flex-col justify-center min-w-0">
-                    <p className="text-white text-sm sm:text-base font-medium leading-normal truncate">Your Rating: 1515 (-10)</p>
-                    <p className="text-[#97a1c4] text-xs sm:text-sm font-normal leading-normal truncate">Result: Loss, Date: 2024-01-10, Time Control: 5+0</p>
-                    <p className="text-[#97a1c4] text-xs sm:text-sm font-normal leading-normal truncate">vs. Opponent 2 (1800)</p>
-                  </div>
-                  <div className="shrink-0 flex flex-row sm:flex-col gap-3 sm:gap-1 justify-end sm:justify-center">
-                    <button 
-                      onClick={() => handleGameAnalysis({ rating: "1515 (-10)", result: "Loss", date: "2024-01-10", timeControl: "5+0", opponent: "Opponent 2 (1800)" })}
-                      className="text-sm sm:text-base font-medium leading-normal text-blue-400 hover:text-blue-300 px-2 py-1 sm:px-0 sm:py-0"
-                    >
-                      Analyze
-                    </button>
-                    <button 
-                      onClick={() => {setSelectedGame({ rating: "1515 (-10)", result: "Loss", date: "2024-01-10", timeControl: "5+0", opponent: "Opponent 2 (1800)" }); setShowGameChatModal(true);}}
-                      className="text-xs sm:text-sm font-medium leading-normal text-green-400 hover:text-green-300 px-2 py-1 sm:px-0 sm:py-0"
-                    >
-                      Chat
-                    </button>
-                  </div>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 bg-[#121621] px-3 sm:px-4 py-3 justify-between">
-                  <div className="flex flex-1 flex-col justify-center min-w-0">
-                    <p className="text-white text-sm sm:text-base font-medium leading-normal truncate">Your Rating: 1505 (+5)</p>
-                    <p className="text-[#97a1c4] text-xs sm:text-sm font-normal leading-normal truncate">Result: Draw, Date: 2024-01-05, Time Control: 15+10</p>
-                    <p className="text-[#97a1c4] text-xs sm:text-sm font-normal leading-normal truncate">vs. Opponent 3 (1700)</p>
-                  </div>
-                  <div className="shrink-0 flex flex-row sm:flex-col gap-3 sm:gap-1 justify-end sm:justify-center">
-                    <button 
-                      onClick={() => handleGameAnalysis({ rating: "1505 (+5)", result: "Draw", date: "2024-01-05", timeControl: "15+10", opponent: "Opponent 3 (1700)" })}
-                      className="text-sm sm:text-base font-medium leading-normal text-blue-400 hover:text-blue-300 px-2 py-1 sm:px-0 sm:py-0"
-                    >
-                      Analyze
-                    </button>
-                    <button 
-                      onClick={() => {setSelectedGame({ rating: "1505 (+5)", result: "Draw", date: "2024-01-05", timeControl: "15+10", opponent: "Opponent 3 (1700)" }); setShowGameChatModal(true);}}
-                      className="text-xs sm:text-sm font-medium leading-normal text-green-400 hover:text-green-300 px-2 py-1 sm:px-0 sm:py-0"
-                    >
-                      Chat
-                    </button>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
 
@@ -338,12 +487,12 @@ const Learn = () => {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 mb-4">
                   <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center shrink-0">
                     <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                     </svg>
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-lg sm:text-xl font-bold text-white">Your Personal AI Coach</h3>
-                    <p className="text-[#97a1c4] text-sm sm:text-base">Get personalized instruction and play training games</p>
+                    <h3 className="text-lg sm:text-xl font-bold text-white">Personal Chess Coach</h3>
+                    <p className="text-blue-100 text-sm sm:text-base">Get personalized instruction and play training games</p>
                   </div>
                 </div>
                 
@@ -366,12 +515,13 @@ const Learn = () => {
                     <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                     </svg>
-                    <span className="hidden sm:inline">Chat with AI Coach</span>
+                    <span className="hidden sm:inline">Ask Chess Questions</span>
+                    <span className="sm:hidden">Ask Questions</span>
                   </button>
                 </div>
               </div>
 
-              {/* Stockfish Challenge Section */}
+              {/* Challenge Stockfish Section */}
               <div className="bg-gradient-to-r from-[#8b1538] to-[#c2185b] rounded-xl p-4 sm:p-6 mx-3 sm:mx-4 mb-4 sm:mb-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 mb-4">
                   <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-red-600 to-pink-600 rounded-full flex items-center justify-center shrink-0">
@@ -412,18 +562,20 @@ const Learn = () => {
               <div className="bg-[#272e45] rounded-xl p-4 sm:p-6 mx-3 sm:mx-4 mb-4 sm:mb-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-4">
                   <h3 className="text-lg sm:text-xl font-bold text-white">Recommended Puzzles</h3>
-                  <a href="/puzzles" className="text-blue-400 hover:text-blue-300 text-xs sm:text-sm font-medium whitespace-nowrap">View All Puzzles →</a>
+                  <p className="text-[#97a1c4] text-xs sm:text-sm">Based on your game analysis</p>
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-4">
                   {puzzlesToPractice.map((puzzle) => (
-                    <div key={puzzle.id} className="bg-[#374162] rounded-lg p-3 sm:p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs sm:text-sm font-medium text-[#97a1c4]">{puzzle.theme}</span>
-                        <span className="text-xs bg-blue-800 text-white px-2 py-1 rounded">{puzzle.rating}</span>
+                    <div key={puzzle.id} className="bg-[#374162] rounded-lg p-3 sm:p-4 flex flex-col gap-2 sm:gap-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-white font-medium text-sm">{puzzle.theme}</span>
+                        <span className="text-[#97a1c4] text-xs">{puzzle.rating}</span>
                       </div>
-                      <p className="text-white font-medium mb-3 text-sm sm:text-base">{puzzle.difficulty}</p>
-                      <a 
+                      <div className="flex items-center justify-between">
+                        <span className="text-[#97a1c4] text-xs">{puzzle.difficulty}</span>
+                      </div>
+                      <a
                         href={`/puzzles?theme=${puzzle.theme}&rating=${puzzle.rating}`}
                         className="w-full bg-blue-800 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm transition-colors block text-center"
                       >
@@ -454,7 +606,17 @@ const Learn = () => {
                 </div>
               </div>
               <p className="text-white text-sm sm:text-base font-normal leading-normal pb-3 pt-1 px-3 sm:px-4">
-                Your strengths include solid opening principles and tactical awareness in the middlegame. Continue to reinforce these areas through practice and analysis.
+                {gameAnalysis ? (
+                  activeInsightTab === 'Strengths' ? 
+                    `Your strengths include solid opening principles with average accuracy of ${Math.round(gameAnalysis.overallAccuracy)}%. Continue to reinforce these areas through practice and analysis.` :
+                  activeInsightTab === 'Learning Opportunities' ?
+                    `Focus on reducing blunders (${gameAnalysis.totalBlunders || 0} in recent games) and mistakes (${gameAnalysis.totalMistakes || 0}). Practice tactical puzzles daily.` :
+                  activeInsightTab === 'Pattern Recognition' ?
+                    'Work on recognizing common tactical patterns like pins, forks, and discovered attacks. Your tactical awareness can be improved through focused practice.' :
+                    'Study endgame fundamentals and time management. Consider reviewing games where you lost on time or missed winning endgames.'
+                ) : (
+                  'Import games from Lichess to get personalized AI insights based on your playing style and performance patterns.'
+                )}
               </p>
 
               {/* Learning Dashboard */}
@@ -477,34 +639,122 @@ const Learn = () => {
                 </div>
               </div>
 
-              {/* Rating Chart */}
-              <div className="flex flex-wrap gap-4 px-3 sm:px-4 py-4 sm:py-6">
-                <div className="flex min-w-0 flex-1 flex-col gap-2">
-                  <p className="text-white text-sm sm:text-base font-medium leading-normal">Rating Over Time</p>
-                  <p className="text-white tracking-light text-2xl sm:text-[32px] font-bold leading-tight truncate">1510</p>
-                  <div className="flex gap-1">
-                    <p className="text-[#97a1c4] text-sm sm:text-base font-normal leading-normal">Last 30 Days</p>
-                    <p className="text-[#0bda62] text-sm sm:text-base font-medium leading-normal">+5%</p>
-                  </div>
-                  <div className="flex min-h-[120px] sm:min-h-[180px] flex-1 flex-col gap-4 sm:gap-8 py-4">
-                    <svg width="100%" height="120" className="sm:h-[148px]" viewBox="-3 0 478 150" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-                      <path d="M0 109C18.1538 109 18.1538 21 36.3077 21C54.4615 21 54.4615 41 72.6154 41C90.7692 41 90.7692 93 108.923 93C127.077 93 127.077 33 145.231 33C163.385 33 163.385 101 181.538 101C199.692 101 199.692 61 217.846 61C236 61 236 45 254.154 45C272.308 45 272.308 121 290.462 121C308.615 121 308.615 149 326.769 149C344.923 149 344.923 1 363.077 1C381.231 1 381.231 81 399.385 81C417.538 81 417.538 129 435.692 129C453.846 129 453.846 25 472 25V149H326.769H0V109Z" fill="url(#paint0_linear_1131_5935)"></path>
-                      <path d="M0 109C18.1538 109 18.1538 21 36.3077 21C54.4615 21 54.4615 41 72.6154 41C90.7692 41 90.7692 93 108.923 93C127.077 93 127.077 33 145.231 33C163.385 33 163.385 101 181.538 101C199.692 101 199.692 61 217.846 61C236 61 236 45 254.154 45C272.308 45 272.308 121 290.462 121C308.615 121 308.615 149 326.769 149C344.923 149 344.923 1 363.077 1C381.231 1 381.231 81 399.385 81C417.538 81 417.538 129 435.692 129C453.846 129 453.846 25 472 25" stroke="#97a1c4" strokeWidth="3" strokeLinecap="round"></path>
-                      <defs>
-                        <linearGradient id="paint0_linear_1131_5935" x1="236" y1="1" x2="236" y2="149" gradientUnits="userSpaceOnUse">
-                          <stop stopColor="#0066ff" stopOpacity="0.3"/>
-                          <stop offset="1" stopColor="#0066ff" stopOpacity="0"/>
-                        </linearGradient>
-                      </defs>
-                    </svg>
-                    <div className="flex justify-around">
-                      <p className="text-[#97a1c4] text-[13px] font-bold leading-normal tracking-[0.015em]">Jan 1</p>
-                      <p className="text-[#97a1c4] text-[13px] font-bold leading-normal tracking-[0.015em]">Jan 8</p>
-                      <p className="text-[#97a1c4] text-[13px] font-bold leading-normal tracking-[0.015em]">Jan 15</p>
-                      <p className="text-[#97a1c4] text-[13px] font-bold leading-normal tracking-[0.015em]">Jan 22</p>
-                      <p className="text-[#97a1c4] text-[13px] font-bold leading-normal tracking-[0.015em]">Jan 29</p>
+              {/* Dashboard Content */}
+              <div className="px-3 sm:px-4 pb-3">
+                <div className="bg-[#272e45] rounded-xl p-4 sm:p-6">
+                  {activeDashboardTab === 'Rating Progress' && (
+                    <div>
+                      <h3 className="text-white font-semibold mb-4">Rating Progress</h3>
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <p className="text-2xl font-bold text-white">
+                            {gameAnalysis ? Math.round(gameAnalysis.averageRating) : 'N/A'}
+                          </p>
+                          <p className="text-[#97a1c4] text-sm">Current Rating</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-green-400 text-sm font-medium">
+                            {gameAnalysis && gameAnalysis.ratingProgress ? '+5%' : 'Import games to see progress'}
+                          </p>
+                        </div>
+                      </div>
+                      {gameAnalysis && (
+                        <div className="space-y-2">
+                          <p className="text-white font-medium">Recent Performance:</p>
+                          <p className="text-[#97a1c4] text-sm">
+                            Win Rate: {Math.round((gameAnalysis.winRate || 0) * 100)}% | 
+                            Draw Rate: {Math.round((gameAnalysis.drawRate || 0) * 100)}% | 
+                            Loss Rate: {Math.round((gameAnalysis.lossRate || 0) * 100)}%
+                          </p>
+                        </div>
+                      )}
                     </div>
-                  </div>
+                  )}
+
+                  {activeDashboardTab === 'Weak Areas' && (
+                    <div>
+                      <h3 className="text-white font-semibold mb-4">Areas for Improvement</h3>
+                      {gameAnalysis ? (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between p-3 bg-[#374162] rounded">
+                            <span className="text-white">Tactical Awareness</span>
+                            <span className="text-yellow-400">Priority: High</span>
+                          </div>
+                          <div className="flex items-center justify-between p-3 bg-[#374162] rounded">
+                            <span className="text-white">Endgame Technique</span>
+                            <span className="text-orange-400">Priority: Medium</span>
+                          </div>
+                          <div className="flex items-center justify-between p-3 bg-[#374162] rounded">
+                            <span className="text-white">Time Management</span>
+                            <span className="text-green-400">Priority: Low</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-[#97a1c4]">Import games to see personalized weak areas</p>
+                      )}
+                    </div>
+                  )}
+
+                  {activeDashboardTab === 'Learning Streaks' && (
+                    <div>
+                      <h3 className="text-white font-semibold mb-4">Learning Activity</h3>
+                      <div className="text-center">
+                        <div className="text-3xl font-bold text-blue-400 mb-2">
+                          {userGames.length > 0 ? '🔥' : '💤'}
+                        </div>
+                        <p className="text-white font-medium">
+                          {userGames.length > 0 ? `${userGames.length} games analyzed` : 'Start your learning streak!'}
+                        </p>
+                        <p className="text-[#97a1c4] text-sm mt-1">
+                          {userGames.length > 0 ? 'Keep analyzing games to maintain your streak' : 'Import and analyze games to begin'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeDashboardTab === 'Mastery Progress' && (
+                    <div>
+                      <h3 className="text-white font-semibold mb-4">Skill Mastery</h3>
+                      {gameAnalysis ? (
+                        <div className="space-y-4">
+                          <div>
+                            <div className="flex justify-between mb-1">
+                              <span className="text-white text-sm">Opening Knowledge</span>
+                              <span className="text-[#97a1c4] text-sm">
+                                {Math.round((gameAnalysis.overallAccuracy || 0) / 100 * 85)}%
+                              </span>
+                            </div>
+                            <div className="w-full bg-[#374162] rounded-full h-2">
+                              <div 
+                                className="bg-blue-600 h-2 rounded-full" 
+                                style={{ width: `${Math.round((gameAnalysis.overallAccuracy || 0) / 100 * 85)}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="flex justify-between mb-1">
+                              <span className="text-white text-sm">Tactical Calculation</span>
+                              <span className="text-[#97a1c4] text-sm">72%</span>
+                            </div>
+                            <div className="w-full bg-[#374162] rounded-full h-2">
+                              <div className="bg-yellow-600 h-2 rounded-full" style={{ width: '72%' }}></div>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="flex justify-between mb-1">
+                              <span className="text-white text-sm">Endgame Technique</span>
+                              <span className="text-[#97a1c4] text-sm">68%</span>
+                            </div>
+                            <div className="w-full bg-[#374162] rounded-full h-2">
+                              <div className="bg-orange-600 h-2 rounded-full" style={{ width: '68%' }}></div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-[#97a1c4]">Import games to track your skill mastery</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -533,26 +783,6 @@ const Learn = () => {
                       <path d="M224,48H160a40,40,0,0,0-32,16A40,40,0,0,0,96,48H32A16,16,0,0,0,16,64V192a16,16,0,0,0,16,16H96a24,24,0,0,1,24,24,8,8,0,0,0,16,0,24,24,0,0,1,24-24h64a16,16,0,0,0,16-16V64A16,16,0,0,0,224,48ZM96,192H32V64H96a24,24,0,0,1,24,24V200A39.81,39.81,0,0,0,96,192Zm128,0H160a39.81,39.81,0,0,0-24,8V88a24,24,0,0,1,24-24h64Z"></path>
                     </svg>
                   </div>
-                  <span className="truncate">Create Study Plan</span>
-                </button>
-              </div>
-              <div className="flex justify-end overflow-hidden px-5 pb-5">
-                <button className="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-14 px-5 bg-blue-800 text-white text-base font-bold leading-normal tracking-[0.015em] min-w-0 gap-4 pl-4 pr-6">
-                  <div className="text-white">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
-                      <path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Z"></path>
-                    </svg>
-                  </div>
-                  <span className="truncate">Export Report</span>
-                </button>
-              </div>
-              <div className="flex justify-end overflow-hidden px-5 pb-5">
-                <button className="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-14 px-5 bg-blue-800 text-white text-base font-bold leading-normal tracking-[0.015em] min-w-0 gap-4 pl-4 pr-6">
-                  <div className="text-white">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
-                      <path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Zm-96-88v64a8,8,0,0,1-16,0V132.94l-4.42,2.22a8,8,0,0,1-7.16-14.32l16-8A8,8,0,0,1,112,120Zm59.16,30.45L152,176h16a8,8,0,0,1,0,16H136a8,8,0,0,1-6.4-12.8l28.78-38.37A8,8,0,1,0,145.07,132a8,8,0,1,1-13.85-8A24,24,0,0,1,176,136,23.76,23.76,0,0,1,171.16,150.45Z"></path>
-                    </svg>
-                  </div>
                   <span className="truncate">Schedule Review</span>
                 </button>
               </div>
@@ -572,7 +802,7 @@ const Learn = () => {
             setIsBulkAnalysis(false);
           }}
           gameData={selectedGame}
-          analysis={sampleAnalysis}
+          analysis={isBulkAnalysis ? gameAnalysis : selectedGame?.analysis}
           isBulkAnalysis={isBulkAnalysis}
         />
       )}

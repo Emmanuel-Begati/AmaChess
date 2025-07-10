@@ -109,44 +109,44 @@ router.post('/', async (req, res) => {
           side: moment.side,
           move: moment.move,
           description: moment.description,
-          evaluation: this.formatEvaluation(moment.evaluation),
+          evaluation: formatEvaluation(moment.evaluation),
           betterMove: moment.betterMove
         })),
         
         // Move quality distribution
         moveAccuracy: {
-          excellent: { 
-            count: analysis.statistics.overallStats.excellent || 0, 
-            percentage: this.calculatePercentage(analysis.statistics.overallStats.excellent || 0, analysis.statistics.totalMoves)
+          excellent: {
+            count: analysis.statistics.overallStats.excellent || 0,
+            percentage: calculatePercentage(analysis.statistics.overallStats.excellent || 0, analysis.statistics.totalMoves)
           },
-          good: { 
-            count: analysis.statistics.overallStats.good || 0, 
-            percentage: this.calculatePercentage(analysis.statistics.overallStats.good || 0, analysis.statistics.totalMoves)
+          good: {
+            count: analysis.statistics.overallStats.good || 0,
+            percentage: calculatePercentage(analysis.statistics.overallStats.good || 0, analysis.statistics.totalMoves)
           },
-          inaccuracies: { 
-            count: analysis.statistics.overallStats.inaccuracies || 0, 
-            percentage: this.calculatePercentage(analysis.statistics.overallStats.inaccuracies || 0, analysis.statistics.totalMoves)
+          inaccuracies: {
+            count: analysis.statistics.overallStats.inaccuracies || 0,
+            percentage: calculatePercentage(analysis.statistics.overallStats.inaccuracies || 0, analysis.statistics.totalMoves)
           },
-          mistakes: { 
-            count: analysis.statistics.overallStats.mistakes || 0, 
-            percentage: this.calculatePercentage(analysis.statistics.overallStats.mistakes || 0, analysis.statistics.totalMoves)
+          mistakes: {
+            count: analysis.statistics.overallStats.mistakes || 0,
+            percentage: calculatePercentage(analysis.statistics.overallStats.mistakes || 0, analysis.statistics.totalMoves)
           },
-          blunders: { 
-            count: analysis.statistics.overallStats.blunders || 0, 
-            percentage: this.calculatePercentage(analysis.statistics.overallStats.blunders || 0, analysis.statistics.totalMoves)
+          blunders: {
+            count: analysis.statistics.overallStats.blunders || 0,
+            percentage: calculatePercentage(analysis.statistics.overallStats.blunders || 0, analysis.statistics.totalMoves)
           }
         },
         
         // Opening analysis
         openingName: analysis.metadata.opening,
-        openingEval: this.formatEvaluation(analysis.phaseAnalysis.opening.moves[0]?.engineEvaluation),
+        openingEval: formatEvaluation(analysis.phaseAnalysis.opening.moves[0]?.engineEvaluation),
         
         // Game result and time analysis
         result: analysis.metadata.result,
         timeControl: analysis.metadata.timeControl,
         
         // Performance rating
-        performanceRating: this.calculatePerformanceRating(analysis.statistics),
+        performanceRating: calculatePerformanceRating(analysis.statistics),
         
         // Analysis metadata
         analysisInfo: {
