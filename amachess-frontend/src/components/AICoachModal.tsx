@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import ChessBoard from './ChessBoard';
+import ChessBoard from './ChessGame';
 import { Chess } from 'chess.js';
 
 const AICoachModal = ({ onClose }) => {

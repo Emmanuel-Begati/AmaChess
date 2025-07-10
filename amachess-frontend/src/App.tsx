@@ -11,11 +11,10 @@ import PuzzleSolver from './pages/PuzzleSolver';
 import Library from './pages/Library';
 import BookReader from './pages/BookReader';
 import Settings from './pages/Settings';
-import ChessBoard from './components/ChessBoard';
+import ChessGame from './components/ChessGame.tsx'
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ProtectedRoute from './components/ProtectedRoute';
-import TestPage from './pages/TestPage';
 import { ChessMove } from './types';
 import './App.css';
 
@@ -126,7 +125,7 @@ function App() {
                         <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">
                           Interactive Chess Game
                         </h1>
-                        <ChessBoard
+                        <ChessGame
                           width={500}
                           position="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
                           onMove={handleMove}

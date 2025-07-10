@@ -1,3 +1,5 @@
+import type { Move } from 'chess.js';
+
 // Common types and interfaces for the AmaChess application
 
 // Auth related types
@@ -158,7 +160,7 @@ export interface PreferencesContextType {
 export interface ChessBoardProps {
   width?: number;
   position: string;
-  onMove?: (move: ChessMove, newFen: string) => void;
+  onMove?: (move: Move, newFen: string) => void;
   interactive?: boolean;
   showNotation?: boolean;
   engineEnabled?: boolean;
