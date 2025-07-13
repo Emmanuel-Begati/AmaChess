@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth');
 const protectedRoutes = require('./routes/protected');
 const lichessRoutes = require('./routes/lichess');
 const analyzeRoutes = require('./routes/analyze');
+const booksRoutes = require('./routes/books');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -25,6 +26,7 @@ app.use('/api/import', importRoutes);
 app.use('/api/test', testRoutes);
 app.use('/api/games', lichessRoutes);
 app.use('/api/analyze', analyzeRoutes);
+app.use('/api/books', booksRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -38,7 +40,8 @@ app.get('/api/health', (req, res) => {
       stockfish: true,
       import: true,
       lichess: true,
-      analysis: true
+      analysis: true,
+      books: true
     }
   });
 });
@@ -52,6 +55,7 @@ app.listen(PORT, () => {
   console.log(`♟️  Stockfish API: http://localhost:${PORT}/api/stockfish`);
   console.log(`🏆 Lichess API: http://localhost:${PORT}/api/games`);
   console.log(`📊 Analysis API: http://localhost:${PORT}/api/analyze`);
+  console.log(`📚 Books API: http://localhost:${PORT}/api/books`);
 });
 
 module.exports = app;
