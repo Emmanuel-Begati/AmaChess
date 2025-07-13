@@ -2,21 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import { booksApiService, Book } from '../services/booksApi';
+import { useAuth } from '../contexts/AuthContext';
 
 const Library = () => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState('All');
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [uploadedBooks, setUploadedBooks] = useState([
-    {
-      id: 1,
-      title: "My Chess Analysis Collection",
-      author: "Personal",
-      cover: "https://lh3.googleusercontent.com/aida-public/AB6AXuAhNa659kTSWrdMrx4Cg3AFY4fVwpPmxArYR8jgncLncxzQPnOto3sNwmNgYFl78be-zxwGZHYrnN73JVMxa3WHoXm3DO2z1WoY42sYwyp8a5iaEjVEZoUYYdrYuEl6kRmsulFWnVuDhlKn6iXYdn0aJSiFqqnIrpRilLuDM5ErDegu3weF7fbs-xFSHGS7eV5TO1jXJO6MuLY1Thwzz1PnHCNqgOx3WoDBva6Mww16cGgFBnZgtaxsyTELhhbBCp4Shl0xEpHc5Rs",
-      uploadDate: "2025-01-15",
-      positions: 45
-    }
-  ]);
+  const [uploadedBooks, setUploadedBooks] = useState<Book[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [uploadForm, setUploadForm] = useState({
+    title: '',
+    author: '',
+    file: null as File | null
+  });
 
   const featuredBooks = [
     {
@@ -61,37 +64,107 @@ const Library = () => {
     }
   ];
 
+  // Load books from backend
+  useEffect(() => {
+    const loadBooks = async () => {
+      if (!isAuthenticated) return;
+      
+      try {
+        setLoading(true);
+        setError(null);
+        const books = await booksApiService.getBooks();
+        setUploadedBooks(books);
+      } catch (err) {
+        console.error('Failed to load books:', err);
+        setError('Failed to load books. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadBooks();
+  }, [isAuthenticated]);
+
   // Authentication check
   useEffect(() => {
-    // In a real app, you'd check for actual authentication token/session
-    // For this demo, we'll simulate checking if user is "logged in"
-    const isAuthenticated = localStorage.getItem('userAuthenticated') === 'true' || 
-                           document.referrer.includes('/dashboard');
-    
     if (!isAuthenticated) {
-      // Set authentication flag for library access
-      localStorage.setItem('userAuthenticated', 'true');
+      const isAuth = localStorage.getItem('userAuthenticated') === 'true' || 
+                     document.referrer.includes('/dashboard');
+      
+      if (!isAuth) {
+        localStorage.setItem('userAuthenticated', 'true');
+      }
     }
-  }, []);
+  }, [isAuthenticated]);
 
-  const handleBookClick = (book) => {
-    // Set authentication flag before navigating to book
+  const handleBookClick = (book: Book | any) => {
     localStorage.setItem('userAuthenticated', 'true');
     navigate(`/library/book/${book.id}`, { state: { book } });
   };
 
-  const handleUploadBook = (file) => {
-    // This would handle the actual file upload in a real implementation
-    const newBook = {
-      id: Date.now(),
-      title: file.name.replace('.pdf', ''),
-      author: "Personal",
-      cover: "https://lh3.googleusercontent.com/aida-public/AB6AXuAhNa659kTSWrdMrx4Cg3AFY4fVwpPmxArYR8jgncLncxzQPnOto3sNwmNgYFl78be-zxwGZHYrnN73JVMxa3WHoXm3DO2z1WoY42sYwyp8a5iaEjVEZoUYYdrYuEl6kRmsulFWnVuDhlKn6iXYdn0aJSiFqqnIrpRilLuDM5ErDegu3weF7fbs-xFSHGS7eV5TO1jXJO6MuLY1Thwzz1PnHCNqgOx3WoDBva6Mww16cGgFBnZgtaxsyTELhhbBCp4Shl0xEpHc5Rs",
-      uploadDate: new Date().toISOString().split('T')[0],
-      positions: Math.floor(Math.random() * 100) + 20
-    };
-    setUploadedBooks([...uploadedBooks, newBook]);
-    setShowUploadModal(false);
+  const handleUploadBook = async () => {
+    if (!uploadForm.file || !uploadForm.title.trim() || !uploadForm.author.trim()) {
+      setError('Please fill in all fields and select a file');
+      return;
+    }
+    
+    // Check file size before uploading
+    const maxSize = 50 * 1024 * 1024; // 50MB
+    if (uploadForm.file.size > maxSize) {
+      setError('File is too large. Please choose a PDF file smaller than 50MB.');
+      return;
+    }
+    
+    try {
+      setUploading(true);
+      setError(null);
+      
+      console.log(`Uploading file: ${uploadForm.file.name}, Size: ${uploadForm.file.size} bytes`);
+      
+      const uploadedBook = await booksApiService.uploadBook(uploadForm.file, uploadForm.title, uploadForm.author);
+      
+      console.log('Upload successful:', uploadedBook);
+      
+      setUploadedBooks(prev => [...prev, uploadedBook]);
+      setShowUploadModal(false);
+      setUploadForm({ title: '', author: '', file: null });
+      
+      // Show success message
+      setError(null);
+      
+    } catch (err: any) {
+      console.error('Upload failed:', err);
+      
+      // Display the specific error message from the service
+      setError(err.message || 'Failed to upload book. Please try again.');
+      
+      // Don't close the modal on error so user can try again
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+    
+    if (!query.trim()) {
+      // Reload all books if search is cleared
+      try {
+        const books = await booksApiService.getBooks();
+        setUploadedBooks(books);
+      } catch (err) {
+        console.error('Failed to reload books:', err);
+      }
+      return;
+    }
+
+    try {
+      const searchResults = await booksApiService.searchBooks(query);
+      setUploadedBooks(searchResults);
+    } catch (err) {
+      console.error('Search failed:', err);
+      setError('Search failed. Please try again.');
+    }
   };
 
   const getFilteredBooks = () => {
@@ -110,6 +183,19 @@ const Library = () => {
   return (
     <div className="min-h-screen bg-[#121621] dark group/design-root flex flex-col" style={{fontFamily: 'Lexend, "Noto Sans", sans-serif'}}>
       <Header />
+      
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-600 text-white p-4 text-center">
+          {error}
+          <button 
+            onClick={() => setError(null)}
+            className="ml-4 underline hover:no-underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       
       {/* Main Content Container - Fully Responsive */}
       <main className="flex-1 w-full">
@@ -130,12 +216,25 @@ const Library = () => {
               <div className="flex-shrink-0">
                 <button
                   onClick={() => setShowUploadModal(true)}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 sm:px-6 lg:px-8 py-3 lg:py-4 bg-gradient-to-r from-blue-800 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-600 transition-all duration-300 hover:scale-105 text-sm sm:text-base lg:text-lg font-medium"
+                  disabled={uploading}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 sm:px-6 lg:px-8 py-3 lg:py-4 bg-gradient-to-r from-blue-800 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-600 transition-all duration-300 hover:scale-105 text-sm sm:text-base lg:text-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Upload Book
+                  {uploading ? (
+                    <>
+                      <svg className="animate-spin w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Upload Book
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -151,6 +250,8 @@ const Library = () => {
                 <input
                   type="text"
                   placeholder="Search for books, authors, or topics"
+                  value={searchQuery}
+                  onChange={(e) => handleSearch(e.target.value)}
                   className="w-full h-12 sm:h-14 lg:h-16 pl-10 sm:pl-12 pr-4 sm:pr-6 bg-[#272e45] border-0 rounded-lg text-white placeholder:text-[#97a1c4] focus:outline-none focus:ring-2 focus:ring-blue-800 text-sm sm:text-base lg:text-lg"
                 />
               </div>
@@ -178,9 +279,17 @@ const Library = () => {
                 </div>
               </div>
             </div>
+
+            {/* Loading State */}
+            {loading && (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-800"></div>
+                <span className="ml-4 text-[#97a1c4]">Loading books...</span>
+              </div>
+            )}
             
             {/* My Library Section - Responsive Grid */}
-            {activeTab === 'My Library' && uploadedBooks.length > 0 && (
+            {!loading && (activeTab === 'My Library' || activeTab === 'All') && uploadedBooks.length > 0 && (
               <section className="mb-8 lg:mb-12">
                 <h2 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-white mb-4 lg:mb-6">
                   My Uploaded Books
@@ -194,18 +303,21 @@ const Library = () => {
                     >
                       <div className="bg-[#1a1f2e] rounded-lg p-2 sm:p-3 lg:p-4 border border-[#374162] hover:border-blue-800/50 transition-all duration-300">
                         <div
-                          className="w-full aspect-[3/4] bg-cover bg-center bg-no-repeat rounded-md mb-2 sm:mb-3 group-hover:shadow-lg transition-shadow duration-300"
-                          style={{backgroundImage: `url("${book.cover}")`}}
-                        />
+                          className="w-full aspect-[3/4] bg-cover bg-center bg-no-repeat rounded-md mb-2 sm:mb-3 group-hover:shadow-lg transition-shadow duration-300 bg-gradient-to-br from-blue-800 to-blue-900 flex items-center justify-center"
+                        >
+                          <svg className="w-8 h-8 text-white opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                          </svg>
+                        </div>
                         <div className="space-y-1">
                           <h3 className="text-white text-xs sm:text-sm lg:text-base font-medium line-clamp-2 group-hover:text-blue-400 transition-colors">
                             {book.title}
                           </h3>
                           <p className="text-[#97a1c4] text-xs lg:text-sm truncate">
-                            {book.author}
+                            {book.author || 'Unknown Author'}
                           </p>
                           <p className="text-[#97a1c4] text-xs">
-                            {book.positions} positions
+                            {book.totalPositions || 0} positions
                           </p>
                         </div>
                       </div>
@@ -215,8 +327,27 @@ const Library = () => {
               </section>
             )}
 
+            {/* Empty State for My Library */}
+            {!loading && (activeTab === 'My Library') && uploadedBooks.length === 0 && (
+              <section className="mb-8 lg:mb-12">
+                <div className="text-center py-12">
+                  <svg className="w-16 h-16 text-[#97a1c4] mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                  <h3 className="text-xl font-bold text-white mb-2">No books uploaded yet</h3>
+                  <p className="text-[#97a1c4] mb-4">Upload your first chess book to get started</p>
+                  <button
+                    onClick={() => setShowUploadModal(true)}
+                    className="px-6 py-3 bg-blue-800 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Upload Book
+                  </button>
+                </div>
+              </section>
+            )}
+
             {/* Featured Books - Horizontal Scroll */}
-            {(activeTab === 'All' || activeTab === 'Featured') && (
+            {!loading && (activeTab === 'All' || activeTab === 'Featured') && (
               <section className="mb-8 lg:mb-12">
                 <h2 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-white mb-4 lg:mb-6">
                   Featured Books
@@ -256,7 +387,7 @@ const Library = () => {
             )}
 
             {/* Community Favorites - Responsive Grid */}
-            {(activeTab === 'All' || activeTab === 'Popular') && (
+            {!loading && (activeTab === 'All' || activeTab === 'Popular') && (
               <section className="mb-8 lg:mb-12">
                 <h2 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-white mb-4 lg:mb-6">
                   Community Favorites
@@ -306,8 +437,13 @@ const Library = () => {
                   <div className="flex items-center justify-between mb-4 sm:mb-6">
                     <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-white">Upload Chess Book</h3>
                     <button
-                      onClick={() => setShowUploadModal(false)}
-                      className="text-[#97a1c4] hover:text-white transition-colors p-1"
+                      onClick={() => {
+                        setShowUploadModal(false);
+                        setUploadForm({ title: '', author: '', file: null });
+                        setError(null); // Clear error when closing
+                      }}
+                      disabled={uploading}
+                      className="text-[#97a1c4] hover:text-white transition-colors p-1 disabled:opacity-50"
                     >
                       <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -315,26 +451,119 @@ const Library = () => {
                     </button>
                   </div>
                   
-                  <div className="border-2 border-dashed border-[#374162] rounded-lg p-6 sm:p-8 lg:p-12 text-center hover:border-blue-800/50 transition-colors">
-                    <svg className="w-10 h-10 sm:w-12 sm:h-12 lg:w-16 lg:h-16 text-[#97a1c4] mx-auto mb-3 sm:mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {/* Error Display */}
+                  {error && (
+                    <div className="mb-4 p-3 bg-red-600/20 border border-red-600/30 rounded-lg">
+                      <p className="text-red-400 text-sm">{error}</p>
+                    </div>
+                  )}
+                  
+                  {/* Form Fields */}
+                  <div className="space-y-4 mb-6">
+                    <div>
+                      <label className="block text-white text-sm font-medium mb-2">Book Title</label>
+                      <input
+                        type="text"
+                        value={uploadForm.title}
+                        onChange={(e) => setUploadForm(prev => ({ ...prev, title: e.target.value }))}
+                        className="w-full px-3 py-2 bg-[#272e45] border border-[#374162] rounded-lg text-white focus:outline-none focus:border-blue-800"
+                        placeholder="Enter book title"
+                        disabled={uploading}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-white text-sm font-medium mb-2">Author</label>
+                      <input
+                        type="text"
+                        value={uploadForm.author}
+                        onChange={(e) => setUploadForm(prev => ({ ...prev, author: e.target.value }))}
+                        className="w-full px-3 py-2 bg-[#272e45] border border-[#374162] rounded-lg text-white focus:outline-none focus:border-blue-800"
+                        placeholder="Enter author name"
+                        disabled={uploading}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="border-2 border-dashed border-[#374162] rounded-lg p-6 sm:p-8 text-center hover:border-blue-800/50 transition-colors">
+                    <svg className="w-10 h-10 sm:w-12 sm:h-12 text-[#97a1c4] mx-auto mb-3 sm:mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
-                    <p className="text-white font-medium mb-2 text-sm sm:text-base lg:text-lg">Drag and drop your chess book</p>
-                    <p className="text-[#97a1c4] text-xs sm:text-sm lg:text-base mb-4 sm:mb-6">or click to browse files</p>
-                    <input
-                      type="file"
-                      accept=".pdf,.epub,.mobi"
-                      onChange={(e) => e.target.files[0] && handleUploadBook(e.target.files[0])}
-                      className="hidden"
-                      id="file-upload"
-                    />
-                    <label
-                      htmlFor="file-upload"
-                      className="inline-flex items-center px-4 sm:px-6 lg:px-8 py-2 sm:py-3 lg:py-4 bg-blue-800 text-white rounded-lg hover:bg-blue-700 transition-all duration-300 cursor-pointer text-sm sm:text-base lg:text-lg font-medium hover:scale-105"
+                    {uploadForm.file ? (
+                      <div>
+                        <p className="text-white font-medium mb-2">Selected: {uploadForm.file.name}</p>
+                        <p className="text-[#97a1c4] text-sm mb-2">
+                          Size: {(uploadForm.file.size / (1024 * 1024)).toFixed(1)} MB
+                        </p>
+                        <button
+                          onClick={() => setUploadForm(prev => ({ ...prev, file: null }))}
+                          className="text-[#97a1c4] hover:text-white text-sm"
+                          disabled={uploading}
+                        >
+                          Choose different file
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-white font-medium mb-2 text-sm sm:text-base">
+                          {uploading ? 'Uploading and processing...' : 'Select your chess book PDF'}
+                        </p>
+                        <p className="text-[#97a1c4] text-xs sm:text-sm mb-4">
+                          PDF format only • Max 50MB
+                        </p>
+                        <input
+                          type="file"
+                          accept=".pdf"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setError(null); // Clear any previous errors
+                              setUploadForm(prev => ({ ...prev, file }));
+                            }
+                          }}
+                          className="hidden"
+                          id="file-upload"
+                          disabled={uploading}
+                        />
+                        <label
+                          htmlFor="file-upload"
+                          className={`inline-flex items-center px-4 sm:px-6 py-2 sm:py-3 bg-[#374162] text-white rounded-lg hover:bg-[#455173] transition-all duration-300 cursor-pointer text-sm sm:text-base font-medium ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                          Choose PDF File
+                        </label>
+                      </div>
+                    )}
+                    {uploading && (
+                      <div className="mt-4">
+                        <div className="bg-[#374162] rounded-full h-2">
+                          <div className="bg-blue-800 h-2 rounded-full animate-pulse" style={{width: '60%'}}></div>
+                        </div>
+                        <p className="text-[#97a1c4] text-sm mt-2">
+                          Processing may take up to 2 minutes for large files...
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Upload Button */}
+                  <div className="mt-6 flex gap-3">
+                    <button
+                      onClick={() => {
+                        setShowUploadModal(false);
+                        setUploadForm({ title: '', author: '', file: null });
+                        setError(null);
+                      }}
+                      disabled={uploading}
+                      className="flex-1 px-4 py-2 bg-[#374162] text-white rounded-lg hover:bg-[#455173] transition-colors disabled:opacity-50"
                     >
-                      Choose File
-                    </label>
-                    <p className="text-[#97a1c4] text-xs sm:text-sm mt-3 sm:mt-4">Supports PDF, EPUB, MOBI formats</p>
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleUploadBook}
+                      disabled={uploading || !uploadForm.file || !uploadForm.title.trim() || !uploadForm.author.trim()}
+                      className="flex-1 px-4 py-2 bg-blue-800 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {uploading ? 'Processing...' : 'Upload Book'}
+                    </button>
                   </div>
                 </div>
               </div>

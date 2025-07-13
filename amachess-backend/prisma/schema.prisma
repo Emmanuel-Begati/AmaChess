@@ -19,6 +19,32 @@ model User {
   fideRating      String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  books           Book[]
 
   @@map("users")
+}
+
+model Book {
+  id               String    @id @default(cuid())
+  title            String
+  author           String
+  originalFileName String?
+  content          String // JSON string containing parsed content
+  totalPages       Int       @default(0)
+  currentPage      Int       @default(0)
+  currentChapter   Int       @default(0)
+  readingProgress  Float     @default(0.0)
+  notes            String? // JSON string containing user notes
+  diagramMap       String? // JSON string containing chess diagrams
+  pdfPath          String? // Path to the original PDF file
+  status           String    @default("processed") // processed, processing, error
+  type             String    @default("PDF") // PDF, EPUB, etc.
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastReadAt       DateTime?
+  processedAt      DateTime  @default(now())
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("books")
 }

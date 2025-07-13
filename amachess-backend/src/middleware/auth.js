@@ -29,6 +29,7 @@ const authenticateToken = async (req, res, next) => {
     }
 
     req.user = user;
+    req.userId = user.id; // Add userId for compatibility
     next();
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
