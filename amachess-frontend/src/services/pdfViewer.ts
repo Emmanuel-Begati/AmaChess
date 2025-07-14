@@ -1,7 +1,26 @@
 import { pdfjs } from 'react-pdf';
 
-// Configure PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+// Configure PDF.js worker to use local file or disable worker entirely
+const configurePDFWorker = () => {
+  console.log('PDF.js version:', pdfjs.version);
+  
+  try {
+    // Try to use local worker file first
+    pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+    console.log('Worker configured to use local file: /pdf.worker.min.js');
+  } catch (error) {
+    console.error('Failed to configure local worker:', error);
+    try {
+      // Fallback: disable worker completely (use main thread)
+      pdfjs.GlobalWorkerOptions.workerSrc = '';
+      console.log('Worker disabled, using main thread');
+    } catch (fallbackError) {
+      console.error('Failed to disable worker:', fallbackError);
+    }
+  }
+};
+
+configurePDFWorker();
 
 export interface PDFViewerConfig {
   scale: number;

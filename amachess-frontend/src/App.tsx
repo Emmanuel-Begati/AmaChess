@@ -109,6 +109,7 @@ function App() {
                 <Route path="/puzzles" element={<Puzzles />} />
                 <Route path="/puzzle-solver" element={<PuzzleSolver />} />
                 <Route path="/library" element={<Library />} />
+                <Route path="/book" element={<BookReader />} />
                 <Route path="/library/book/:bookId" element={<BookReader />} />
                 <Route path="/settings" element={
                   <ProtectedRoute>

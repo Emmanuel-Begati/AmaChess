@@ -20,6 +20,11 @@ const Library = () => {
     author: '',
     file: null as File | null
   });
+  const [deleteModal, setDeleteModal] = useState<{show: boolean, book: Book | null}>({
+    show: false,
+    book: null
+  });
+  const [deleting, setDeleting] = useState(false);
 
   const featuredBooks = [
     {
@@ -119,28 +124,64 @@ const Library = () => {
       setUploading(true);
       setError(null);
       
-      console.log(`Uploading file: ${uploadForm.file.name}, Size: ${uploadForm.file.size} bytes`);
+      console.log(`Uploading PDF file: ${uploadForm.file.name}, Size: ${uploadForm.file.size} bytes`);
       
       const uploadedBook = await booksApiService.uploadBook(uploadForm.file, uploadForm.title, uploadForm.author);
       
-      console.log('Upload successful:', uploadedBook);
+      console.log('PDF upload successful:', uploadedBook);
       
       setUploadedBooks(prev => [...prev, uploadedBook]);
       setShowUploadModal(false);
       setUploadForm({ title: '', author: '', file: null });
       
-      // Show success message
+      // Show success message briefly
       setError(null);
       
     } catch (err: any) {
       console.error('Upload failed:', err);
-      
-      // Display the specific error message from the service
-      setError(err.message || 'Failed to upload book. Please try again.');
-      
-      // Don't close the modal on error so user can try again
+      setError(err.message || 'Failed to upload PDF. Please try again.');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleDeleteBook = async (book: Book) => {
+    if (!book.id) {
+      setError('Cannot delete book: Invalid book ID');
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      setError(null);
+      
+      console.log(`Deleting book: ${book.title} (ID: ${book.id})`);
+      
+      await booksApiService.deleteBook(book.id);
+      
+      // Remove book from state
+      setUploadedBooks(prev => prev.filter(b => b.id !== book.id));
+      
+      // Close modal
+      setDeleteModal({ show: false, book: null });
+      
+      console.log('Book deleted successfully');
+      
+    } catch (err: any) {
+      console.error('Delete failed:', err);
+      setError(err.message || 'Failed to delete book. Please try again.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const openDeleteModal = (book: Book) => {
+    setDeleteModal({ show: true, book });
+  };
+
+  const closeDeleteModal = () => {
+    if (!deleting) {
+      setDeleteModal({ show: false, book: null });
     }
   };
 
@@ -298,27 +339,46 @@ const Library = () => {
                   {uploadedBooks.map((book) => (
                     <div 
                       key={book.id} 
-                      className="group cursor-pointer transition-all duration-300 hover:scale-105" 
-                      onClick={() => handleBookClick(book)}
+                      className="group transition-all duration-300 hover:scale-105" 
                     >
-                      <div className="bg-[#1a1f2e] rounded-lg p-2 sm:p-3 lg:p-4 border border-[#374162] hover:border-blue-800/50 transition-all duration-300">
-                        <div
-                          className="w-full aspect-[3/4] bg-cover bg-center bg-no-repeat rounded-md mb-2 sm:mb-3 group-hover:shadow-lg transition-shadow duration-300 bg-gradient-to-br from-blue-800 to-blue-900 flex items-center justify-center"
+                      <div className="bg-[#1a1f2e] rounded-lg p-2 sm:p-3 lg:p-4 border border-[#374162] hover:border-blue-800/50 transition-all duration-300 relative">
+                        {/* Delete Button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openDeleteModal(book);
+                          }}
+                          className="absolute top-1 sm:top-2 right-1 sm:right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-red-600 hover:bg-red-700 text-white rounded-full p-1 sm:p-1.5 z-10"
+                          title="Delete book"
                         >
-                          <svg className="w-8 h-8 text-white opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                          <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                           </svg>
-                        </div>
-                        <div className="space-y-1">
-                          <h3 className="text-white text-xs sm:text-sm lg:text-base font-medium line-clamp-2 group-hover:text-blue-400 transition-colors">
-                            {book.title}
-                          </h3>
-                          <p className="text-[#97a1c4] text-xs lg:text-sm truncate">
-                            {book.author || 'Unknown Author'}
-                          </p>
-                          <p className="text-[#97a1c4] text-xs">
-                            {book.totalPositions || 0} positions
-                          </p>
+                        </button>
+
+                        {/* Book Content - clickable */}
+                        <div 
+                          className="cursor-pointer"
+                          onClick={() => handleBookClick(book)}
+                        >
+                          <div
+                            className="w-full aspect-[3/4] bg-cover bg-center bg-no-repeat rounded-md mb-2 sm:mb-3 group-hover:shadow-lg transition-shadow duration-300 bg-gradient-to-br from-blue-800 to-blue-900 flex items-center justify-center"
+                          >
+                            <svg className="w-8 h-8 text-white opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                            </svg>
+                          </div>
+                          <div className="space-y-1">
+                            <h3 className="text-white text-xs sm:text-sm lg:text-base font-medium line-clamp-2 group-hover:text-blue-400 transition-colors">
+                              {book.title}
+                            </h3>
+                            <p className="text-[#97a1c4] text-xs lg:text-sm truncate">
+                              {book.author || 'Unknown Author'}
+                            </p>
+                            <p className="text-[#97a1c4] text-xs">
+                              {book.totalPositions || 0} positions
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -563,6 +623,66 @@ const Library = () => {
                       className="flex-1 px-4 py-2 bg-blue-800 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {uploading ? 'Processing...' : 'Upload Book'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {deleteModal.show && deleteModal.book && (
+              <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <div className="bg-[#121621] rounded-xl w-full max-w-md mx-4 p-4 sm:p-6 border border-[#374162]">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg sm:text-xl font-bold text-white">Delete Book</h3>
+                    <button
+                      onClick={closeDeleteModal}
+                      disabled={deleting}
+                      className="text-[#97a1c4] hover:text-white transition-colors p-1 disabled:opacity-50"
+                    >
+                      <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  
+                  <div className="mb-6">
+                    <p className="text-white mb-2">
+                      Are you sure you want to delete this book?
+                    </p>
+                    <div className="bg-[#272e45] rounded-lg p-3 mb-4">
+                      <h4 className="text-white font-medium">{deleteModal.book.title}</h4>
+                      <p className="text-[#97a1c4] text-sm">by {deleteModal.book.author}</p>
+                    </div>
+                    <p className="text-red-400 text-sm">
+                      ⚠️ This action cannot be undone. The PDF file and all associated data will be permanently deleted.
+                    </p>
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <button
+                      onClick={closeDeleteModal}
+                      disabled={deleting}
+                      className="flex-1 px-4 py-2 bg-[#374162] text-white rounded-lg hover:bg-[#455173] transition-colors disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => handleDeleteBook(deleteModal.book!)}
+                      disabled={deleting}
+                      className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {deleting ? (
+                        <>
+                          <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Deleting...
+                        </>
+                      ) : (
+                        'Delete Book'
+                      )}
                     </button>
                   </div>
                 </div>
