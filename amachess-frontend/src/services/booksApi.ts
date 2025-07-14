@@ -169,16 +169,18 @@ export class BooksApiService {
         const { status, data } = error.response;
         
         switch (status) {
+          case 400:
+            throw new Error(data.error || 'Invalid file or missing information');
           case 413:
             throw new Error('File is too large. Please choose a PDF file smaller than 50MB.');
-          case 422:
-            throw new Error(data.error || 'The PDF file could not be processed. Please ensure it contains extractable text (not just scanned images).');
+          case 415:
+            throw new Error('Only PDF files are allowed. Please select a valid PDF file.');
           case 507:
             throw new Error('Server storage is full. Please try again later.');
           case 503:
             throw new Error('Server is busy. Please wait a moment and try again.');
           case 500:
-            throw new Error(data.error || 'Failed to process PDF. This may be due to file corruption or unsupported format.');
+            throw new Error('Failed to upload PDF. Please try again.');
           default:
             throw new Error(data.error || 'Upload failed. Please try again.');
         }
@@ -293,8 +295,16 @@ export class BooksApiService {
   // Get PDF URL for viewing
   async getPDFUrl(bookId: string): Promise<string> {
     try {
-      // Return the URL to serve the PDF file
-      return `${API_BASE_URL}/books/${bookId}/pdf`;
+      // Fetch the PDF as a blob with authentication headers
+      const response = await booksApi.get(`/${bookId}/pdf`, {
+        responseType: 'blob'
+      });
+      
+      // Create a local URL for the PDF blob
+      const pdfBlob = new Blob([response.data], { type: 'application/pdf' });
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      
+      return pdfUrl;
     } catch (error) {
       console.error('Error getting PDF URL:', error);
       throw new Error('Failed to get PDF URL');

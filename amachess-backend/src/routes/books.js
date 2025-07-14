@@ -66,12 +66,12 @@ router.post('/upload', authenticateToken, upload.single('pdf'), async (req, res)
       pdfPath = path.join(uploadsDir, pdfFileName);
       await fs.writeFile(pdfPath, req.file.buffer);
 
-      console.log('PDF file saved, starting parsing...');
+      console.log('PDF file saved, getting basic info...');
 
-      // Parse PDF content - this now handles errors gracefully
+      // Get basic PDF info (page count, etc.) - no text extraction
       parsedContent = await pdfParsingService.parsePDF(req.file.buffer, req.file.originalname);
 
-      console.log('PDF parsing completed, saving to database...');
+      console.log('PDF info extracted, saving to database...');
 
       // Save to database
       book = await prisma.book.create({
@@ -80,49 +80,40 @@ router.post('/upload', authenticateToken, upload.single('pdf'), async (req, res)
           author: author,
           originalFileName: req.file.originalname,
           content: JSON.stringify(parsedContent),
-          totalPages: parsedContent.chunks ? parsedContent.chunks.length : 1,
+          totalPages: parsedContent.metadata?.totalPages || 1,
           pdfPath: pdfPath,
           type: 'PDF',
-          status: parsedContent.metadata?.hasParsingErrors ? 'processed_with_errors' : 'processed',
+          status: 'processed',
           userId: req.userId,
           diagramMap: JSON.stringify({
-            positions: parsedContent.positions || [],
-            diagrams: parsedContent.diagrams || [],
-            exercises: parsedContent.exercises || []
+            positions: [],
+            diagrams: [],
+            exercises: []
           })
         }
       });
 
       console.log(`Book saved to database with ID: ${book.id}`);
 
-      // Prepare response with appropriate status
+      // Simple success response
       const response = {
         success: true,
+        message: 'PDF uploaded successfully and ready for viewing',
         book: {
           id: book.id,
           title: book.title,
           author: book.author,
           totalPages: book.totalPages,
-          totalChapters: parsedContent.chapters ? parsedContent.chapters.length : 0,
-          totalPositions: parsedContent.positions ? parsedContent.positions.length : 0,
-          totalExercises: parsedContent.exercises ? parsedContent.exercises.length : 0,
-          totalDiagrams: parsedContent.diagrams ? parsedContent.diagrams.length : 0,
+          totalChapters: 0,
+          totalPositions: 0,
+          totalExercises: 0,
+          totalDiagrams: 0,
           processedAt: book.processedAt,
-          status: book.status
+          status: book.status,
+          originalFileName: book.originalFileName,
+          hasPDF: true
         }
       };
-
-      // Add processing warnings if there were issues
-      if (parsedContent.metadata?.hasParsingErrors) {
-        response.warning = 'PDF was processed but some content extraction issues were encountered. The book is still readable but some features may be limited.';
-        response.processingDetails = {
-          extractionMethod: parsedContent.metadata.extractionMethod,
-          extractionSuccess: parsedContent.metadata.extractionSuccess,
-          errorMessage: parsedContent.metadata.errorMessage
-        };
-      } else {
-        response.message = 'PDF uploaded and parsed successfully';
-      }
 
       res.json(response);
 
@@ -140,35 +131,30 @@ router.post('/upload', authenticateToken, upload.single('pdf'), async (req, res)
 
       res.status(500).json({
         success: false,
-        error: 'Failed to save book to database: ' + dbError.message
+        error: 'Failed to save book to database'
       });
     }
 
   } catch (error) {
     console.error('PDF upload error:', error);
     
-    // Provide specific error messages based on error type
-    let errorMessage = 'An unexpected error occurred while processing your PDF';
+    let errorMessage = 'Failed to upload PDF file';
     let statusCode = 500;
 
-    if (error.message.includes('pdf-parse')) {
-      errorMessage = 'The PDF file could not be read. Please ensure it\'s a valid PDF with extractable text (not a scanned image).';
-      statusCode = 422;
-    } else if (error.message.includes('memory') || error.message.includes('Memory')) {
-      errorMessage = 'The PDF file is too large or complex to process. Please try a smaller file or contact support.';
+    if (error.message.includes('Only PDF files are allowed')) {
+      errorMessage = 'Only PDF files are allowed';
+      statusCode = 400;
+    } else if (error.code === 'LIMIT_FILE_SIZE') {
+      errorMessage = 'File is too large. Maximum size is 50MB';
       statusCode = 413;
     } else if (error.code === 'ENOSPC') {
-      errorMessage = 'Server storage is full. Please try again later or contact support.';
+      errorMessage = 'Server storage is full. Please try again later';
       statusCode = 507;
-    } else if (error.code === 'EMFILE' || error.code === 'ENFILE') {
-      errorMessage = 'Server is busy processing other files. Please try again in a moment.';
-      statusCode = 503;
     }
 
     res.status(statusCode).json({
       success: false,
-      error: errorMessage,
-      technicalDetails: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: errorMessage
     });
   }
 });
@@ -977,6 +963,17 @@ router.get('/:bookId/pdf-status', authenticateToken, async (req, res) => {
       success: false,
       error: 'Failed to check PDF status'
     });
+// Helper function to check if file exists
+async function fileExists(filePath) {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+module.exports = router;
   }
 });
 
