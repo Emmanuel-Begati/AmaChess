@@ -1,6 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const puzzleService = require('../services/puzzleService');
+const puzzleService = require('../services/puzzleService'); // Legacy CSV service
+const databasePuzzleService = require('../services/databasePuzzleService'); // New database service
+const auth = require('../middleware/auth'); // For protected routes
+
+// Choose which service to use based on environment or preference
+const USE_DATABASE = process.env.USE_DATABASE_PUZZLES === 'true' || true; // Default to database
+const activePuzzleService = USE_DATABASE ? databasePuzzleService : puzzleService;
 
 // Get a random puzzle with optional filters
 router.get('/random', async (req, res) => {
@@ -19,7 +25,7 @@ router.get('/random', async (req, res) => {
     if (themes) filters.themes = Array.isArray(themes) ? themes : themes.split(',');
     if (difficulty) filters.difficulty = difficulty;
 
-    const puzzle = await puzzleService.getRandomPuzzle(filters);
+    const puzzle = await activePuzzleService.getRandomPuzzle(filters);
     
     res.json({
       success: true,
