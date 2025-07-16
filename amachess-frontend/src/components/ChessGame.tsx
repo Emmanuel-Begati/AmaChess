@@ -1,10 +1,35 @@
-import React from 'react';
-import { Chessboard } from 'react-chessboard';
+import React, { useRef, useState, useEffect } from 'react';
+import ChessBoard, { ChessBoardRef } from './ChessBoard';
 import { useChessGame } from '../hooks/useChessGame';
-import type { GameDifficulty } from '../types/chess';
+import { stockfishAPI } from '../utils/stockfish';
 import './ChessGame.css';
 
-const ChessGame: React.FC = () => {
+// Define the type locally to avoid import issues
+type GameDifficulty = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+
+interface ChessGameProps {
+  isModalMode?: boolean;
+  position?: string;
+  onMove?: (move: { from: string; to: string; san?: string }) => boolean | void;
+  interactive?: boolean;
+  showNotation?: boolean;
+  engineEnabled?: boolean;
+  orientation?: 'white' | 'black';
+}
+
+const ChessGame: React.FC<ChessGameProps> = ({
+  isModalMode = false,
+  position: externalPosition,
+  onMove: externalOnMove,
+  interactive = true,
+  showNotation = false,
+  engineEnabled = true,
+  orientation = 'white'
+}) => {
+  const chessBoardRef = useRef<ChessBoardRef>(null);
+  const [evaluation, setEvaluation] = useState<{ value: number; type: 'centipawns' | 'mate' } | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  
   const {
     gameState,
     difficulty,
@@ -14,13 +39,62 @@ const ChessGame: React.FC = () => {
     changeDifficulty,
   } = useChessGame();
 
-  const onPieceDrop = ({ sourceSquare, targetSquare }: any) => {
+  // Use external position if provided, otherwise use game state
+  const currentPosition = externalPosition || gameState.position;
+  const moveHistory = gameState.moveHistory;
+
+  // Get position evaluation from Stockfish
+  useEffect(() => {
+    if (!engineEnabled) return;
+    
+    const getEvaluation = async () => {
+      if (gameState.isGameOver || isThinking || isAnalyzing) return;
+      
+      setIsAnalyzing(true);
+      try {
+        const result = await stockfishAPI.evaluatePosition(currentPosition, 12);
+        if (result.evaluation) {
+          setEvaluation({
+            value: result.evaluation.value,
+            type: result.evaluation.type === 'mate' ? 'mate' : 'centipawns'
+          });
+        }
+      } catch (error) {
+        console.log('Could not get evaluation:', error);
+      } finally {
+        setIsAnalyzing(false);
+      }
+    };
+
+    // Debounce evaluation requests
+    const timeoutId = setTimeout(getEvaluation, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [currentPosition, gameState.isGameOver, isThinking, isAnalyzing, engineEnabled]);
+
+  const handleMove = ({ sourceSquare, targetSquare }: { sourceSquare: string; targetSquare: string; piece: string }) => {
+    // If external move handler is provided, use it
+    if (externalOnMove) {
+      const moveObj = { from: sourceSquare, to: targetSquare };
+      const result = externalOnMove(moveObj);
+      
+      // If the external handler returns a boolean, use it; if void, default to true (legacy behavior)
+      return result !== false;
+    }
+
     // Only allow moves when it's the player's turn and not thinking
     if (!gameState.isPlayerTurn || isThinking || gameState.isGameOver || !targetSquare) {
       return false;
     }
     
-    return makePlayerMove(sourceSquare, targetSquare);
+    const success = makePlayerMove(sourceSquare, targetSquare);
+    
+    // Play move sound if successful (remove the audio for now to avoid 416 error)
+    if (success) {
+      // Audio removed to avoid console errors
+      console.log('Move sound would play here');
+    }
+    
+    return success;
   };
 
   const getGameStatusMessage = () => {
@@ -46,6 +120,47 @@ const ChessGame: React.FC = () => {
 
   const difficultyOptions: GameDifficulty[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
+  // Modal mode renders a compact version
+  if (isModalMode) {
+    return (
+      <div className="chess-game-modal">
+        <div className="modal-game-layout">
+          <div className="modal-chessboard-container">
+            <ChessBoard
+              ref={chessBoardRef}
+              position={currentPosition}
+              onMove={handleMove}
+              orientation={orientation}
+              disabled={!interactive}
+              animationDuration={200}
+              highlightLastMove={true}
+              showCoordinates={false}
+              showEvaluation={false}
+            />
+          </div>
+          
+          {showNotation && moveHistory.length > 0 && (
+            <div className="modal-move-history">
+              <div className="modal-moves">
+                {moveHistory.slice(-6).map((move: string, index: number) => {
+                  const actualIndex = moveHistory.length - 6 + index;
+                  return (
+                    <span key={actualIndex} className="modal-move">
+                      {actualIndex % 2 === 0 && `${Math.floor(actualIndex / 2) + 1}. `}
+                      {move}
+                      {actualIndex % 2 === 1 ? ' ' : ' '}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Regular full-page mode
   return (
     <div className="chess-game">
       <div className="game-header">
@@ -81,21 +196,25 @@ const ChessGame: React.FC = () => {
       </div>
 
       <div className="chessboard-container">
-        <Chessboard
-          options={{
-            position: gameState.position,
-            onPieceDrop,
-            boardOrientation: "white",
-            animationDurationInMs: 200,
-          }}
+        <ChessBoard
+          ref={chessBoardRef}
+          position={currentPosition}
+          onMove={handleMove}
+          orientation={orientation}
+          disabled={!gameState.isPlayerTurn || isThinking || gameState.isGameOver}
+          animationDuration={200}
+          highlightLastMove={true}
+          showCoordinates={true}
+          showEvaluation={true}
+          evaluation={evaluation}
         />
       </div>
 
-      {gameState.moveHistory.length > 0 && (
+      {moveHistory.length > 0 && (
         <div className="move-history">
           <h3>Move History</h3>
           <div className="moves">
-            {gameState.moveHistory.map((move, index) => (
+            {moveHistory.map((move: string, index: number) => (
               <span key={index} className="move">
                 {index % 2 === 0 && `${Math.floor(index / 2) + 1}. `}
                 {move}
@@ -110,3 +229,4 @@ const ChessGame: React.FC = () => {
 };
 
 export default ChessGame;
+

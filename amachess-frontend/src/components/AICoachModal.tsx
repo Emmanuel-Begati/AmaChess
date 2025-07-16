@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import ChessBoard from './ChessGame';
+import ChessGame from './ChessGame';
 import { Chess } from 'chess.js';
 
 const AICoachModal = ({ onClose }) => {
@@ -10,6 +10,8 @@ const AICoachModal = ({ onClose }) => {
   const [coachMessage, setCoachMessage] = useState("Welcome! Let's start with a training game. I'll guide you through important concepts as we play.");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiMoveHistory, setAiMoveHistory] = useState([]);
+  const [difficulty, setDifficulty] = useState(5); // Default difficulty level
+  const [showEvaluation, setShowEvaluation] = useState(true);
 
   const API_BASE_URL = 'http://localhost:3001/api';
 
@@ -44,8 +46,32 @@ const AICoachModal = ({ onClose }) => {
     }
   };
 
-  const handleMove = useCallback(async (move, newFen) => {
-    console.log('Move made:', move, 'New FEN:', newFen);
+  const handleMove = useCallback(async (moveObj) => {
+    console.log('Move received:', moveObj);
+    
+    // Create a new Chess instance with current position
+    const tempGame = new Chess(currentPosition);
+    
+    // Try to make the move
+    let moveResult;
+    try {
+      moveResult = tempGame.move({
+        from: moveObj.from,
+        to: moveObj.to,
+        promotion: 'q' // Default to queen promotion
+      });
+    } catch (error) {
+      console.error('Invalid move:', error);
+      return;
+    }
+
+    if (!moveResult) {
+      console.error('Move failed');
+      return;
+    }
+
+    const newFen = tempGame.fen();
+    console.log('Move made:', moveResult, 'New FEN:', newFen);
     
     // Update the current position
     setCurrentPosition(newFen);
@@ -53,7 +79,7 @@ const AICoachModal = ({ onClose }) => {
     setIsAnalyzing(true);
 
     try {
-      // Get AI's response move first
+      // Get AI's response move
       const aiMoveResponse = await fetch(`${API_BASE_URL}/stockfish/coach/move`, {
         method: 'POST',
         headers: {
@@ -61,7 +87,7 @@ const AICoachModal = ({ onClose }) => {
         },
         body: JSON.stringify({
           fen: newFen,
-          skillLevel: 8, // Moderate difficulty for teaching
+          skillLevel: difficulty, // Use selected difficulty
           depth: 12
         })
       });
@@ -84,7 +110,7 @@ const AICoachModal = ({ onClose }) => {
           setCoachMessage(`Good move! I'll play ${aiMoveData.coaching.suggestedMove}. ${aiExplanation}`);
           
           setAiMoveHistory(prev => [...prev, {
-            playerMove: move.san || `${move.from}-${move.to}`,
+            playerMove: moveResult.san || `${moveObj.from}-${moveObj.to}`,
             playerFeedback: "Good move!",
             aiMove: aiMoveData.coaching.suggestedMove,
             aiExplanation: aiExplanation
@@ -96,22 +122,36 @@ const AICoachModal = ({ onClose }) => {
         const moves = fallbackGame.moves();
         if (moves.length > 0) {
           const randomMove = moves[Math.floor(Math.random() * moves.length)];
-          fallbackGame.move(randomMove);
+          const fallbackMoveResult = fallbackGame.move(randomMove);
           
           setTimeout(() => {
             setCurrentPosition(fallbackGame.fen());
           }, 1000);
           
           setCoachMessage(`Good move! I'll play ${randomMove}. Keep developing your pieces.`);
+          
+          setAiMoveHistory(prev => [...prev, {
+            playerMove: moveResult.san || `${moveObj.from}-${moveObj.to}`,
+            playerFeedback: "Good move!",
+            aiMove: randomMove,
+            aiExplanation: "Keep developing your pieces."
+          }]);
         }
       }
     } catch (error) {
       console.error('Failed to get AI move:', error);
       setCoachMessage("Good move! Keep developing your pieces and thinking about piece safety.");
+      
+      setAiMoveHistory(prev => [...prev, {
+        playerMove: moveResult.san || `${moveObj.from}-${moveObj.to}`,
+        playerFeedback: "Good move! Keep developing your pieces and thinking about piece safety.",
+        aiMove: "",
+        aiExplanation: ""
+      }]);
     } finally {
       setIsAnalyzing(false);
     }
-  }, [API_BASE_URL]);
+  }, [API_BASE_URL, currentPosition, difficulty]);
 
   const getHint = async () => {
     setIsAnalyzing(true);
@@ -167,19 +207,56 @@ const AICoachModal = ({ onClose }) => {
               <p className="text-[#97a1c4] text-xs sm:text-sm">Instructive Training Game</p>
             </div>
           </div>
-          <button 
-            onClick={onClose}
-            className="text-[#97a1c4] hover:text-white transition-colors p-1 sm:p-0"
-          >
-            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          
+          {/* Controls */}
+          <div className="flex items-center gap-3">
+            {gameStarted && (
+              <div className="flex items-center gap-2">
+                <label htmlFor="difficulty" className="text-white text-sm hidden sm:block">Difficulty:</label>
+                <select
+                  id="difficulty"
+                  value={difficulty}
+                  onChange={(e) => setDifficulty(Number(e.target.value))}
+                  disabled={isAnalyzing}
+                  className="bg-[#374162] border border-[#455173] text-white text-sm px-2 py-1 rounded focus:outline-none focus:border-blue-600 disabled:opacity-50"
+                >
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((level) => (
+                    <option key={level} value={level}>
+                      {level}
+                    </option>
+                  ))}
+                </select>
+                
+                <button
+                  onClick={() => setShowEvaluation(!showEvaluation)}
+                  className={`p-1.5 rounded transition-colors ${
+                    showEvaluation 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-[#374162] text-[#97a1c4] hover:text-white'
+                  }`}
+                  title="Toggle Evaluation"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </button>
+              </div>
+            )}
+            
+            <button 
+              onClick={onClose}
+              className="text-[#97a1c4] hover:text-white transition-colors p-1 sm:p-0"
+            >
+              <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-col lg:flex-row h-[70vh] sm:h-[75vh] lg:h-[70vh]">
           {/* Chess Board Section */}
-          <div className="flex-1 p-3 sm:p-6 lg:border-r lg:border-[#374162]">
+          <div className="flex-1 p-3 sm:p-6 lg:border-r lg:border-[#374162] min-h-0">
             <div className="bg-[#272e45] rounded-lg p-2 sm:p-4 h-full flex items-center justify-center">
               {!gameStarted ? (
                 <div className="text-center px-2">
@@ -190,10 +267,27 @@ const AICoachModal = ({ onClose }) => {
                   </div>
                   <h3 className="text-lg sm:text-xl font-bold text-white mb-2">Ready to Learn?</h3>
                   <p className="text-[#97a1c4] mb-4 sm:mb-6 text-sm sm:text-base">Start an instructive game with personalized coaching</p>
+                  
+                  {/* Pre-game difficulty selection */}
+                  <div className="mb-4">
+                    <label className="block text-white text-sm mb-2">Choose AI Difficulty:</label>
+                    <select
+                      value={difficulty}
+                      onChange={(e) => setDifficulty(Number(e.target.value))}
+                      className="bg-[#374162] border border-[#455173] text-white px-4 py-2 rounded-lg focus:outline-none focus:border-blue-600"
+                    >
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((level) => (
+                        <option key={level} value={level}>
+                          Level {level} {level <= 3 ? '(Beginner)' : level <= 6 ? '(Intermediate)' : '(Advanced)'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
                   <button 
                     onClick={handleStartGame}
                     disabled={isAnalyzing}
-                    className="bg-blue-800 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg transition-colors text-sm sm:text-base flex items-center gap-2"
+                    className="bg-blue-800 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg transition-colors text-sm sm:text-base flex items-center gap-2 mx-auto"
                   >
                     {isAnalyzing && (
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -203,13 +297,16 @@ const AICoachModal = ({ onClose }) => {
                 </div>
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
-                  <ChessBoard 
-                    position={currentPosition}
-                    onMove={handleMove}
-                    interactive={!isAnalyzing}
-                    showNotation={true}
-                    engineEnabled={false}
-                  />
+                  <div className="chessboard-modal-wrapper w-full h-full max-w-[min(100%,80vh,600px)] max-h-[min(100%,80vh,600px)] aspect-square">
+                    <ChessGame
+                      isModalMode={true}
+                      position={currentPosition}
+                      onMove={handleMove}
+                      interactive={!isAnalyzing}
+                      showNotation={true}
+                      engineEnabled={showEvaluation}
+                    />
+                  </div>
                 </div>
               )}
             </div>
@@ -225,10 +322,20 @@ const AICoachModal = ({ onClose }) => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                   </svg>
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="text-white font-medium text-sm sm:text-base">Coach Magnus</p>
-                  <p className="text-green-400 text-xs">● Online</p>
+                  <p className="text-green-400 text-xs">● Online {gameStarted && `• Difficulty ${difficulty}`}</p>
                 </div>
+                
+                {/* Game Settings Display */}
+                {gameStarted && (
+                  <div className="text-right">
+                    <p className="text-[#97a1c4] text-xs">Settings</p>
+                    <p className="text-white text-xs">
+                      Eval: {showEvaluation ? 'ON' : 'OFF'}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 

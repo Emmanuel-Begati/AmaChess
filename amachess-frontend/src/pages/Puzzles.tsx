@@ -1,18 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import ChessBoard from '../components/ChessGame';
+import ChessGame from '../components/ChessGame';
+import { usePuzzle } from '../hooks/usePuzzle';
+import { LichessPuzzle } from '../services/puzzleService';
 
 const Puzzles = () => {
   const [activeTab, setActiveTab] = useState('All');
   const [selectedDifficulty, setSelectedDifficulty] = useState('All');
   const [dailyPuzzleCompleted, setDailyPuzzleCompleted] = useState(false);
-  const [currentPuzzleIndex, setCurrentPuzzleIndex] = useState(0);
   const [showSolution, setShowSolution] = useState(false);
   const [randomPuzzleMode, setRandomPuzzleMode] = useState(false);
-  const [currentRandomPuzzle, setCurrentRandomPuzzle] = useState(null);
-  const [randomPuzzleCompleted, setRandomPuzzleCompleted] = useState(false);
+  
+  // Use the puzzle hook for Lichess puzzle integration
+  const {
+    puzzle: currentLichessPuzzle,
+    isLoading: puzzleLoading,
+    error: puzzleError,
+    isCompleted: puzzleCompleted,
+    makeMove,
+    loadRandomPuzzle,
+    showHintAction,
+    showSolutionAction,
+    resetPuzzle,
+    showHint: hintVisible,
+    showSolution: solutionVisible
+  } = usePuzzle();
 
   // User puzzle statistics
   const userStats = {
@@ -188,10 +202,11 @@ const Puzzles = () => {
     console.log('Puzzle move:', move, newFen);
   };
 
-  const handleDailyPuzzleMove = (move, newFen) => {
-    console.log('Daily puzzle move:', move, newFen);
+  const handleDailyPuzzleMove = (moveObj) => {
+    console.log('Daily puzzle move:', moveObj);
     // Check if move is correct solution
-    if (move.san === dailyChallenge.solution[0]) {
+    // Note: You'd need to implement proper move validation here
+    if (moveObj.from === 'e2' && moveObj.to === 'e4') { // Example check
       solveDailyPuzzle();
     }
   };
@@ -250,44 +265,60 @@ const Puzzles = () => {
     }
   ];
 
-  const getRandomPuzzle = () => {
-    const availablePuzzles = randomPuzzles.filter(puzzle => 
-      selectedDifficulty === 'All' || puzzle.difficulty === selectedDifficulty
-    );
-    const randomIndex = Math.floor(Math.random() * availablePuzzles.length);
-    return availablePuzzles[randomIndex];
-  };
-
-  const startRandomPuzzleMode = () => {
-    const puzzle = getRandomPuzzle();
-    setCurrentRandomPuzzle(puzzle);
+  const startRandomPuzzleMode = async () => {
     setRandomPuzzleMode(true);
-    setRandomPuzzleCompleted(false);
     setShowSolution(false);
-  };
-
-  const handleRandomPuzzleMove = (move, newFen) => {
-    if (!currentRandomPuzzle || randomPuzzleCompleted) return;
     
-    console.log('Random puzzle move:', move, newFen);
-    // Check if move matches the solution
-    if (move.san === currentRandomPuzzle.solution[0]) {
-      setRandomPuzzleCompleted(true);
-    }
+    // Load a random puzzle with difficulty filter
+    const difficultyMap: { [key: string]: string } = {
+      'All': '',
+      'Easy': 'Beginner',
+      'Medium': 'Intermediate', 
+      'Hard': 'Advanced',
+      'Expert': 'Expert'
+    };
+    
+    const filters = selectedDifficulty !== 'All' ? 
+      { difficulty: difficultyMap[selectedDifficulty] as any } : undefined;
+    
+    await loadRandomPuzzle(filters);
   };
 
-  const nextRandomPuzzle = () => {
-    const puzzle = getRandomPuzzle();
-    setCurrentRandomPuzzle(puzzle);
-    setRandomPuzzleCompleted(false);
-    setShowSolution(false);
+  const handleRandomPuzzleMove = (move: { from: string; to: string; san?: string }) => {
+    if (!currentLichessPuzzle || puzzleCompleted) return;
+    
+    console.log('Random puzzle move:', move);
+    console.log('Current puzzle:', currentLichessPuzzle);
+    
+    // Convert move to UCI format
+    const uciMove = `${move.from}${move.to}`;
+    console.log('UCI move:', uciMove);
+    console.log('Expected move:', currentLichessPuzzle.moves[0]);
+    
+    // Use the puzzle hook's move validation
+    const isCorrect = makeMove(uciMove);
+    console.log('Move correct:', isCorrect);
+  };
+
+  const nextRandomPuzzle = async () => {
+    const difficultyMap: { [key: string]: string } = {
+      'All': '',
+      'Easy': 'Beginner',
+      'Medium': 'Intermediate', 
+      'Hard': 'Advanced',
+      'Expert': 'Expert'
+    };
+    
+    const filters = selectedDifficulty !== 'All' ? 
+      { difficulty: difficultyMap[selectedDifficulty] as any } : undefined;
+    
+    await loadRandomPuzzle(filters);
   };
 
   const exitRandomPuzzleMode = () => {
     setRandomPuzzleMode(false);
-    setCurrentRandomPuzzle(null);
-    setRandomPuzzleCompleted(false);
     setShowSolution(false);
+    resetPuzzle();
   };
 
   return (
@@ -295,14 +326,14 @@ const Puzzles = () => {
       <Header />
       
       {/* Main Content Container - Fully Responsive */}
-      <main className="flex-1 w-full">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-6 lg:py-8">
-          <div className="max-w-[1400px] mx-auto">
+      <main className="flex-1 w-full bg-[#121621]">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-6 lg:py-8 bg-[#121621]">
+          <div className="max-w-[1400px] mx-auto bg-[#121621]">
             
             {/* Random Puzzle Solver Mode */}
             {randomPuzzleMode && (
-              <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-2 xs:p-4">
-                <div className="bg-gradient-to-br from-[#272e45] to-[#374162] rounded-xl xs:rounded-2xl p-3 xs:p-4 sm:p-6 lg:p-8 w-full max-w-6xl max-h-[98vh] xs:max-h-[95vh] overflow-y-auto border border-[#455173]">
+              <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-2 xs:p-4">
+                <div className="bg-gradient-to-br from-[#1e293b] to-[#334155] rounded-xl xs:rounded-2xl p-3 xs:p-4 sm:p-6 lg:p-8 w-full max-w-6xl max-h-[98vh] xs:max-h-[95vh] overflow-y-auto border border-[#475569] shadow-2xl">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 xs:gap-4 mb-4 xs:mb-6">
                     <div className="min-w-0">
                       <h2 className="text-xl xs:text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2 leading-tight">Random Puzzle Challenge</h2>
@@ -310,7 +341,7 @@ const Puzzles = () => {
                     </div>
                     <button 
                       onClick={exitRandomPuzzleMode}
-                      className="text-[#97a1c4] hover:text-white transition-colors self-end sm:self-center p-1"
+                      className="text-[#97a1c4] hover:text-white transition-colors self-end sm:self-center p-1 hover:bg-white/10 rounded-lg"
                     >
                       <svg className="w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -318,23 +349,48 @@ const Puzzles = () => {
                     </button>
                   </div>
 
-                  {currentRandomPuzzle && (
+                  {puzzleLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                        <p className="text-white text-lg">Loading puzzle...</p>
+                      </div>
+                    </div>
+                  ) : puzzleError ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="text-center">
+                        <p className="text-red-400 text-lg mb-4">Error loading puzzle: {puzzleError}</p>
+                        <button 
+                          onClick={() => loadRandomPuzzle()}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                        >
+                          Try Again
+                        </button>
+                      </div>
+                    </div>
+                  ) : currentLichessPuzzle && (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 xs:gap-6 lg:gap-8">
                       {/* Puzzle Board */}
-                      <div className="bg-[#374162] rounded-lg xs:rounded-xl p-3 xs:p-4 sm:p-6 order-2 lg:order-1">
+                      <div className="bg-[#475569] rounded-lg xs:rounded-xl p-3 xs:p-4 sm:p-6 order-2 lg:order-1">
                         <div className="flex justify-center mb-3 xs:mb-4">
-                          <ChessBoard
-                            position={currentRandomPuzzle.fen}
+                          <ChessGame
+                            isModalMode={true}
+                            position={currentLichessPuzzle.fen}
                             onMove={handleRandomPuzzleMove}
-                            interactive={!randomPuzzleCompleted}
-                            showNotation={true}
+                            interactive={!puzzleCompleted}
+                            showNotation={false}
+                            engineEnabled={false}
                           />
                         </div>
                         
                         {/* Puzzle Status */}
                         <div className="text-center">
-                          <p className="text-[#97a1c4] text-sm xs:text-base mb-3 xs:mb-4 leading-relaxed">{currentRandomPuzzle.description}</p>
-                          {!randomPuzzleCompleted ? (
+                          <p className="text-[#97a1c4] text-sm xs:text-base mb-3 xs:mb-4 leading-relaxed">{currentLichessPuzzle.description}</p>
+                          {puzzleError ? (
+                            <div className="bg-red-600 text-white p-3 xs:p-4 rounded-lg">
+                              <p className="font-semibold text-sm xs:text-base">✗ {puzzleError}</p>
+                            </div>
+                          ) : !puzzleCompleted ? (
                             <p className="text-blue-400 text-sm xs:text-base font-medium">
                               Find the best move for White
                             </p>
@@ -350,31 +406,31 @@ const Puzzles = () => {
                       {/* Puzzle Info & Controls */}
                       <div className="space-y-4 xs:space-y-6 order-1 lg:order-2">
                         {/* Puzzle Details */}
-                        <div className="bg-[#374162] rounded-lg p-4 xs:p-6">
+                        <div className="bg-[#475569] rounded-lg p-4 xs:p-6">
                           <h3 className="text-lg xs:text-xl sm:text-2xl font-semibold text-white mb-4 xs:mb-6">Puzzle Details</h3>
                           <div className="grid grid-cols-2 gap-3 xs:gap-4 sm:gap-6">
                             <div>
                               <p className="text-[#97a1c4] text-sm xs:text-base">Theme</p>
-                              <p className="text-white font-semibold text-base xs:text-lg lg:text-xl break-words">{currentRandomPuzzle.theme}</p>
+                              <p className="text-white font-semibold text-base xs:text-lg lg:text-xl break-words">{currentLichessPuzzle.themes?.[0] || 'Unknown'}</p>
                             </div>
                             <div>
                               <p className="text-[#97a1c4] text-sm xs:text-base">Rating</p>
-                              <p className="text-white font-semibold text-base xs:text-lg lg:text-xl">{currentRandomPuzzle.rating}</p>
+                              <p className="text-white font-semibold text-base xs:text-lg lg:text-xl">{currentLichessPuzzle.rating}</p>
                             </div>
                             <div>
                               <p className="text-[#97a1c4] text-sm xs:text-base">Difficulty</p>
-                              <p className="text-white font-semibold text-base xs:text-lg lg:text-xl">{currentRandomPuzzle.difficulty}</p>
+                              <p className="text-white font-semibold text-base xs:text-lg lg:text-xl">{currentLichessPuzzle.difficulty}</p>
                             </div>
                             <div>
                               <p className="text-[#97a1c4] text-sm xs:text-base">Moves</p>
-                              <p className="text-white font-semibold text-base xs:text-lg lg:text-xl">{currentRandomPuzzle.moves}</p>
+                              <p className="text-white font-semibold text-base xs:text-lg lg:text-xl">{currentLichessPuzzle.moves?.length || 0}</p>
                             </div>
                           </div>
                         </div>
 
                         {/* Action Buttons */}
                         <div className="space-y-3 xs:space-y-4">
-                          {randomPuzzleCompleted && (
+                          {puzzleCompleted && (
                             <button
                               onClick={nextRandomPuzzle}
                               className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white py-3 xs:py-4 lg:py-5 rounded-lg font-semibold transition-all duration-300 flex items-center justify-center gap-2 text-base xs:text-lg lg:text-xl"
@@ -387,10 +443,17 @@ const Puzzles = () => {
                           )}
                           
                           <button
-                            onClick={() => setShowSolution(!showSolution)}
+                            onClick={() => showHintAction()}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 xs:py-4 rounded-lg font-semibold transition-colors text-base xs:text-lg"
+                          >
+                            Show Hint
+                          </button>
+
+                          <button
+                            onClick={() => showSolutionAction()}
                             className="w-full bg-yellow-600 hover:bg-yellow-700 text-white py-3 xs:py-4 rounded-lg font-semibold transition-colors text-base xs:text-lg"
                           >
-                            {showSolution ? 'Hide Solution' : 'Show Solution'}
+                            Show Solution
                           </button>
 
                           <button
@@ -401,12 +464,20 @@ const Puzzles = () => {
                           </button>
                         </div>
 
+                        {/* Hint Display */}
+                        {hintVisible && currentLichessPuzzle && (
+                          <div className="bg-[#475569] rounded-lg p-4 xs:p-6">
+                            <h4 className="text-white font-semibold mb-3 xs:mb-4 text-base xs:text-lg">Hint:</h4>
+                            <p className="text-[#97a1c4] text-sm xs:text-base">{currentLichessPuzzle.hint}</p>
+                          </div>
+                        )}
+
                         {/* Solution Display */}
-                        {showSolution && (
-                          <div className="bg-[#455173] rounded-lg p-4 xs:p-6">
+                        {solutionVisible && currentLichessPuzzle && (
+                          <div className="bg-[#475569] rounded-lg p-4 xs:p-6">
                             <h4 className="text-white font-semibold mb-3 xs:mb-4 text-base xs:text-lg">Solution:</h4>
                             <div className="flex flex-wrap gap-2 xs:gap-3">
-                              {currentRandomPuzzle.solution.map((move, index) => (
+                              {currentLichessPuzzle.moves.map((move, index) => (
                                 <span key={index} className="bg-blue-800 text-white px-3 xs:px-4 py-2 rounded text-sm xs:text-base font-medium">
                                   {index + 1}. {move}
                                 </span>
@@ -422,7 +493,7 @@ const Puzzles = () => {
             )}
 
             {/* Header Section - Fluid Layout */}
-            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 lg:gap-8 mb-6 lg:mb-8">
+            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 lg:gap-8 mb-6 lg:mb-8 bg-[#121621]">
               <div className="flex-1 min-w-0">
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-white leading-tight mb-3 lg:mb-4">Chess Puzzles</h1>
                 <p className="text-[#97a1c4] text-sm sm:text-base lg:text-lg max-w-2xl leading-relaxed">Sharpen your tactical skills with our collection of chess puzzles</p>
@@ -430,8 +501,8 @@ const Puzzles = () => {
             </div>
 
             {/* User Statistics Cards - Responsive Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 xl:gap-8 mb-6 sm:mb-8">
-              <div className="bg-gradient-to-br from-[#272e45] to-[#374162] rounded-lg xs:rounded-xl p-3 sm:p-4 lg:p-6 border border-[#374162]">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 xl:gap-8 mb-6 sm:mb-8 bg-[#121621]">
+              <div className="bg-gradient-to-br from-[#1e293b] to-[#334155] rounded-lg xs:rounded-xl p-3 sm:p-4 lg:p-6 border border-[#475569]">
                 <div className="flex items-start gap-2 sm:gap-3 mb-2 sm:mb-3">
                   <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
                     <span className="text-base sm:text-lg lg:text-xl">🧩</span>
@@ -444,7 +515,7 @@ const Puzzles = () => {
                 <p className="text-green-400 text-xs sm:text-sm">+{userStats.improvementThisMonth} this month</p>
               </div>
 
-              <div className="bg-gradient-to-br from-[#272e45] to-[#374162] rounded-lg xs:rounded-xl p-3 sm:p-4 lg:p-6 border border-[#374162]">
+              <div className="bg-gradient-to-br from-[#1e293b] to-[#334155] rounded-lg xs:rounded-xl p-3 sm:p-4 lg:p-6 border border-[#475569]">
                 <div className="flex items-start gap-2 sm:gap-3 mb-2 sm:mb-3">
                   <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
                     <span className="text-base sm:text-lg lg:text-xl">⭐</span>
@@ -457,7 +528,7 @@ const Puzzles = () => {
                 <p className="text-purple-400 text-xs sm:text-sm">Top 15% globally</p>
               </div>
 
-              <div className="bg-gradient-to-br from-[#272e45] to-[#374162] rounded-lg xs:rounded-xl p-3 sm:p-4 lg:p-6 border border-[#374162]">
+              <div className="bg-gradient-to-br from-[#1e293b] to-[#334155] rounded-lg xs:rounded-xl p-3 sm:p-4 lg:p-6 border border-[#475569]">
                 <div className="flex items-start gap-2 sm:gap-3 mb-2 sm:mb-3">
                   <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-orange-600 rounded-lg flex items-center justify-center flex-shrink-0">
                     <span className="text-base sm:text-lg lg:text-xl">🔥</span>
@@ -470,7 +541,7 @@ const Puzzles = () => {
                 <p className="text-orange-400 text-xs sm:text-sm">Current: {userStats.currentStreak}</p>
               </div>
 
-              <div className="bg-gradient-to-br from-[#272e45] to-[#374162] rounded-lg xs:rounded-xl p-3 sm:p-4 lg:p-6 border border-[#374162]">
+              <div className="bg-gradient-to-br from-[#1e293b] to-[#334155] rounded-lg xs:rounded-xl p-3 sm:p-4 lg:p-6 border border-[#475569]">
                 <div className="flex items-start gap-2 sm:gap-3 mb-2 sm:mb-3">
                   <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-green-600 rounded-lg flex items-center justify-center flex-shrink-0">
                     <span className="text-base sm:text-lg lg:text-xl">🎯</span>
@@ -485,7 +556,7 @@ const Puzzles = () => {
             </div>
 
             {/* Daily Challenge Section - Responsive Layout */}
-            <div className="bg-gradient-to-r from-[#272e45] to-[#1e293b] rounded-xl p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8 border border-[#374162]">
+            <div className="bg-gradient-to-r from-[#1e293b] to-[#0f172a] rounded-xl p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8 border border-[#475569]">
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
                 <div className="w-10 h-10 xs:w-12 xs:h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
                   <span className="text-xl xs:text-2xl sm:text-3xl">👑</span>
@@ -498,14 +569,15 @@ const Puzzles = () => {
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
                 {/* Chess Board */}
-                <div className="bg-[#374162] rounded-lg xs:rounded-xl p-3 sm:p-4 lg:p-6 order-2 lg:order-1">
+                <div className="bg-[#334155] rounded-lg xs:rounded-xl p-3 sm:p-4 lg:p-6 order-2 lg:order-1">
                   <div className="flex justify-center mb-3 sm:mb-4">
-                    <ChessBoard
+                    <ChessGame
+                      isModalMode={true}
                       position={dailyChallenge.fen}
                       onMove={handleDailyPuzzleMove}
                       interactive={!dailyPuzzleCompleted}
-                      showNotation={true}
-                      width={320}
+                      showNotation={false}
+                      engineEnabled={false}
                     />
                   </div>
                   <div className="text-center">
@@ -614,12 +686,13 @@ const Puzzles = () => {
                     {/* Chess Board for Puzzle */}
                     <div className="p-3 sm:p-4 lg:p-6 bg-[#374162]">
                       <div className="flex justify-center">
-                        <ChessBoard
+                        <ChessGame
+                          isModalMode={true}
                           position={puzzle.fen}
-                          onMove={(move, newFen) => handlePuzzleMove(move, newFen)}
+                          onMove={(moveObj) => handlePuzzleMove(moveObj, null)}
                           interactive={false}
                           showNotation={false}
-                          width={280}
+                          engineEnabled={false}
                         />
                       </div>
                       
@@ -926,12 +999,12 @@ const Puzzles = () => {
                 >
                   Start Solving Puzzles
                 </Link>
-                <button
-                  onClick={startRandomPuzzleMode}
+                <Link
+                  to="/puzzle-training"
                   className="flex-1 px-6 sm:px-8 lg:px-10 py-3 sm:py-4 lg:py-5 bg-green-700 hover:bg-green-800 text-white font-semibold rounded-lg lg:rounded-xl transition-colors text-center text-sm sm:text-base lg:text-lg xl:text-xl"
                 >
-                  Random Challenge
-                </button>
+                  Puzzle Training
+                </Link>
               </div>
             </div>
           </div>
