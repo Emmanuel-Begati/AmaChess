@@ -5,6 +5,7 @@ const prisma = new PrismaClient();
 class DatabasePuzzleService {
   constructor() {
     this.isInitialized = false;
+    this.availableThemes = null; // Cache for themes
   }
 
   async initialize() {
@@ -23,6 +24,7 @@ class DatabasePuzzleService {
 
   async getRandomPuzzle(filters = {}) {
     await this.initialize();
+    console.log('🎲 getRandomPuzzle called with filters:', JSON.stringify(filters, null, 2));
 
     try {
       // Build where clause based on filters
@@ -30,6 +32,7 @@ class DatabasePuzzleService {
       
       // Get total count for random selection
       const totalCount = await prisma.puzzle.count({ where });
+      console.log(`📊 Total matching puzzles: ${totalCount}`);
       
       if (totalCount === 0) {
         throw new Error('No puzzles found matching the criteria');
@@ -116,23 +119,42 @@ class DatabasePuzzleService {
   }
 
   async getAvailableThemes() {
+    console.log('🎨 getAvailableThemes method called');
     await this.initialize();
 
     try {
-      // Get all unique themes from the database
+      console.log('📝 Fetching themes from database...');
+      
+      // Get a sample of puzzles to extract themes
       const puzzles = await prisma.puzzle.findMany({
         select: { themes: true },
-        take: 10000, // Limit for performance
+        take: 5000, // Sample for performance
       });
+
+      console.log(`📋 Retrieved ${puzzles.length} puzzles for theme extraction`);
 
       const allThemes = new Set();
-      puzzles.forEach(puzzle => {
-        puzzle.themes.forEach(theme => allThemes.add(theme));
+      puzzles.forEach((puzzle, index) => {
+        if (puzzle.themes && Array.isArray(puzzle.themes)) {
+          puzzle.themes.forEach(theme => {
+            if (theme && typeof theme === 'string') {
+              allThemes.add(theme);
+            }
+          });
+        } else {
+          if (index < 5) { // Log first few issues
+            console.log(`⚠️ Puzzle ${index} has invalid themes:`, puzzle.themes);
+          }
+        }
       });
 
-      return Array.from(allThemes).sort();
+      const themesList = Array.from(allThemes).sort();
+      console.log('✅ Available themes count:', themesList.length);
+      console.log('🎯 Sample themes:', themesList.slice(0, 10));
+      
+      return themesList;
     } catch (error) {
-      console.error('Error getting available themes:', error);
+      console.error('❌ Error getting available themes:', error);
       throw error;
     }
   }
@@ -268,6 +290,8 @@ class DatabasePuzzleService {
 
   // Helper methods
   buildWhereClause(filters) {
+    console.log('🔍 buildWhereClause called with filters:', JSON.stringify(filters, null, 2));
+    
     const where = {};
 
     if (filters.minRating || filters.maxRating) {
@@ -277,8 +301,64 @@ class DatabasePuzzleService {
     }
 
     if (filters.themes && filters.themes.length > 0) {
+      console.log('🎯 Adding theme filter:', filters.themes);
+      
+      // Available themes from database
+      const availableThemes = ["advancedPawn","advantage","anastasiaMate","arabianMate","attackingF2F7","attraction","backRankMate","bishopEndgame","bodenMate","capturingDefender","castling","clearance","crushing","defensiveMove","deflection","discoveredAttack","doubleBishopMate","doubleCheck","dovetailMate","enPassant","endgame","equality","exposedKing","fork","hangingPiece","hookMate","interference","intermezzo","killBoxMate","kingsideAttack","knightEndgame","long","master","masterVsMaster","mate","mateIn1","mateIn2","mateIn3","mateIn4","mateIn5","middlegame","oneMove","opening","pawnEndgame","pin","promotion","queenEndgame","queenRookEndgame","queensideAttack","quietMove","rookEndgame","sacrifice","short","skewer","smotheredMate","superGM","trappedPiece","underPromotion","veryLong","vukovicMate","xRayAttack","zugzwang"];
+      
+      // Theme mapping from frontend terms to database terms
+      const themeMapping = {
+        'Double Attack': 'discoveredAttack',
+        'Discovery': 'discoveredAttack',
+        'Back Rank': 'backRankMate',
+        'Mate in one': 'mateIn1',
+        'Mate in 1': 'mateIn1',
+        'Mate in two': 'mateIn2',
+        'Mate in 2': 'mateIn2',
+        'Mate in three': 'mateIn3',
+        'Mate in 3': 'mateIn3',
+        'Endgame': 'endgame',
+        'Opening': 'opening',
+        'Middlegame': 'middlegame'
+      };
+      
+      const normalizedThemes = filters.themes.map(theme => {
+        let normalized = theme.trim();
+        
+        // Check for direct mapping first
+        if (themeMapping[normalized]) {
+          normalized = themeMapping[normalized];
+          console.log(`🗺️ Theme mapping: "${theme}" -> "${normalized}"`);
+          return normalized;
+        }
+        
+        // Handle space-separated themes like "Double Attack" -> "doubleAttack"
+        if (normalized.includes(' ')) {
+          const words = normalized.split(/\s+/);
+          normalized = words[0].toLowerCase() + words.slice(1).map(word => 
+            word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+          ).join('');
+        } else {
+          // For single words, try to find exact match in available themes (case-insensitive)
+          const exactMatch = availableThemes.find(dbTheme => 
+            dbTheme.toLowerCase() === normalized.toLowerCase()
+          );
+          if (exactMatch) {
+            normalized = exactMatch;
+          } else {
+            // If no exact match, convert to lowercase for themes like "Fork" -> "fork"
+            normalized = normalized.toLowerCase();
+          }
+        }
+        
+        console.log(`🔄 Normalizing theme: "${theme}" -> "${normalized}"`);
+        return normalized;
+      });
+      
+      console.log('🔧 Normalized themes for database query:', normalizedThemes);
+      
       where.themes = {
-        hasSome: filters.themes
+        hasSome: normalizedThemes
       };
     }
 
@@ -288,6 +368,7 @@ class DatabasePuzzleService {
       where.difficulty = capitalizedDifficulty;
     }
 
+    console.log('📝 Final where clause:', JSON.stringify(where, null, 2));
     return where;
   }
 
