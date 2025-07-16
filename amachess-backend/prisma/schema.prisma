@@ -4,7 +4,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -19,7 +19,12 @@ model User {
   fideRating      String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  
+  // Relationships
   books           Book[]
+  puzzleAttempts  PuzzleAttempt[]
+  puzzleSessions  PuzzleSession[]
+  userStats       UserStats?
 
   @@map("users")
 }
@@ -47,4 +52,110 @@ model Book {
   updatedAt        DateTime  @updatedAt
 
   @@map("books")
+}
+
+model Puzzle {
+  id               String   @id @default(cuid())
+  lichessId        String   @unique // Original Lichess puzzle ID
+  fen              String   // Chess position
+  moves            String[] // Solution moves as array
+  rating           Int      // Puzzle difficulty rating
+  ratingDeviation  Int      @default(0)
+  popularity       Int      @default(0)
+  nbPlays          Int      @default(0)
+  themes           String[] // Tactical themes (pin, fork, etc.)
+  gameUrl          String?  // Original Lichess game URL
+  openingTags      String?  // Opening information
+  sideToMove       String   // 'white' or 'black'
+  difficulty       String   // 'Beginner', 'Intermediate', 'Advanced', 'Expert'
+  description      String?  // AI-generated description
+  hint             String?  // Hint text
+  pgn              String?  // Full game PGN if available
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relationships
+  attempts         PuzzleAttempt[]
+
+  @@map("puzzles")
+  @@index([rating])
+  @@index([themes])
+  @@index([difficulty])
+  @@index([lichessId])
+}
+
+model PuzzleAttempt {
+  id            String   @id @default(cuid())
+  userId        String
+  puzzleId      String
+  isCompleted   Boolean  @default(false)
+  isSolved      Boolean  @default(false)
+  movesPlayed   String[] // User's moves in the attempt
+  timeSpent     Int      @default(0) // Time in seconds
+  hintsUsed     Int      @default(0)
+  solutionShown Boolean  @default(false)
+  accuracy      Float?   // Percentage accuracy if applicable
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+
+  // Relationships
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  puzzle        Puzzle   @relation(fields: [puzzleId], references: [id], onDelete: Cascade)
+
+  @@map("puzzle_attempts")
+  @@index([userId])
+  @@index([puzzleId])
+  @@index([isCompleted])
+  @@index([createdAt])
+}
+
+model PuzzleSession {
+  id              String   @id @default(cuid())
+  userId          String
+  sessionType     String   // 'daily', 'training', 'themed', 'custom'
+  totalPuzzles    Int      @default(0)
+  puzzlesSolved   Int      @default(0)
+  totalTime       Int      @default(0) // Total time in seconds
+  averageRating   Float?   // Average rating of puzzles attempted
+  accuracy        Float?   // Session accuracy percentage
+  themes          String[] // Themes focused on in this session
+  difficulty      String?  // Session difficulty level
+  isCompleted     Boolean  @default(false)
+  completedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relationships
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("puzzle_sessions")
+  @@index([userId])
+  @@index([sessionType])
+  @@index([createdAt])
+}
+
+model UserStats {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  totalPuzzlesSolved    Int      @default(0)
+  currentPuzzleRating   Int      @default(1500)
+  bestPuzzleRating      Int      @default(1500)
+  currentStreak         Int      @default(0)
+  bestStreak            Int      @default(0)
+  totalTimeSpent        Int      @default(0) // Total time in seconds
+  averageAccuracy       Float    @default(0.0)
+  averageTimePerPuzzle  Float    @default(0.0) // Average time in seconds
+  favoriteThemes        String[] // Most frequently solved themes
+  weeklyGoal            Int      @default(10) // Weekly puzzle goal
+  weeklyProgress        Int      @default(0)
+  monthlyGoal           Int      @default(50) // Monthly puzzle goal
+  monthlyProgress       Int      @default(0)
+  lastActiveDate        DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Relationships
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_stats")
 }

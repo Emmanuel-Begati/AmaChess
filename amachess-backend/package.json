@@ -14,7 +14,13 @@
     "test-books": "node scripts/test-books.js",
     "test-enhanced-parsing": "node scripts/test-enhanced-pdf-parsing.js",
     "test-chess-book": "node scripts/test-chess-book-parsing.js",
-    "reprocess-pdfs": "node scripts/reprocess-pdfs.js"
+    "reprocess-pdfs": "node scripts/reprocess-pdfs.js",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:prod": "prisma migrate deploy",
+    "db:reset": "prisma migrate reset",
+    "db:seed": "node scripts/seed-puzzles.js",
+    "db:studio": "prisma studio"
   },
   "dependencies": {
     "@prisma/client": "^6.11.1",
@@ -30,11 +36,13 @@
     "mime-types": "^3.0.1",
     "multer": "^2.0.1",
     "node-fetch": "^2.7.0",
-    "pdf-parse": "^1.1.1"
+    "pdf-parse": "^1.1.1",
+    "pg": "^8.11.3"
   },
   "devDependencies": {
     "nodemon": "^3.0.1",
-    "prisma": "^6.11.1"
+    "prisma": "^6.11.1",
+    "@types/pg": "^8.10.9"
   },
   "keywords": [
     "chess",
