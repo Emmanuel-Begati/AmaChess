@@ -67,7 +67,7 @@ router.get('/theme/:theme', async (req, res) => {
 // Get available themes
 router.get('/themes', async (req, res) => {
   try {
-    const themes = puzzleService.getAvailableThemes();
+    const themes = await activePuzzleService.getAvailableThemes();
     
     res.json({
       success: true,
@@ -86,7 +86,7 @@ router.get('/themes', async (req, res) => {
 // Get puzzle database statistics
 router.get('/stats', async (req, res) => {
   try {
-    const stats = puzzleService.getPuzzleStats();
+    const stats = await activePuzzleService.getPuzzleStats();
     
     res.json({
       success: true,
