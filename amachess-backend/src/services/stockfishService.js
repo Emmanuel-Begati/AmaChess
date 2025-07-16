@@ -9,18 +9,28 @@ class StockfishService {
   }
 
   getStockfishPath() {
-    // Try multiple common Stockfish locations
+    // Try multiple common Stockfish locations, focusing on your local stockfish folder
     const possiblePaths = [
-      path.join(__dirname, '../../stockfish/stockfish.exe'),
-      path.join(__dirname, '../../stockfish/stockfish'),
+      path.join(__dirname, '../../stockfish/stockfish.exe'), // Windows executable
+      path.join(__dirname, '../../stockfish/stockfish'), // Unix executable
+      path.join(__dirname, '../../stockfish/src/stockfish.exe'), // Built from source Windows
+      path.join(__dirname, '../../stockfish/src/stockfish'), // Built from source Unix
       'stockfish', // If in PATH
       'stockfish.exe' // If in PATH on Windows
     ];
 
     for (const stockfishPath of possiblePaths) {
-      if (fs.existsSync(stockfishPath)) {
-        console.log(`Found Stockfish at: ${stockfishPath}`);
-        return stockfishPath;
+      try {
+        if (fs.existsSync(stockfishPath)) {
+          console.log(`Found Stockfish at: ${stockfishPath}`);
+          // Test if the executable is actually working
+          const testSpawn = spawn(stockfishPath, [], { stdio: 'pipe' });
+          testSpawn.kill();
+          return stockfishPath;
+        }
+      } catch (error) {
+        console.log(`Could not access ${stockfishPath}:`, error.message);
+        continue;
       }
     }
 

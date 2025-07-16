@@ -10,6 +10,7 @@ const protectedRoutes = require('./routes/protected');
 const lichessRoutes = require('./routes/lichess');
 const analyzeRoutes = require('./routes/analyze');
 const booksRoutes = require('./routes/books');
+const puzzleRoutes = require('./routes/puzzles');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -27,6 +28,7 @@ app.use('/api/test', testRoutes);
 app.use('/api/games', lichessRoutes);
 app.use('/api/analyze', analyzeRoutes);
 app.use('/api/books', booksRoutes);
+app.use('/api/puzzles', puzzleRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -41,7 +43,8 @@ app.get('/api/health', (req, res) => {
       import: true,
       lichess: true,
       analysis: true,
-      books: true
+      books: true,
+      puzzles: true
     }
   });
 });
