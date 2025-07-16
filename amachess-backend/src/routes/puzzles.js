@@ -218,7 +218,7 @@ router.post('/:puzzleId/validate', async (req, res) => {
     const { puzzleId } = req.params;
     const { moves } = req.body;
     
-    const puzzle = await puzzleService.getPuzzleWithAnalysis(puzzleId);
+    const puzzle = await activePuzzleService.getPuzzleById(puzzleId);
     if (!puzzle) {
       return res.status(404).json({
         success: false,
@@ -228,10 +228,10 @@ router.post('/:puzzleId/validate', async (req, res) => {
     
     // Check if the provided moves match the puzzle solution
     const isCorrect = moves.every((move, index) => 
-      index < puzzle.moves.length && move === puzzle.moves[index]
+      index < puzzle.solution.length && move === puzzle.solution[index]
     );
     
-    const isComplete = moves.length === puzzle.moves.length && isCorrect;
+    const isComplete = moves.length === puzzle.solution.length && isCorrect;
     
     res.json({
       success: true,
@@ -239,9 +239,9 @@ router.post('/:puzzleId/validate', async (req, res) => {
         correct: isCorrect,
         complete: isComplete,
         moveIndex: moves.length - 1,
-        expectedMove: puzzle.moves[moves.length - 1] || null,
-        solutionLength: puzzle.moves.length,
-        progress: (moves.length / puzzle.moves.length) * 100
+        expectedMove: puzzle.solution[moves.length - 1] || null,
+        solutionLength: puzzle.solution.length,
+        progress: (moves.length / puzzle.solution.length) * 100
       }
     });
   } catch (error) {

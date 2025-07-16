@@ -6,3 +6,11 @@ dist/
 coverage/
 
 /src/generated/prisma
+
+# Temporary and debug files
+debug-*.js
+test-*.js
+nul
+*.tmp
+.cache/
+temp/
