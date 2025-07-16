@@ -103,7 +103,11 @@ class PuzzleService {
 
     if (filters.themes && filters.themes.length > 0) {
       filteredPuzzles = filteredPuzzles.filter(puzzle =>
-        filters.themes.some(theme => puzzle.themes.includes(theme))
+        filters.themes.some(filterTheme => 
+          puzzle.themes.some(puzzleTheme => 
+            puzzleTheme.toLowerCase() === filterTheme.toLowerCase()
+          )
+        )
       );
     }
 
@@ -236,7 +240,9 @@ class PuzzleService {
     }
 
     const themePuzzles = this.puzzles.filter(puzzle =>
-      puzzle.themes.includes(theme)
+      puzzle.themes.some(puzzleTheme => 
+        puzzleTheme.toLowerCase() === theme.toLowerCase()
+      )
     );
 
     // Shuffle and return limited number

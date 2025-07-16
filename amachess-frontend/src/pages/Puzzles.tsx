@@ -181,8 +181,8 @@ const Puzzles = () => {
     { rank: 67, username: "You", rating: 1685, solved: 1247, country: "🇺🇸", highlight: true },
   ];
 
-  // Practice puzzles by theme
-  const puzzleThemes = [
+  // Practice puzzles by theme - will be loaded from database
+  const [puzzleThemes, setPuzzleThemes] = useState([
     { name: "Pin", count: 1247, difficulty: "★★☆", color: "bg-blue-600" },
     { name: "Fork", count: 983, difficulty: "★☆☆", color: "bg-green-600" },
     { name: "Skewer", count: 756, difficulty: "★★★", color: "bg-purple-600" },
@@ -191,7 +191,50 @@ const Puzzles = () => {
     { name: "Discovery", count: 534, difficulty: "★★★", color: "bg-indigo-600" },
     { name: "Double Attack", count: 478, difficulty: "★★☆", color: "bg-pink-600" },
     { name: "Zugzwang", count: 234, difficulty: "★★★★", color: "bg-gray-600" }
-  ];
+  ]);
+
+  // Load actual themes from the database
+  useEffect(() => {
+    loadPuzzleThemes();
+  }, []);
+
+  const loadPuzzleThemes = async () => {
+    try {
+      const [themesResponse, statsResponse] = await Promise.all([
+        fetch('/api/puzzles/themes'),
+        fetch('/api/puzzles/stats')
+      ]);
+      
+      const themesData = await themesResponse.json();
+      const statsData = await statsResponse.json();
+      
+      if (themesData.success && statsData.success) {
+        const themeColors = [
+          "bg-blue-600", "bg-green-600", "bg-purple-600", "bg-red-600",
+          "bg-orange-600", "bg-indigo-600", "bg-pink-600", "bg-teal-600",
+          "bg-cyan-600", "bg-yellow-600", "bg-rose-600", "bg-violet-600"
+        ];
+        
+        const themesWithData = themesData.data.map((theme: string, index: number) => {
+          const count = statsData.data.byTheme[theme] || 0;
+          const difficulty = count > 1000 ? "★☆☆" : count > 500 ? "★★☆" : count > 200 ? "★★★" : "★★★★";
+          
+          return {
+            name: theme,
+            count: count,
+            difficulty: difficulty,
+            color: themeColors[index % themeColors.length]
+          };
+        }).filter((theme: any) => theme.count > 0)
+          .sort((a: any, b: any) => b.count - a.count)
+          .slice(0, 12); // Show top 12 themes
+        
+        setPuzzleThemes(themesWithData);
+      }
+    } catch (error) {
+      console.error('Failed to load puzzle themes:', error);
+    }
+  };
 
   const solveDailyPuzzle = () => {
     setDailyPuzzleCompleted(true);
