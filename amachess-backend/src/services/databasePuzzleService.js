@@ -1,4 +1,6 @@
-const { prisma } = require('../config/database');
+const { PrismaClient } = require('@prisma/client');
+
+const prisma = new PrismaClient();
 
 class DatabasePuzzleService {
   constructor() {
@@ -281,7 +283,9 @@ class DatabasePuzzleService {
     }
 
     if (filters.difficulty) {
-      where.difficulty = filters.difficulty;
+      // Handle case-insensitive difficulty matching
+      const capitalizedDifficulty = filters.difficulty.charAt(0).toUpperCase() + filters.difficulty.slice(1).toLowerCase();
+      where.difficulty = capitalizedDifficulty;
     }
 
     return where;

@@ -2,7 +2,9 @@ const express = require('express');
 const router = express.Router();
 const databasePuzzleService = require('../services/databasePuzzleService');
 const { authenticateToken } = require('../middleware/auth');
-const { prisma } = require('../config/database'); // Add this import
+const { PrismaClient } = require('@prisma/client');
+
+const prisma = new PrismaClient();
 
 // Record puzzle attempt (protected route)
 router.post('/attempts', authenticateToken, async (req, res) => {

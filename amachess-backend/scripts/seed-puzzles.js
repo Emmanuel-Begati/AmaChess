@@ -1,7 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 const csv = require('csv-parser');
-const { prisma } = require('../src/config/database');
+const { PrismaClient } = require('@prisma/client');
+
+const prisma = new PrismaClient();
 
 class PuzzleSeeder {
   constructor() {
