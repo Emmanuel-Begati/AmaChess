@@ -331,13 +331,6 @@ const Settings = () => {
                           onChange={() => togglePreference('dailyPuzzleReminders')} 
                         />
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-white">Game analysis ready</span>
-                        <ToggleButton 
-                          enabled={preferences.gameAnalysisReady} 
-                          onChange={() => togglePreference('gameAnalysisReady')} 
-                        />
-                      </div>
                     </div>
                   </div>
                 </>
