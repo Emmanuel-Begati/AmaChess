@@ -41,7 +41,7 @@ const LichessProgressStats: React.FC<LichessProgressStatsProps> = ({ username })
     setError(null);
 
     try {
-      const response = await fetch(`http://localhost:3002/api/lichess/${username}/progress`);
+      const response = await fetch(`http://localhost:3001/api/lichess/${username}/progress`);
       
       if (!response.ok) {
         let errorMessage;
