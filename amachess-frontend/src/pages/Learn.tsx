@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import GameAnalysisModal from '../components/GameAnalysisModal';
@@ -8,6 +8,7 @@ import GameChatModal from '../components/GameChatModal';
 
 const Learn = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeInsightTab, setActiveInsightTab] = useState('Strengths');
   const [activeDashboardTab, setActiveDashboardTab] = useState('Rating Progress');
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
@@ -23,6 +24,17 @@ const Learn = () => {
   const [gameAnalysis, setGameAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Handle incoming game analysis from Dashboard
+  useEffect(() => {
+    if (location.state?.analyzeGame && location.state?.gameData) {
+      const gameData = location.state.gameData;
+      setSelectedGame(gameData);
+      setShowAnalysisModal(true);
+      // Clear the state to prevent re-triggering
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location, navigate]);
 
   // Get user's lichess username from registration
   useEffect(() => {

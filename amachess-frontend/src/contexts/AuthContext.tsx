@@ -111,13 +111,29 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     delete axios.defaults.headers.common['Authorization'];
   };
 
+  const updateProfile = async (userData: Partial<User>): Promise<void> => {
+    try {
+      const response = await axios.put<ApiResponse<{ user: User }>>('/auth/profile', userData);
+      const updatedUser = response.data.data?.user;
+      
+      if (updatedUser) {
+        setUser(updatedUser);
+      }
+    } catch (error) {
+      const axiosError = error as AxiosError<ApiResponse>;
+      const errorMessage = axiosError.response?.data?.message || 'Profile update failed';
+      throw new Error(errorMessage);
+    }
+  };
+
   const value: AuthContextType = {
     user,
     login,
     register,
     logout,
     loading,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    updateProfile
   };
 
   return (

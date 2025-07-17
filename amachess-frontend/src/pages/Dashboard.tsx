@@ -1,21 +1,46 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useAuth } from '../contexts/AuthContext';
+import { authApi } from '../services/authApi';
 
 const Dashboard = () => {
   const [puzzleCompleted, setPuzzleCompleted] = useState(false);
-  const [dashboardData, setDashboardData] = useState(null);
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [lichessStats, setLichessStats] = useState<any>(null);
+  const [chesscomStats, setChesscomStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
+  const navigate = useNavigate();
   
   const currentDate = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric'
   });
+
+  // Handle analyze game button click
+  const handleAnalyzeGame = (game: any) => {
+    // Navigate to Learn page with game data for analysis
+    navigate('/learn', { 
+      state: { 
+        analyzeGame: true,
+        gameData: {
+          id: game.id,
+          platform: game.platform,
+          url: game.url,
+          opponent: game.opponent,
+          result: game.result,
+          timeControl: game.timeControl,
+          opening: game.opening,
+          date: game.date
+        }
+      }
+    });
+  };
 
   // Fetch protected dashboard data from backend
   useEffect(() => {
@@ -24,6 +49,17 @@ const Dashboard = () => {
         setLoading(true);
         const response = await axios.get('/user/dashboard');
         setDashboardData(response.data.data);
+        
+        // Set Lichess stats from dashboard response if available
+        if (response.data.data.lichessStats) {
+          setLichessStats(response.data.data.lichessStats);
+        }
+        
+        // Set Chess.com stats from dashboard response if available
+        if (response.data.data.chesscomStats) {
+          setChesscomStats(response.data.data.chesscomStats);
+        }
+        
         setError(null);
       } catch (err) {
         console.error('Failed to fetch dashboard data:', err);
@@ -36,6 +72,42 @@ const Dashboard = () => {
     fetchDashboardData();
   }, []);
 
+  // Remove the separate Lichess API call since it's now handled in the dashboard endpoint
+  // This effect is now commented out since we get Lichess data from the dashboard
+  // Fetch Lichess stats for authenticated user
+  useEffect(() => {
+    const fetchLichessStats = async () => {
+      if (!user?.lichessUsername || !authApi.isAuthenticated()) {
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Use the new protected endpoint
+        const response = await authApi.getMyLichessStats();
+        setLichessStats(response.stats);
+      } catch (err: any) {
+        console.error('Failed to fetch Lichess stats:', err);
+        if (err.message.includes('404')) {
+          setError('Lichess user not found');
+        } else if (err.message.includes('429')) {
+          setError('Rate limit exceeded. Please try again later.');
+        } else if (err.message.includes('400')) {
+          // No Lichess username in profile
+          setError(null);
+        } else {
+          setError('Failed to load Lichess statistics');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLichessStats();
+  }, [user?.lichessUsername]);
+
   // Use backend data if available, fallback to static data
   const playerStats = dashboardData?.stats || {
     gamesPlayed: 235,
@@ -44,27 +116,52 @@ const Dashboard = () => {
     favoriteOpening: 'Sicilian Defense'
   };
 
-  const recentGamesData = dashboardData?.recentGames || [
-    { 
-      id: 1,
-      opponent: 'AlexChess92', 
-      result: 'Win', 
-      date: '2024-01-20'
-    },
-    { 
-      id: 2,
-      opponent: 'QueenGambit', 
-      result: 'Loss', 
-      date: '2024-01-19'
+  // Process analytics data from API response
+  const processLichessAnalytics = (analytics: any) => {
+    if (!analytics) return { change30Days: 0, peakRating: 'N/A', percentile: 'N/A' };
+    
+    // Find the most relevant performance data (prioritize rapid, then blitz, then bullet)
+    const perfTypes = ['rapid', 'blitz', 'bullet', 'classical'];
+    let selectedPerf = null;
+    
+    for (const perf of perfTypes) {
+      if (analytics.peakRatings?.[perf] || analytics.thirtyDayChanges?.[perf] !== undefined || analytics.percentiles?.[perf]) {
+        selectedPerf = perf;
+        break;
+      }
     }
-  ];
-
-  const ratingAnalytics = {
-    change30Days: +45,
-    peakRating: 1705,
-    improvement: 'rising',
-    percentile: 75
+    
+    return {
+      change30Days: selectedPerf ? (analytics.thirtyDayChanges?.[selectedPerf] || 0) : 0,
+      peakRating: selectedPerf ? (analytics.peakRatings?.[selectedPerf] || 'N/A') : 'N/A',
+      percentile: selectedPerf ? (analytics.percentiles?.[selectedPerf] || 'N/A') : 'N/A'
+    };
   };
+
+  const processChesscomAnalytics = (analytics: any) => {
+    if (!analytics) return { change30Days: 0, peakRating: 'N/A', percentile: 'N/A' };
+    
+    // Find the most relevant performance data (prioritize rapid, then blitz, then bullet)
+    const perfTypes = ['rapid', 'blitz', 'bullet', 'daily'];
+    let selectedPerf = null;
+    
+    for (const perf of perfTypes) {
+      if (analytics.peakRatings?.[perf] || analytics.thirtyDayChanges?.[perf] !== undefined || analytics.percentiles?.[perf]) {
+        selectedPerf = perf;
+        break;
+      }
+    }
+    
+    return {
+      change30Days: selectedPerf ? (analytics.thirtyDayChanges?.[selectedPerf] || 0) : 0,
+      peakRating: selectedPerf ? (analytics.peakRatings?.[selectedPerf] || 'N/A') : 'N/A',
+      percentile: selectedPerf ? (analytics.percentiles?.[selectedPerf] || 'N/A') : 'N/A'
+    };
+  };
+
+  // Use analytics data from API if available, fallback to static data
+  const lichessAnalytics = processLichessAnalytics(dashboardData?.lichessAnalytics);
+  const chesscomAnalytics = processChesscomAnalytics(dashboardData?.chesscomAnalytics);
 
   const achievements = [
     { 
@@ -107,39 +204,18 @@ const Dashboard = () => {
     }
   ];
 
-  const recentGames = [
+  // Use recentGames from API if available, fallback to default message
+  const recentGames = dashboardData?.recentGames || [
     { 
-      id: 1,
-      platform: 'lichess',
-      opponent: 'AlexChess92', 
-      result: 'Win', 
-      ratingChange: '+12',
-      timeControl: '10+0',
-      opening: 'Italian Game',
-      date: '2024-01-20',
-      accuracy: 89
-    },
-    { 
-      id: 2,
-      platform: 'chess.com',
-      opponent: 'QueenGambit', 
-      result: 'Loss', 
-      ratingChange: '-15',
-      timeControl: '5+3',
-      opening: 'Queen\'s Gambit',
-      date: '2024-01-19',
-      accuracy: 76
-    },
-    { 
-      id: 3,
-      platform: 'lichess',
-      opponent: 'KnightRider', 
-      result: 'Draw', 
-      ratingChange: '+2',
-      timeControl: '15+10',
-      opening: 'Sicilian Defense',
-      date: '2024-01-19',
-      accuracy: 82
+      id: 'demo',
+      platform: 'demo',
+      opponent: 'Connect your accounts', 
+      result: 'draw', 
+      ratingChange: '0',
+      timeControl: 'N/A',
+      opening: 'to see recent games',
+      date: new Date().toISOString().split('T')[0],
+      accuracy: null
     }
   ];
 
@@ -232,18 +308,58 @@ const Dashboard = () => {
                   <span className="text-black font-bold text-lg">L</span>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <p className="text-gray-400 text-sm mb-1">Current Rating</p>
-                  <p className="text-3xl font-bold text-white">{playerStats.currentRating || playerStats.lichess?.rating || 1650}</p>
-                  <p className="text-green-400 text-sm">+{ratingAnalytics.change30Days} (30d)</p>
+              
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mr-2"></div>
+                  <span className="text-gray-400">Loading Lichess stats...</span>
                 </div>
-                <div>
-                  <p className="text-gray-400 text-sm mb-1">Games Played</p>
-                  <p className="text-3xl font-bold text-white">{playerStats.gamesPlayed || playerStats.lichess?.gamesPlayed || 235}</p>
-                  <p className="text-gray-400 text-sm">{playerStats.winRate || playerStats.lichess?.winRate || 68}% win rate</p>
+              ) : error ? (
+                <div className="text-center py-8">
+                  <p className="text-red-400 mb-2">{error}</p>
+                  <p className="text-gray-400 text-sm">Please check your Lichess username or try again later</p>
                 </div>
-              </div>
+              ) : !user?.lichessUsername ? (
+                <div className="text-center py-8">
+                  <p className="text-red-400 mb-2">No Lichess username found</p>
+                  <p className="text-gray-400 text-sm">Add your Lichess username in your profile to see your stats</p>
+                </div>
+              ) : lichessStats ? (
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <p className="text-gray-400 text-sm mb-1">Current Rating</p>
+                    <p className="text-3xl font-bold text-white">
+                      {lichessStats.rating?.rapid || lichessStats.rating?.blitz || lichessStats.rating?.bullet || 'N/A'}
+                    </p>
+                    <p className="text-green-400 text-sm">
+                      {lichessStats.rating?.rapid ? 'Rapid' : lichessStats.rating?.blitz ? 'Blitz' : lichessStats.rating?.bullet ? 'Bullet' : 'Unrated'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-sm mb-1">Games Played</p>
+                    <p className="text-3xl font-bold text-white">{lichessStats.gameCount?.total || 0}</p>
+                    <p className="text-gray-400 text-sm">{Math.round((lichessStats.winRate || 0) * 100)}% win rate</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <p className="text-gray-400 text-sm mb-1">Current Rating</p>
+                    <p className="text-3xl font-bold text-white">{playerStats.currentRating || playerStats.lichess?.rating || 1650}</p>
+                    <p className={`text-sm ${lichessAnalytics.change30Days >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {lichessAnalytics.change30Days !== 0 ? 
+                        (lichessAnalytics.change30Days > 0 ? `+${lichessAnalytics.change30Days}` : lichessAnalytics.change30Days) : 
+                        'No change'
+                      } (30d)
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-sm mb-1">Games Played</p>
+                    <p className="text-3xl font-bold text-white">{playerStats.gamesPlayed || playerStats.lichess?.gamesPlayed || 235}</p>
+                    <p className="text-gray-400 text-sm">{playerStats.winRate || playerStats.lichess?.winRate || 68}% win rate</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Chess.com Stats */}
@@ -254,18 +370,53 @@ const Dashboard = () => {
                   <span className="text-white font-bold text-lg">♛</span>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <p className="text-gray-400 text-sm mb-1">Current Rating</p>
-                  <p className="text-3xl font-bold text-white">{playerStats.currentRating || playerStats.chesscom?.rating || 1580}</p>
-                  <p className="text-blue-400 text-sm">Top {ratingAnalytics.percentile}%</p>
+              
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mr-2"></div>
+                  <span className="text-gray-400">Loading Chess.com stats...</span>
                 </div>
-                <div>
-                  <p className="text-gray-400 text-sm mb-1">Games Played</p>
-                  <p className="text-3xl font-bold text-white">{playerStats.gamesPlayed || playerStats.chesscom?.gamesPlayed || 189}</p>
-                  <p className="text-gray-400 text-sm">{playerStats.winRate || playerStats.chesscom?.winRate || 64}% win rate</p>
+              ) : error ? (
+                <div className="text-center py-8">
+                  <p className="text-red-400 mb-2">Error loading Chess.com stats</p>
+                  <p className="text-gray-400 text-sm">Please check your Chess.com username or try again later</p>
                 </div>
-              </div>
+              ) : !user?.chesscomUsername ? (
+                <div className="text-center py-8">
+                  <p className="text-red-400 mb-2">No Chess.com username found</p>
+                  <p className="text-gray-400 text-sm">Add your Chess.com username in your profile to see your stats</p>
+                </div>
+              ) : chesscomStats ? (
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <p className="text-gray-400 text-sm mb-1">Current Rating</p>
+                    <p className="text-3xl font-bold text-white">
+                      {chesscomStats.rating?.rapid || chesscomStats.rating?.blitz || chesscomStats.rating?.bullet || 'N/A'}
+                    </p>
+                    <p className="text-green-400 text-sm">
+                      Rapid
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-sm mb-1">Games Played</p>
+                    <p className="text-3xl font-bold text-white">{chesscomStats.gameCount?.total || 0}</p>
+                    <p className="text-gray-400 text-sm">{chesscomStats.winRate ? Math.round(chesscomStats.winRate * 100) : 0}% win rate</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <p className="text-gray-400 text-sm mb-1">Current Rating</p>
+                    <p className="text-3xl font-bold text-white">--</p>
+                    <p className="text-gray-400 text-sm">No data</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-sm mb-1">Games Played</p>
+                    <p className="text-3xl font-bold text-white">--</p>
+                    <p className="text-gray-400 text-sm">No data</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -274,19 +425,81 @@ const Dashboard = () => {
             {/* Rating Analytics */}
             <div className="xl:col-span-2 bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl p-8 border border-slate-700/50 backdrop-blur-sm">
               <h3 className="text-2xl font-bold text-white mb-6">Rating Analytics</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="text-center">
-                  <p className="text-gray-400 text-sm mb-2">Peak Rating</p>
-                  <p className="text-2xl font-bold text-yellow-400">{ratingAnalytics.peakRating}</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-gray-400 text-sm mb-2">30-Day Change</p>
-                  <p className="text-2xl font-bold text-green-400">+{ratingAnalytics.change30Days}</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-gray-400 text-sm mb-2">Percentile</p>
-                  <p className="text-2xl font-bold text-blue-400">{ratingAnalytics.percentile}%</p>
-                </div>
+              
+              {/* Lichess Analytics */}
+              <div className="mb-8">
+                <h4 className="text-lg font-semibold text-white mb-4 flex items-center">
+                  <span className="text-2xl mr-2">♔</span>
+                  Lichess
+                  {loading && <span className="ml-2 text-sm text-gray-400">(Loading...)</span>}
+                </h4>
+                {!user?.lichessUsername ? (
+                  <div className="text-center py-4">
+                    <p className="text-gray-400 text-sm">Connect your Lichess account to see analytics</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="text-center">
+                      <p className="text-gray-400 text-sm mb-2">Peak Rating</p>
+                      <p className="text-2xl font-bold text-yellow-400">
+                        {lichessAnalytics.peakRating !== 'N/A' ? lichessAnalytics.peakRating : 'N/A'}
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-gray-400 text-sm mb-2">30-Day Change</p>
+                      <p className={`text-2xl font-bold ${lichessAnalytics.change30Days >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {lichessAnalytics.change30Days !== 0 ? 
+                          (lichessAnalytics.change30Days > 0 ? `+${lichessAnalytics.change30Days}` : lichessAnalytics.change30Days) : 
+                          'N/A'
+                        }
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-gray-400 text-sm mb-2">Percentile</p>
+                      <p className="text-2xl font-bold text-blue-400">
+                        {lichessAnalytics.percentile !== 'N/A' ? `${lichessAnalytics.percentile}%` : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Chess.com Analytics */}
+              <div className="mb-8">
+                <h4 className="text-lg font-semibold text-white mb-4 flex items-center">
+                  <span className="text-2xl mr-2">♕</span>
+                  Chess.com
+                  {loading && <span className="ml-2 text-sm text-gray-400">(Loading...)</span>}
+                </h4>
+                {!user?.chesscomUsername ? (
+                  <div className="text-center py-4">
+                    <p className="text-gray-400 text-sm">Connect your Chess.com account to see analytics</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="text-center">
+                      <p className="text-gray-400 text-sm mb-2">Peak Rating</p>
+                      <p className="text-2xl font-bold text-yellow-400">
+                        {chesscomAnalytics.peakRating !== 'N/A' ? chesscomAnalytics.peakRating : 'N/A'}
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-gray-400 text-sm mb-2">30-Day Change</p>
+                      <p className={`text-2xl font-bold ${chesscomAnalytics.change30Days >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {chesscomAnalytics.change30Days !== 0 ? 
+                          (chesscomAnalytics.change30Days > 0 ? `+${chesscomAnalytics.change30Days}` : chesscomAnalytics.change30Days) : 
+                          'N/A'
+                        }
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-gray-400 text-sm mb-2">Percentile</p>
+                      <p className="text-2xl font-bold text-blue-400">
+                        {chesscomAnalytics.percentile !== 'N/A' ? `${chesscomAnalytics.percentile}%` : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
               
               <div className="mt-8 p-6 bg-gradient-to-r from-[#115fd4]/10 to-[#4a90e2]/10 rounded-xl border border-[#115fd4]/20">
@@ -351,9 +564,9 @@ const Dashboard = () => {
                         <p className="text-yellow-400 text-xs">Unlocked {achievement.date}</p>
                       ) : (
                         <div>
-                          <p className="text-gray-500 text-xs mb-2">Progress: {achievement.progress}/5</p>
+                          <p className="text-gray-500 text-xs mb-2">Progress: {achievement.progress || 0}/5</p>
                           <div className="w-full bg-slate-700 rounded-full h-1.5">
-                            <div className="bg-[#115fd4] h-1.5 rounded-full" style={{width: `${(achievement.progress/5)*100}%`}}></div>
+                            <div className="bg-[#115fd4] h-1.5 rounded-full" style={{width: `${((achievement.progress || 0)/5)*100}%`}}></div>
                           </div>
                         </div>
                       )}
@@ -408,72 +621,91 @@ const Dashboard = () => {
               </button>
             </div>
             <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl border border-slate-700/50 backdrop-blur-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-slate-800/50 border-b border-slate-700">
-                      <th className="px-6 py-4 text-left text-white text-sm font-semibold">Platform</th>
-                      <th className="px-6 py-4 text-left text-white text-sm font-semibold">Opponent</th>
-                      <th className="px-6 py-4 text-left text-white text-sm font-semibold">Result</th>
-                      <th className="px-6 py-4 text-left text-white text-sm font-semibold">Opening</th>
-                      <th className="px-6 py-4 text-left text-white text-sm font-semibold">Accuracy</th>
-                      <th className="px-6 py-4 text-left text-white text-sm font-semibold">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentGames.map((game, index) => (
-                      <tr key={game.id} className="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors duration-200">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            <div className={`w-6 h-6 rounded ${game.platform === 'lichess' ? 'bg-white' : 'bg-green-600'} flex items-center justify-center`}>
-                              <span className={`text-xs font-bold ${game.platform === 'lichess' ? 'text-black' : 'text-white'}`}>
-                                {game.platform === 'lichess' ? 'L' : '♛'}
+              {recentGames.length === 0 || recentGames[0]?.platform === 'demo' ? (
+                <div className="p-8 text-center">
+                  <p className="text-gray-400 mb-2">No recent rapid games found</p>
+                  <p className="text-gray-500 text-sm">Connect your Lichess and Chess.com accounts to see your recent rapid games</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-slate-800/50 border-b border-slate-700">
+                        <th className="px-6 py-4 text-left text-white text-sm font-semibold">Platform</th>
+                        <th className="px-6 py-4 text-left text-white text-sm font-semibold">Opponent</th>
+                        <th className="px-6 py-4 text-left text-white text-sm font-semibold">Result</th>
+                        <th className="px-6 py-4 text-left text-white text-sm font-semibold">Time Control</th>
+                        <th className="px-6 py-4 text-left text-white text-sm font-semibold">Opening</th>
+                        <th className="px-6 py-4 text-left text-white text-sm font-semibold">Date</th>
+                        <th className="px-6 py-4 text-left text-white text-sm font-semibold">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentGames.map((game: any) => (
+                        <tr key={game.id} className="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors duration-200">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-6 h-6 rounded ${game.platform === 'lichess' ? 'bg-white' : 'bg-green-600'} flex items-center justify-center`}>
+                                <span className={`text-xs font-bold ${game.platform === 'lichess' ? 'text-black' : 'text-white'}`}>
+                                  {game.platform === 'lichess' ? 'L' : '♛'}
+                                </span>
+                              </div>
+                              <span className="text-gray-300 text-sm capitalize">{game.platform === 'chess.com' ? 'Chess.com' : game.platform}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-white text-sm font-medium">{game.opponent}</td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${
+                                game.result === 'win' ? 'bg-green-500/20 text-green-400' :
+                                game.result === 'loss' ? 'bg-red-500/20 text-red-400' :
+                                'bg-yellow-500/20 text-yellow-400'
+                              }`}>
+                                {game.result}
+                              </span>
+                              <span className={`text-sm ${
+                                game.ratingChange.startsWith('+') ? 'text-green-400' : 
+                                game.ratingChange === '0' ? 'text-gray-400' : 'text-red-400'
+                              }`}>
+                                {game.ratingChange !== '0' ? game.ratingChange : '±0'}
                               </span>
                             </div>
-                            <span className="text-gray-300 text-sm capitalize">{game.platform}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-white text-sm font-medium">{game.opponent}</td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                              game.result === 'Win' ? 'bg-green-500/20 text-green-400' :
-                              game.result === 'Loss' ? 'bg-red-500/20 text-red-400' :
-                              'bg-yellow-500/20 text-yellow-400'
-                            }`}>
-                              {game.result}
-                            </span>
-                            <span className={`text-sm ${
-                              game.ratingChange.startsWith('+') ? 'text-green-400' : 'text-red-400'
-                            }`}>
-                              {game.ratingChange}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-gray-300 text-sm">{game.opening}</td>
-                        <td className="px-6 py-4">
-                          <span className={`text-sm font-medium ${
-                            game.accuracy >= 85 ? 'text-green-400' :
-                            game.accuracy >= 70 ? 'text-yellow-400' : 'text-red-400'
-                          }`}>
-                            {game.accuracy}%
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex gap-2">
-                            <button className="px-3 py-1 bg-[#115fd4] text-white text-xs font-medium rounded-lg hover:bg-[#4a90e2] transition-colors duration-200">
-                              Analyze
-                            </button>
-                            <button className="px-3 py-1 bg-slate-600 text-white text-xs font-medium rounded-lg hover:bg-slate-500 transition-colors duration-200">
-                              Learn
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                          </td>
+                          <td className="px-6 py-4 text-gray-300 text-sm">{game.timeControl}</td>
+                          <td className="px-6 py-4 text-gray-300 text-sm">{game.opening}</td>
+                          <td className="px-6 py-4 text-gray-300 text-sm">{game.date}</td>
+                          <td className="px-6 py-4">
+                            <div className="flex gap-2">
+                              {game.url && game.platform !== 'demo' ? (
+                                <>
+                                  <a 
+                                    href={game.url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="px-3 py-1 bg-[#115fd4] text-white text-xs font-medium rounded-lg hover:bg-[#4a90e2] transition-colors duration-200"
+                                  >
+                                    View Game
+                                  </a>
+                                  <button
+                                    onClick={() => handleAnalyzeGame(game)}
+                                    className="px-3 py-1 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition-colors duration-200"
+                                  >
+                                    Analyze
+                                  </button>
+                                </>
+                              ) : (
+                                <button className="px-3 py-1 bg-slate-600 text-white text-xs font-medium rounded-lg cursor-not-allowed opacity-50">
+                                  N/A
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
 

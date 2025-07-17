@@ -15,6 +15,7 @@ const analyzeRoutes = require('./routes/analyze');
 const booksRoutes = require('./routes/books');
 const puzzleRoutes = require('./routes/puzzles');
 const userPuzzleRoutes = require('./routes/userPuzzles'); // New user puzzle routes
+const chesscomRoutes = require('./routes/chesscom'); // Import Chess.com routes
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -38,6 +39,8 @@ app.use('/api/stockfish', stockfishRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/test', testRoutes);
 app.use('/api/games', lichessRoutes);
+app.use('/api/lichess', lichessRoutes); // Add dedicated lichess endpoint
+app.use('/api/chesscom', chesscomRoutes); // Add dedicated Chess.com endpoint
 app.use('/api/analyze', analyzeRoutes);
 app.use('/api/books', booksRoutes);
 app.use('/api/puzzles', puzzleRoutes);
@@ -94,6 +97,7 @@ async function startServer() {
       console.log(`📚 Books: http://localhost:${PORT}/api/books`);
       console.log(`🔍 Analysis: http://localhost:${PORT}/api/analyze`);
       console.log(`♟️  Stockfish: http://localhost:${PORT}/api/stockfish`);
+      console.log(`🌐 Chess.com: http://localhost:${PORT}/api/chesscom`); // Log Chess.com route
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
