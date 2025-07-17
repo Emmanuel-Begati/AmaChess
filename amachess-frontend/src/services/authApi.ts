@@ -58,7 +58,7 @@ class AuthApiService {
   private baseURL: string;
 
   constructor() {
-    this.baseURL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3001/api';
+    this.baseURL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3002/api';
   }
 
   private getAuthHeaders(): HeadersInit {

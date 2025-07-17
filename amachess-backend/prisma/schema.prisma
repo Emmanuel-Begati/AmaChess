@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -57,12 +57,12 @@ model Puzzle {
   id               String   @id @default(cuid())
   lichessId        String   @unique // Original Lichess puzzle ID
   fen              String   // Chess position
-  moves            String[] // Solution moves as array
+  moves            String   // Solution moves as JSON string
   rating           Int      // Puzzle difficulty rating
   ratingDeviation  Int      @default(0)
   popularity       Int      @default(0)
   nbPlays          Int      @default(0)
-  themes           String[] // Tactical themes (pin, fork, etc.)
+  themes           String   // Tactical themes as JSON string
   gameUrl          String?  // Original Lichess game URL
   openingTags      String?  // Opening information
   sideToMove       String   // 'white' or 'black'
@@ -89,7 +89,7 @@ model PuzzleAttempt {
   puzzleId      String
   isCompleted   Boolean  @default(false)
   isSolved      Boolean  @default(false)
-  movesPlayed   String[] // User's moves in the attempt
+  movesPlayed   String   // User's moves as JSON string
   timeSpent     Int      @default(0) // Time in seconds
   hintsUsed     Int      @default(0)
   solutionShown Boolean  @default(false)
@@ -117,7 +117,7 @@ model PuzzleSession {
   totalTime       Int      @default(0) // Total time in seconds
   averageRating   Float?   // Average rating of puzzles attempted
   accuracy        Float?   // Session accuracy percentage
-  themes          String[] // Themes focused on in this session
+  themes          String   // Themes as JSON string
   difficulty      String?  // Session difficulty level
   isCompleted     Boolean  @default(false)
   completedAt     DateTime?
@@ -144,7 +144,7 @@ model UserStats {
   totalTimeSpent        Int      @default(0) // Total time in seconds
   averageAccuracy       Float    @default(0.0)
   averageTimePerPuzzle  Float    @default(0.0) // Average time in seconds
-  favoriteThemes        String[] // Most frequently solved themes
+  favoriteThemes        String   // Most frequently solved themes as JSON string
   weeklyGoal            Int      @default(10) // Weekly puzzle goal
   weeklyProgress        Int      @default(0)
   monthlyGoal           Int      @default(50) // Monthly puzzle goal

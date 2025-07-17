@@ -520,10 +520,16 @@ class LichessService {
     return timeControls;
   }
 
+  /**
+   * Categorize a time control into standard categories
+   * @param {string} speed - The game speed from Lichess
+   * @returns {string} Categorized time control
+   */
   categorizeTimeControl(speed) {
     switch (speed) {
       case 'ultraBullet':
       case 'bullet':
+        return 'bullet';
       case 'blitz':
         return 'blitz';
       case 'rapid':
@@ -532,7 +538,7 @@ class LichessService {
       case 'correspondence':
         return 'classical';
       default:
-        return 'blitz';
+        return 'rapid'; // default fallback
     }
   }
 
@@ -906,6 +912,127 @@ class LichessService {
     } catch (error) {
       console.error('Error fetching Lichess rapid games:', error);
       return [];
+    }
+  }
+
+  /**
+   * Get user's basic progress statistics
+   * @param {string} username - Lichess username
+   * @returns {Promise<object>} Progress statistics object
+   */
+  async getUserProgressStats(username) {
+    try {
+      console.log(`Fetching Lichess progress stats for user: ${username}`);
+
+      // Get user stats first
+      const stats = await this.getUserStats(username);
+
+      // Get recent games for analysis
+      const games = await this.getUserGames(username, 100);
+
+      // Analyze the games to get progress statistics
+      const bulkAnalysis = await this.analyzeBulkGames(games, username);
+
+      const progressStats = {
+        totalGames: stats.gameCount.total,
+        overallWinRate: stats.winRate,
+        timeControlBreakdown: {},
+        strengthAreas: [],
+        improvementAreas: []
+      };
+
+      // Calculate win/loss/draw breakdown by time control
+      const gameTypes = ['rapid', 'blitz', 'bullet', 'classical'];
+      
+      gameTypes.forEach(gameType => {
+        if (stats.gameCount[gameType] > 0) {
+          const timeControlGames = games.filter(game => 
+            this.categorizeTimeControl(game.speed) === gameType || game.perf === gameType
+          );
+
+          const wins = timeControlGames.filter(game => {
+            const userColor = this.getUserColor(game, username);
+            return game.winner === userColor;
+          }).length;
+
+          const losses = timeControlGames.filter(game => {
+            const userColor = this.getUserColor(game, username);
+            return game.winner && game.winner !== userColor;
+          }).length;
+
+          const draws = timeControlGames.filter(game => !game.winner).length;
+          const total = wins + losses + draws;
+
+          if (total > 0) {
+            progressStats.timeControlBreakdown[gameType] = {
+              wins,
+              losses,
+              draws,
+              total,
+              winRate: total > 0 ? wins / total : 0,
+              drawRate: total > 0 ? draws / total : 0,
+              currentRating: stats.rating[gameType] || null
+            };
+          }
+        }
+      });
+
+      // Analyze strengths and improvement areas
+      Object.keys(progressStats.timeControlBreakdown).forEach(timeControl => {
+        const breakdown = progressStats.timeControlBreakdown[timeControl];
+        
+        if (breakdown.winRate >= 0.6) {
+          progressStats.strengthAreas.push(`Strong ${timeControl} performance (${Math.round(breakdown.winRate * 100)}% win rate)`);
+        } else if (breakdown.winRate < 0.4 && breakdown.total >= 10) {
+          progressStats.improvementAreas.push(`${timeControl.charAt(0).toUpperCase() + timeControl.slice(1)} needs improvement (${Math.round(breakdown.winRate * 100)}% win rate)`);
+        }
+      });
+
+      // Add puzzle rating analysis if available
+      if (stats.rating.puzzle) {
+        if (stats.rating.puzzle >= 2000) {
+          progressStats.strengthAreas.push(`Excellent tactical skills (${stats.rating.puzzle} puzzle rating)`);
+        } else if (stats.rating.puzzle < 1500) {
+          progressStats.improvementAreas.push('Tactical training recommended (puzzle rating below 1500)');
+        }
+      }
+
+      // Add analysis-based insights if we have analyzed games
+      if (bulkAnalysis && games.length > 0) {
+        // Overall accuracy insight
+        if (bulkAnalysis.overallAccuracy >= 85) {
+          progressStats.strengthAreas.push(`High accuracy play (${Math.round(bulkAnalysis.overallAccuracy)}% average)`);
+        } else if (bulkAnalysis.overallAccuracy < 75) {
+          progressStats.improvementAreas.push(`Focus on accuracy improvement (${Math.round(bulkAnalysis.overallAccuracy)}% average)`);
+        }
+
+        // Time management
+        if (bulkAnalysis.timeManagement && bulkAnalysis.timeManagement.timePressureGames > games.length * 0.3) {
+          progressStats.improvementAreas.push('Time management needs attention (frequent time pressure)');
+        }
+
+        // Opening performance
+        if (bulkAnalysis.openingPerformance && bulkAnalysis.openingPerformance.bestPerforming.length > 0) {
+          const bestOpening = bulkAnalysis.openingPerformance.bestPerforming[0];
+          if (bestOpening.winRate >= 0.7) {
+            progressStats.strengthAreas.push(`Excellent with ${bestOpening.name} (${Math.round(bestOpening.winRate * 100)}% win rate)`);
+          }
+        }
+      }
+
+      // Add general insights based on game volume and ratings
+      if (progressStats.totalGames >= 1000) {
+        progressStats.strengthAreas.push('Experienced player (1000+ games)');
+      } else if (progressStats.totalGames >= 100) {
+        progressStats.strengthAreas.push('Active player (100+ games)');
+      }
+
+      console.log(`✅ Successfully calculated Lichess progress stats for: ${username}`);
+      return progressStats;
+
+    } catch (error) {
+      console.error('Error fetching Lichess progress stats:', error);
+      throw error;
     }
   }
 }

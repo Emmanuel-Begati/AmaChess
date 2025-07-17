@@ -7,6 +7,169 @@ const { authenticateToken } = require('../middleware/auth');
 const lichessService = new LichessService();
 
 /**
+ * GET /api/lichess/me/stats
+ * Get authenticated user's own Lichess statistics
+ */
+router.get('/me/stats', authenticateToken, async (req, res) => {
+  try {
+    const user = req.user;
+    
+    if (!user.lichessUsername) {
+      return res.status(400).json({
+        error: 'No Lichess username',
+        message: 'Please add your Lichess username to your profile first'
+      });
+    }
+
+    console.log(`Fetching Lichess stats for authenticated user: ${user.lichessUsername}`);
+
+    // Fetch user statistics from Lichess
+    const stats = await lichessService.getUserStats(user.lichessUsername);
+
+    res.json({
+      success: true,
+      username: user.lichessUsername,
+      stats,
+      fetchedAt: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Error fetching user\'s Lichess stats:', error);
+
+    // Handle different error types
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        error: 'Lichess user not found',
+        message: 'The Lichess username in your profile was not found. Please check your username.'
+      });
+    }
+
+    if (error.message.includes('Rate limit exceeded')) {
+      return res.status(429).json({
+        error: 'Rate limit exceeded',
+        message: 'Too many requests to Lichess API. Please try again later.',
+        retryAfter: 60
+      });
+    }
+
+    res.status(500).json({
+      error: 'Internal server error',
+      message: 'Failed to fetch your Lichess statistics'
+    });
+  }
+});
+
+/**
+ * GET /api/lichess/me/games
+ * Get authenticated user's own Lichess games
+ */
+router.get('/me/games', authenticateToken, async (req, res) => {
+  try {
+    const user = req.user;
+    const { max = 10 } = req.query;
+    
+    if (!user.lichessUsername) {
+      return res.status(400).json({
+        error: 'No Lichess username',
+        message: 'Please add your Lichess username to your profile first'
+      });
+    }
+
+    console.log(`Fetching Lichess games for authenticated user: ${user.lichessUsername}`);
+
+    // First, get games in JSON format
+    const games = await lichessService.getUserGames(user.lichessUsername, parseInt(max));
+    
+    if (!games || games.length === 0) {
+      return res.json({
+        success: true,
+        username: user.lichessUsername,
+        games: [],
+        analysis: null,
+        message: 'No games found for this user'
+      });
+    }
+
+    // Analyze the bulk games
+    const bulkAnalysis = await lichessService.analyzeBulkGames(games, user.lichessUsername);
+
+    // Format games for frontend
+    const formattedGames = games.map(game => ({
+      id: game.id,
+      url: `https://lichess.org/${game.id}`,
+      opponent: game.players.white.user?.name === user.lichessUsername 
+        ? game.players.black.user?.name || 'Anonymous'
+        : game.players.white.user?.name || 'Anonymous',
+      result: game.winner === 'white' 
+        ? (game.players.white.user?.name === user.lichessUsername ? 'Win' : 'Loss')
+        : game.winner === 'black'
+        ? (game.players.black.user?.name === user.lichessUsername ? 'Win' : 'Loss')
+        : 'Draw',
+      rating: game.players.white.user?.name === user.lichessUsername 
+        ? game.players.white.rating
+        : game.players.black.rating,
+      opponentRating: game.players.white.user?.name === user.lichessUsername 
+        ? game.players.black.rating
+        : game.players.white.rating,
+      ratingChange: game.players.white.user?.name === user.lichessUsername 
+        ? (game.players.white.ratingDiff || 0)
+        : (game.players.black.ratingDiff || 0),
+      timeControl: `${Math.floor(game.clock?.initial / 60)}+${game.clock?.increment || 0}`,
+      opening: game.opening?.name || 'Unknown',
+      date: new Date(game.createdAt).toISOString().split('T')[0],
+      accuracy: game.accuracy 
+        ? (game.players.white.user?.name === user.lichessUsername 
+           ? game.accuracy.white 
+           : game.accuracy.black)
+        : null,
+      platform: 'lichess',
+      moves: game.moves,
+      pgn: game.pgn
+    }));
+
+    res.json({
+      success: true,
+      username: user.lichessUsername,
+      games: formattedGames,
+      analysis: bulkAnalysis,
+      fetchedAt: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Error fetching and analyzing user\'s Lichess games:', error);
+    
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        error: 'Lichess user not found',
+        message: 'The Lichess username in your profile was not found. Please check your username.'
+      });
+    }
+
+    res.status(500).json({
+      error: 'Failed to fetch and analyze games',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/games/status
+ * Get Lichess API status and rate limit information
+ */
+router.get('/status', async (req, res) => {
+  try {
+    const status = await lichessService.getAPIStatus();
+    res.json(status);
+  } catch (error) {
+    console.error('Error getting API status:', error);
+    res.status(500).json({
+      error: 'Failed to get API status',
+      message: error.message
+    });
+  }
+});
+
+/**
  * GET /api/games/:username
  * Fetch PGN games for a specific Lichess user
  */
@@ -216,6 +379,61 @@ router.get('/:username/stats', async (req, res) => {
 });
 
 /**
+ * GET /api/lichess/:username/progress
+ * Get user progress statistics from Lichess
+ */
+router.get('/:username/progress', async (req, res) => {
+  try {
+    const { username } = req.params;
+
+    // Validate username
+    if (!username || username.length < 3) {
+      return res.status(400).json({
+        error: 'Invalid username',
+        message: 'Username must be at least 3 characters long'
+      });
+    }
+
+    console.log(`Fetching user progress statistics for: ${username}`);
+
+    // Fetch user progress statistics from Lichess
+    const progressStats = await lichessService.getUserProgressStats(username);
+
+    res.json({
+      success: true,
+      username,
+      progressStats,
+      fetchedAt: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Error fetching Lichess progress stats:', error);
+
+    // Handle different error types
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        error: 'User not found',
+        message: error.message
+      });
+    }
+
+    if (error.message.includes('Rate limit exceeded')) {
+      return res.status(429).json({
+        error: 'Rate limit exceeded',
+        message: 'Too many requests to Lichess API. Please try again later.',
+        retryAfter: 60
+      });
+    }
+
+    // Generic error response
+    res.status(500).json({
+      error: 'Internal server error',
+      message: 'Failed to fetch user progress statistics from Lichess'
+    });
+  }
+});
+
+/**
  * GET /api/games/:username/cache
  * Get cached PGN files for a user
  */
@@ -368,160 +586,6 @@ router.get('/:username/analyze', async (req, res) => {
     res.status(500).json({
       error: 'Failed to fetch and analyze games',
       message: error.message
-    });
-  }
-});
-
-/**
- * GET /api/lichess/me/stats
- * Get authenticated user's own Lichess statistics
- */
-router.get('/me/stats', authenticateToken, async (req, res) => {
-  try {
-    const user = req.user;
-    
-    if (!user.lichessUsername) {
-      return res.status(400).json({
-        error: 'No Lichess username',
-        message: 'Please add your Lichess username to your profile first'
-      });
-    }
-
-    console.log(`Fetching Lichess stats for authenticated user: ${user.lichessUsername}`);
-
-    // Fetch user statistics from Lichess
-    const stats = await lichessService.getUserStats(user.lichessUsername);
-
-    res.json({
-      success: true,
-      username: user.lichessUsername,
-      stats,
-      fetchedAt: new Date().toISOString()
-    });
-
-  } catch (error) {
-    console.error('Error fetching user\'s Lichess stats:', error);
-
-    // Handle different error types
-    if (error.message.includes('not found')) {
-      return res.status(404).json({
-        error: 'Lichess user not found',
-        message: 'The Lichess username in your profile was not found. Please check your username.'
-      });
-    }
-
-    if (error.message.includes('Rate limit exceeded')) {
-      return res.status(429).json({
-        error: 'Rate limit exceeded',
-        message: 'Too many requests to Lichess API. Please try again later.',
-        retryAfter: 60
-      });
-    }
-
-    res.status(500).json({
-      error: 'Internal server error',
-      message: 'Failed to fetch your Lichess statistics'
-    });
-  }
-});
-
-/**
- * GET /api/lichess/me/games
- * Get authenticated user's own Lichess games
- */
-router.get('/me/games', authenticateToken, async (req, res) => {
-  try {
-    const user = req.user;
-    const { max = 10 } = req.query;
-    
-    if (!user.lichessUsername) {
-      return res.status(400).json({
-        error: 'No Lichess username',
-        message: 'Please add your Lichess username to your profile first'
-      });
-    }
-
-    console.log(`Fetching Lichess games for authenticated user: ${user.lichessUsername}`);
-
-    // First, get games in JSON format
-    const games = await lichessService.getUserGames(user.lichessUsername, parseInt(max));
-    
-    if (!games || games.length === 0) {
-      return res.json({
-        success: true,
-        username: user.lichessUsername,
-        games: [],
-        analysis: null,
-        message: 'No games found'
-      });
-    }
-
-    // Analyze the bulk games
-    const bulkAnalysis = await lichessService.analyzeBulkGames(games, user.lichessUsername);
-
-    // Format games for frontend
-    const formattedGames = games.map(game => ({
-      id: game.id,
-      url: `https://lichess.org/${game.id}`,
-      opponent: game.players.white.user?.name === user.lichessUsername 
-        ? game.players.black.user?.name || 'Anonymous'
-        : game.players.white.user?.name || 'Anonymous',
-      result: game.winner === 'white' 
-        ? (game.players.white.user?.name === user.lichessUsername ? 'Win' : 'Loss')
-        : game.winner === 'black'
-        ? (game.players.black.user?.name === user.lichessUsername ? 'Win' : 'Loss')
-        : 'Draw',
-      rating: game.players.white.user?.name === user.lichessUsername 
-        ? game.players.white.rating
-        : game.players.black.rating,
-      opponentRating: game.players.white.user?.name === user.lichessUsername 
-        ? game.players.black.rating
-        : game.players.white.rating,
-      ratingChange: game.players.white.user?.name === user.lichessUsername 
-        ? (game.players.white.ratingDiff || 0)
-        : (game.players.black.ratingDiff || 0),
-      timeControl: `${Math.floor(game.clock?.initial / 60)}+${game.clock?.increment || 0}`,
-      opening: game.opening?.name || 'Unknown',
-      date: new Date(game.createdAt).toISOString().split('T')[0],
-      accuracy: game.accuracy 
-        ? (game.players.white.user?.name === user.lichessUsername 
-           ? game.accuracy.white 
-           : game.accuracy.black)
-        : null,
-      platform: 'lichess',
-      moves: game.moves,
-      pgn: game.pgn
-    }));
-
-    res.json({
-      success: true,
-      username: user.lichessUsername,
-      games: formattedGames,
-      analysis: bulkAnalysis,
-      fetchedAt: new Date().toISOString()
-    });
-
-  } catch (error) {
-    console.error('Error fetching user\'s Lichess games:', error);
-    
-    if (error.message.includes('not found')) {
-      return res.status(404).json({
-        error: 'Lichess user not found',
-        message: 'The Lichess username in your profile was not found. Please check your username.'
-      });
-    }
-
-    if (error.message.includes('Rate limit exceeded')) {
-      return res.status(429).json({
-        error: 'Rate limit exceeded',
-        message: 'Too many requests to Lichess API. Please try again later.',
-        retryAfter: 60
-      });
-    }
-
-    res.status(500).json({
-      error: 'Internal server error',
-      message: 'Failed to fetch your Lichess games'
     });
   }
 });

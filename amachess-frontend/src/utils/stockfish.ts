@@ -200,7 +200,7 @@ export type DifficultyLevel = 'beginner' | 'intermediate' | 'advanced' | 'expert
 class StockfishAPI {
   private baseUrl: string;
 
-  constructor(baseUrl: string = 'http://localhost:3001/api/stockfish') {
+  constructor(baseUrl: string = 'http://localhost:3002/api/stockfish') {
     this.baseUrl = baseUrl;
   }
 
