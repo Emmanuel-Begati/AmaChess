@@ -211,9 +211,78 @@ const verifyToken = async (req, res) => {
   }
 };
 
+// Update user profile
+const updateProfile = async (req, res) => {
+  try {
+    const { 
+      name, 
+      lichessUsername, 
+      chesscomUsername, 
+      country, 
+      fideRating 
+    } = req.body;
+
+    // Validation
+    if (name && name.trim().length < 2) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        message: 'Name must be at least 2 characters long'
+      });
+    }
+
+    // Build update data object (only include provided fields)
+    const updateData = {};
+    if (name !== undefined) updateData.name = name.trim();
+    if (lichessUsername !== undefined) updateData.lichessUsername = lichessUsername.trim() || null;
+    if (chesscomUsername !== undefined) updateData.chesscomUsername = chesscomUsername.trim() || null;
+    if (country !== undefined) updateData.country = country.trim() || null;
+    if (fideRating !== undefined) updateData.fideRating = fideRating ? String(fideRating) : null;
+
+    // Update user
+    const updatedUser = await prisma.user.update({
+      where: { id: req.user.id },
+      data: updateData,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        lichessUsername: true,
+        chesscomUsername: true,
+        country: true,
+        fideRating: true,
+        createdAt: true
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: {
+        user: updatedUser
+      }
+    });
+
+  } catch (error) {
+    console.error('Update profile error:', error);
+    
+    if (error.code === 'P2002') {
+      return res.status(409).json({
+        error: 'Update failed',
+        message: 'This information is already in use by another account'
+      });
+    }
+
+    res.status(500).json({
+      error: 'Update failed',
+      message: 'Internal server error during profile update'
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
   getProfile,
-  verifyToken
+  verifyToken,
+  updateProfile
 };

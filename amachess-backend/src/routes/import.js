@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const lichessService = require('../services/lichessService');
+const ChesscomService = require('../services/chesscomService');
+
+const chesscomService = new ChesscomService();
 
 // Import games from Lichess
 router.post('/lichess/:username', async (req, res) => {
@@ -35,13 +38,21 @@ router.post('/lichess/:username', async (req, res) => {
 router.post('/chesscom/:username', async (req, res) => {
   try {
     const { username } = req.params;
+    const { maxGames = 50 } = req.body;
+
+    // Fetch games from Chess.com
+    const games = await chesscomService.getUserGames(username, maxGames);
     
-    // Chess.com API integration would go here
-    // Note: Chess.com has different API endpoints and rate limits
-    
+    // Perform bulk analysis
+    const analysis = await chesscomService.analyzeBulkGames(games, username);
+
+    // Store games and analysis in database
+    // ... database storage logic here ...
+
     res.json({
       success: true,
-      message: "Chess.com import not yet implemented"
+      gamesImported: games.length,
+      analysis: analysis
     });
   } catch (error) {
     console.error('Error importing from Chess.com:', error);

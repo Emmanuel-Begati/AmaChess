@@ -20,7 +20,16 @@ const authenticateToken = async (req, res, next) => {
     // Find user in database
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { id: true, email: true, createdAt: true } // Exclude password
+      select: { 
+        id: true, 
+        email: true, 
+        name: true,
+        lichessUsername: true,
+        chesscomUsername: true,
+        country: true,
+        fideRating: true,
+        createdAt: true 
+      } // Exclude password
     });
 
     if (!user) {

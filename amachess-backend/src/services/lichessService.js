@@ -11,6 +11,14 @@ class LichessService {
     this.initializeCache();
   }
 
+  // Validate the API token
+  isValidToken() {
+    return this.token && 
+           this.token !== 'YOUR_ACTUAL_LICHESS_TOKEN_HERE' && 
+           this.token.startsWith('lip_') && 
+           this.token.length > 10;
+  }
+
   async initializeCache() {
     try {
       await fs.mkdir(this.cacheDir, { recursive: true });
@@ -254,6 +262,82 @@ class LichessService {
     } catch (error) {
       console.error('Error fetching Lichess games:', error);
       throw new Error('Failed to fetch games from Lichess');
+    }
+  }
+
+  // Get user statistics from Lichess API
+  async getUserStats(username) {
+    try {
+      // Always use public endpoint for user stats (no authentication required)
+      console.log(`Fetching stats for user: ${username}`);
+
+      // Get user profile data (public endpoint, no auth required)
+      const profileResponse = await axios.get(`${this.baseURL}/user/${username}`, {
+        timeout: 10000,
+        headers: {
+          'User-Agent': 'AmaChess-Backend/1.0.0'
+        }
+      });
+
+      const profile = profileResponse.data;
+      
+      // Get recent games to calculate additional stats
+      let recentGames = [];
+      try {
+        recentGames = await this.getUserGames(username, 20);
+      } catch (gamesError) {
+        console.warn('Could not fetch recent games:', gamesError.message);
+        // Continue without recent games data
+      }
+      
+      // Calculate win rate from profile data (more accurate than from recent games)
+      const totalWins = profile.count?.win || 0;
+      const totalLosses = profile.count?.loss || 0;
+      const totalDraws = profile.count?.draw || 0;
+      const totalGames = totalWins + totalLosses + totalDraws;
+      const winRate = totalGames > 0 ? totalWins / totalGames : 0;
+
+      // Calculate statistics
+      const stats = {
+        username: profile.username,
+        rating: {
+          rapid: profile.perfs?.rapid?.rating || null,
+          blitz: profile.perfs?.blitz?.rating || null,
+          bullet: profile.perfs?.bullet?.rating || null,
+          classical: profile.perfs?.classical?.rating || null,
+          puzzle: profile.perfs?.puzzle?.rating || null
+        },
+        gameCount: {
+          rapid: profile.count?.rated || 0,
+          blitz: profile.perfs?.blitz?.games || 0,
+          bullet: profile.perfs?.bullet?.games || 0,
+          classical: profile.perfs?.classical?.games || 0,
+          total: profile.count?.all || 0
+        },
+        winRate: winRate,
+        online: profile.online || false,
+        title: profile.title || null,
+        patron: profile.patron || false,
+        verified: profile.verified || false,
+        playTime: profile.playTime?.total || 0,
+        createdAt: profile.createdAt,
+        language: profile.language || 'en',
+        country: profile.profile?.country || null
+      };
+
+      return stats;
+    } catch (error) {
+      console.error('Error fetching user stats from Lichess:', error);
+      
+      if (error.response?.status === 404) {
+        throw new Error('Lichess user not found');
+      } else if (error.response?.status === 401) {
+        throw new Error('Invalid Lichess API token. Please update your token in the .env file.');
+      } else if (error.response?.status === 429) {
+        throw new Error('Rate limit exceeded');
+      } else {
+        throw new Error('Failed to fetch user statistics from Lichess');
+      }
     }
   }
 
@@ -612,6 +696,217 @@ class LichessService {
     if (diffDays <= 30) return "Last 30 days";
     if (diffDays <= 90) return "Last 3 months";
     return "Last 6 months";
+  }
+
+  /**
+   * Get rating analytics for a user including rating history, peak rating, and percentile data
+   * @param {string} username - Lichess username
+   * @returns {Promise<object>} Rating analytics object
+   */
+  async getUserRatingAnalytics(username) {
+    try {
+      console.log(`Fetching rating analytics for user: ${username}`);
+
+      // Get rating history
+      const historyResponse = await axios.get(`${this.baseURL}/user/${username}/rating-history`, {
+        timeout: 10000,
+        headers: {
+          'User-Agent': 'AmaChess-Backend/1.0.0'
+        }
+      });
+
+      const ratingHistory = historyResponse.data;
+
+      // Get performance statistics for main game types
+      const perfTypes = ['rapid', 'blitz', 'bullet', 'classical'];
+      const perfStats = {};
+
+      for (const perfType of perfTypes) {
+        try {
+          const perfResponse = await axios.get(`${this.baseURL}/user/${username}/perf/${perfType}`, {
+            timeout: 10000,
+            headers: {
+              'User-Agent': 'AmaChess-Backend/1.0.0'
+            }
+          });
+          perfStats[perfType] = perfResponse.data;
+        } catch (perfError) {
+          console.warn(`Could not fetch ${perfType} performance for ${username}:`, perfError.message);
+          perfStats[perfType] = null;
+        }
+      }
+
+      // Process rating history to find peak ratings and calculate 30-day changes
+      const analytics = this.processRatingAnalytics(ratingHistory, perfStats);
+
+      console.log(`✅ Successfully fetched rating analytics for: ${username}`);
+      return analytics;
+
+    } catch (error) {
+      console.error('Error fetching Lichess rating analytics:', error);
+      
+      if (error.response?.status === 404) {
+        throw new Error('Lichess user not found');
+      } else if (error.response?.status === 429) {
+        throw new Error('Rate limit exceeded');
+      } else {
+        throw new Error('Failed to fetch rating analytics from Lichess');
+      }
+    }
+  }
+
+  /**
+   * Process rating history data to extract analytics
+   * @param {Array} ratingHistory - Rating history from Lichess API
+   * @param {Object} perfStats - Performance statistics for each game type
+   * @returns {Object} Processed analytics
+   */
+  processRatingAnalytics(ratingHistory, perfStats) {
+    const analytics = {
+      peakRatings: {},
+      thirtyDayChanges: {},
+      percentiles: {},
+      ratingTrends: {}
+    };
+
+    // Process each game type's rating history
+    ratingHistory.forEach(perfHistory => {
+      const perfName = perfHistory.name.toLowerCase().replace(/[^a-z]/g, '');
+      const points = perfHistory.points || [];
+
+      if (points.length === 0) return;
+
+      // Find peak rating
+      let peakRating = 0;
+      points.forEach(point => {
+        if (point[3] > peakRating) {
+          peakRating = point[3];
+        }
+      });
+
+      analytics.peakRatings[perfName] = peakRating;
+
+      // Calculate 30-day change (approximate)
+      if (points.length > 1) {
+        const currentRating = points[points.length - 1][3];
+        
+        // Find a point approximately 30 days ago
+        const currentDate = new Date();
+        const thirtyDaysAgo = new Date(currentDate.getTime() - (30 * 24 * 60 * 60 * 1000));
+        
+        let closestPoint = points[0];
+        points.forEach(point => {
+          const pointDate = new Date(point[0], point[1], point[2]);
+          const thirtyDaysAgoDistance = Math.abs(pointDate.getTime() - thirtyDaysAgo.getTime());
+          const currentClosestDistance = Math.abs(new Date(closestPoint[0], closestPoint[1], closestPoint[2]).getTime() - thirtyDaysAgo.getTime());
+          
+          if (thirtyDaysAgoDistance < currentClosestDistance) {
+            closestPoint = point;
+          }
+        });
+
+        const thirtyDayChange = currentRating - closestPoint[3];
+        analytics.thirtyDayChanges[perfName] = thirtyDayChange;
+      } else {
+        analytics.thirtyDayChanges[perfName] = 0;
+      }
+
+      // Get percentile from performance stats
+      const perfKey = this.mapPerfNameToKey(perfName);
+      if (perfStats[perfKey] && perfStats[perfKey].percentile) {
+        analytics.percentiles[perfName] = Math.round(perfStats[perfKey].percentile);
+      }
+    });
+
+    return analytics;
+  }
+
+  /**
+   * Map performance name to API key
+   * @param {string} perfName - Performance name from rating history
+   * @returns {string} Performance key for API calls
+   */
+  mapPerfNameToKey(perfName) {
+    const mapping = {
+      'bullet': 'bullet',
+      'blitz': 'blitz',
+      'rapid': 'rapid',
+      'classical': 'classical',
+      'correspondence': 'correspondence',
+      'ultrabullet': 'ultraBullet',
+      'kingofthehill': 'kingOfTheHill',
+      'threecheck': 'threeCheck',
+      'antichess': 'antichess',
+      'atomic': 'atomic',
+      'horde': 'horde',
+      'racingkings': 'racingKings',
+      'crazyhouse': 'crazyhouse',
+      'chess960': 'chess960',
+      'puzzles': 'puzzle'
+    };
+    
+    return mapping[perfName] || perfName;
+  }
+
+  // Get user's recent rapid games from Lichess
+  async getRecentRapidGames(username, maxGames = 5) {
+    try {
+      const response = await axios.get(`${this.baseURL}/games/user/${username}`, {
+        params: {
+          max: 20, // Get more to filter for rapid games
+          rated: true,
+          moves: false,
+          opening: true,
+          clocks: true,
+          sort: 'dateDesc',
+          perfType: 'rapid' // Filter for rapid games only
+        },
+        headers: {
+          'Accept': 'application/x-ndjson'
+        },
+        responseType: 'text'
+      });
+
+      // Parse NDJSON response
+      const games = response.data
+        .split('\n')
+        .filter(line => line.trim())
+        .map(line => JSON.parse(line))
+        .filter(game => game.perf === 'rapid') // Ensure only rapid games
+        .slice(0, maxGames); // Take only the requested number
+
+      // Format games for the dashboard
+      return games.map(game => {
+        const isWhite = game.players.white.user?.name?.toLowerCase() === username.toLowerCase();
+        const opponent = isWhite 
+          ? (game.players.black.user?.name || 'Anonymous')
+          : (game.players.white.user?.name || 'Anonymous');
+        
+        let result = 'draw';
+        if (game.winner) {
+          result = (game.winner === 'white' && isWhite) || (game.winner === 'black' && !isWhite) ? 'win' : 'loss';
+        }
+
+        const playerData = isWhite ? game.players.white : game.players.black;
+        const ratingChange = playerData.ratingDiff || 0;
+
+        return {
+          id: game.id,
+          platform: 'lichess',
+          opponent,
+          result,
+          ratingChange: ratingChange > 0 ? `+${ratingChange}` : ratingChange.toString(),
+          timeControl: `${Math.floor(game.clock?.initial / 60)}+${game.clock?.increment || 0}`,
+          opening: game.opening?.name || 'Unknown',
+          date: new Date(game.createdAt).toISOString().split('T')[0],
+          url: `https://lichess.org/${game.id}`
+        };
+      });
+
+    } catch (error) {
+      console.error('Error fetching Lichess rapid games:', error);
+      return [];
+    }
   }
 }
 
