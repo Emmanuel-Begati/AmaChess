@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import SimplePDFViewer from '../components/SimplePDFViewer';
+import LibraryChessAnalysisBoard from '../components/LibraryChessAnalysisBoard';
+import BookPositionsPanel from '../components/BookPositionsPanel';
 import { booksApiService } from '../services/booksApi';
 
 const BookReader = () => {
@@ -15,6 +17,9 @@ const BookReader = () => {
   const [error, setError] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [hasPDF, setHasPDF] = useState(false);
+  
+  // Chess analysis state
+  const [currentPosition, setCurrentPosition] = useState<string>('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
   
   // Upload state
   const [showUpload, setShowUpload] = useState(false);
@@ -115,6 +120,11 @@ const BookReader = () => {
     } finally {
       setUploading(false);
     }
+  };
+
+  // Handle position selection from book diagrams
+  const handlePositionSelect = (fen: string, description?: string) => {
+    setCurrentPosition(fen);
   };
 
   // Show upload form if no book ID or if upload requested
@@ -369,6 +379,22 @@ const BookReader = () => {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Right Sidebar - Chess Analysis */}
+        <div className="hidden xl:flex xl:w-96 bg-[#1a1f2e] border-l border-[#374162] flex-col">
+          <div className="flex-1 overflow-auto p-4 space-y-4">
+            <LibraryChessAnalysisBoard 
+              className="h-fit" 
+              initialPosition={currentPosition}
+              onPositionChange={setCurrentPosition}
+            />
+            <BookPositionsPanel 
+              selectedBookId={book?.id || undefined}
+              onPositionClick={handlePositionSelect}
+              className="h-fit"
+            />
+          </div>
         </div>
       </div>
     </div>

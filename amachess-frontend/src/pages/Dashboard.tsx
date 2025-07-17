@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import ChesscomStats from '../components/ChesscomStats';
+import LichessProgressStats from '../components/LichessProgressStats';
 import { useAuth } from '../contexts/AuthContext';
-import { authApi } from '../services/authApi';
 
 const Dashboard = () => {
   const [puzzleCompleted, setPuzzleCompleted] = useState(false);
@@ -74,39 +75,6 @@ const Dashboard = () => {
 
   // Remove the separate Lichess API call since it's now handled in the dashboard endpoint
   // This effect is now commented out since we get Lichess data from the dashboard
-  // Fetch Lichess stats for authenticated user
-  useEffect(() => {
-    const fetchLichessStats = async () => {
-      if (!user?.lichessUsername || !authApi.isAuthenticated()) {
-        return;
-      }
-
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Use the new protected endpoint
-        const response = await authApi.getMyLichessStats();
-        setLichessStats(response.stats);
-      } catch (err: any) {
-        console.error('Failed to fetch Lichess stats:', err);
-        if (err.message.includes('404')) {
-          setError('Lichess user not found');
-        } else if (err.message.includes('429')) {
-          setError('Rate limit exceeded. Please try again later.');
-        } else if (err.message.includes('400')) {
-          // No Lichess username in profile
-          setError(null);
-        } else {
-          setError('Failed to load Lichess statistics');
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchLichessStats();
-  }, [user?.lichessUsername]);
 
   // Use backend data if available, fallback to static data
   const playerStats = dashboardData?.stats || {
@@ -419,6 +387,20 @@ const Dashboard = () => {
               )}
             </div>
           </div>
+
+          {/* Chess.com Statistics */}
+          {user?.chesscomUsername && (
+            <div className="mb-12">
+              <ChesscomStats username={user.chesscomUsername} />
+            </div>
+          )}
+
+          {/* Lichess Progress Statistics */}
+          {user?.lichessUsername && user.lichessUsername.trim().length > 0 && (
+            <div className="mb-12">
+              <LichessProgressStats username={user.lichessUsername.trim()} />
+            </div>
+          )}
 
           {/* Analytics & Daily Puzzle Row */}
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-12">

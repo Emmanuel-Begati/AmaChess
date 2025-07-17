@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+
 import { booksApiService, Book } from '../services/booksApi';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -25,6 +26,8 @@ const Library = () => {
     book: null
   });
   const [deleting, setDeleting] = useState(false);
+  const [selectedBookForAnalysis, setSelectedBookForAnalysis] = useState<string | null>(null);
+  const [currentPosition, setCurrentPosition] = useState<string>('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
 
   const featuredBooks = [
     {
@@ -238,10 +241,10 @@ const Library = () => {
         </div>
       )}
       
-      {/* Main Content Container - Fully Responsive */}
+      {/* Main Content Container - Two Column Layout */}
       <main className="flex-1 w-full">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-6 lg:py-8">
-          <div className="max-w-[1400px] mx-auto">
+          <div className="max-w-[1600px] mx-auto">
             
             {/* Header Section - Fluid Layout */}
             <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 lg:gap-8 mb-6 lg:mb-8">
@@ -280,23 +283,29 @@ const Library = () => {
               </div>
             </div>
             
-            {/* Search Bar - Full Width Responsive */}
-            <div className="mb-6 lg:mb-8">
-              <div className="relative max-w-2xl">
-                <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">
-                  <svg className="w-5 h-5 text-[#97a1c4]" fill="currentColor" viewBox="0 0 256 256">
-                    <path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"></path>
-                  </svg>
+            {/* Two Column Layout: Books on Left, Analysis Board on Right */}
+            <div className="space-y-6 lg:space-y-8">
+              
+              {/* Left Column - Books Section */}
+              <div className="xl:col-span-2">
+                
+                {/* Search Bar - Full Width Responsive */}
+                <div className="mb-6 lg:mb-8">
+                  <div className="relative max-w-2xl">
+                    <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-[#97a1c4]" fill="currentColor" viewBox="0 0 256 256">
+                        <path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"></path>
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Search for books, authors, or topics"
+                      value={searchQuery}
+                      onChange={(e) => handleSearch(e.target.value)}
+                      className="w-full h-12 sm:h-14 lg:h-16 pl-10 sm:pl-12 pr-4 sm:pr-6 bg-[#272e45] border-0 rounded-lg text-white placeholder:text-[#97a1c4] focus:outline-none focus:ring-2 focus:ring-blue-800 text-sm sm:text-base lg:text-lg"
+                    />
+                  </div>
                 </div>
-                <input
-                  type="text"
-                  placeholder="Search for books, authors, or topics"
-                  value={searchQuery}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  className="w-full h-12 sm:h-14 lg:h-16 pl-10 sm:pl-12 pr-4 sm:pr-6 bg-[#272e45] border-0 rounded-lg text-white placeholder:text-[#97a1c4] focus:outline-none focus:ring-2 focus:ring-blue-800 text-sm sm:text-base lg:text-lg"
-                />
-              </div>
-            </div>
             
             {/* Tab Navigation - Responsive with Scroll */}
             <div className="mb-6 lg:mb-8">
@@ -489,8 +498,12 @@ const Library = () => {
                 </div>
               </section>
             )}
+            </div> {/* End space-y container */}
+            </div> {/* End header section */}
+          </div> {/* End max-w container */}
+        </div> {/* End container */}
 
-            {/* Upload Modal - Responsive */}
+        {/* Upload Modal - Responsive */}
             {showUploadModal && (
               <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                 <div className="bg-[#121621] rounded-xl w-full max-w-lg mx-4 p-4 sm:p-6 lg:p-8 border border-[#374162]">
@@ -688,10 +701,8 @@ const Library = () => {
                 </div>
               </div>
             )}
-          </div>
-        </div>
       </main>
-      
+
       <Footer />
     </div>
   );

@@ -320,6 +320,89 @@ class ChesscomService {
   }
 
   /**
+   * Get user's basic progress statistics
+   * @param {string} username - Chess.com username
+   * @returns {Promise<object>} Progress statistics object
+   */
+  async getUserProgressStats(username) {
+    try {
+      console.log(`Fetching Chess.com progress stats for user: ${username}`);
+
+      // Get user stats first
+      const stats = await this.getUserStats(username);
+
+      // Get player stats for detailed records
+      const statsResponse = await axios.get(`${this.baseURL}/player/${username}/stats`, {
+        timeout: 10000,
+        headers: {
+          'User-Agent': 'AmaChess-Backend/1.0.0'
+        }
+      });
+      const playerStats = statsResponse.data;
+
+      const progressStats = {
+        totalGames: stats.gameCount.total,
+        overallWinRate: stats.winRate,
+        timeControlBreakdown: {},
+        strengthAreas: [],
+        improvementAreas: []
+      };
+
+      // Calculate win/loss/draw breakdown by time control
+      const gameTypes = ['rapid', 'blitz', 'bullet', 'daily'];
+      
+      gameTypes.forEach(gameType => {
+        const chesscomKey = `chess_${gameType}`;
+        
+        if (playerStats[chesscomKey] && playerStats[chesscomKey].record) {
+          const record = playerStats[chesscomKey].record;
+          const wins = record.win || 0;
+          const losses = record.loss || 0;
+          const draws = record.draw || 0;
+          const total = wins + losses + draws;
+          
+          progressStats.timeControlBreakdown[gameType] = {
+            wins,
+            losses,
+            draws,
+            total,
+            winRate: total > 0 ? wins / total : 0,
+            drawRate: total > 0 ? draws / total : 0,
+            currentRating: stats.rating[gameType] || null
+          };
+        }
+      });
+
+      // Analyze strengths and improvement areas
+      Object.keys(progressStats.timeControlBreakdown).forEach(timeControl => {
+        const breakdown = progressStats.timeControlBreakdown[timeControl];
+        
+        if (breakdown.winRate >= 0.6) {
+          progressStats.strengthAreas.push(`Strong ${timeControl} performance (${Math.round(breakdown.winRate * 100)}% win rate)`);
+        } else if (breakdown.winRate < 0.4 && breakdown.total >= 10) {
+          progressStats.improvementAreas.push(`${timeControl.charAt(0).toUpperCase() + timeControl.slice(1)} needs improvement (${Math.round(breakdown.winRate * 100)}% win rate)`);
+        }
+      });
+
+      // Add puzzle rush analysis if available
+      if (stats.puzzleRush && stats.puzzleRush.best) {
+        if (stats.puzzleRush.best >= 25) {
+          progressStats.strengthAreas.push(`Excellent puzzle rush performance (${stats.puzzleRush.best} best score)`);
+        } else if (stats.puzzleRush.best < 15) {
+          progressStats.improvementAreas.push('Tactical training recommended (low puzzle rush score)');
+        }
+      }
+
+      console.log(`✅ Successfully calculated Chess.com progress stats for: ${username}`);
+      return progressStats;
+
+    } catch (error) {
+      console.error('Error fetching Chess.com progress stats:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Estimate percentile based on rating (rough approximation)
    * @param {number} rating - Player's rating
    * @returns {number} Estimated percentile
