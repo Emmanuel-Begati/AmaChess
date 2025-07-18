@@ -9,14 +9,14 @@ class StockfishService {
   }
 
   getStockfishPath() {
-    // Try multiple common Stockfish locations, focusing on your local stockfish folder
+    // Try multiple common Stockfish locations, prioritizing Linux binaries
     const possiblePaths = [
-      path.join(__dirname, '../../stockfish/stockfish.exe'), // Windows executable
+      'stockfish', // Linux system installation (preferred)
       path.join(__dirname, '../../stockfish/stockfish'), // Unix executable
-      path.join(__dirname, '../../stockfish/src/stockfish.exe'), // Built from source Windows
       path.join(__dirname, '../../stockfish/src/stockfish'), // Built from source Unix
-      'stockfish', // If in PATH
-      'stockfish.exe' // If in PATH on Windows
+      path.join(__dirname, '../../stockfish/stockfish.exe'), // Windows executable (fallback)
+      path.join(__dirname, '../../stockfish/src/stockfish.exe'), // Built from source Windows
+      'stockfish.exe' // If in PATH on Windows (fallback)
     ];
 
     for (const stockfishPath of possiblePaths) {

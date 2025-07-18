@@ -46,22 +46,45 @@ const ChessPDFViewer: React.FC<ChessPDFViewerProps> = ({
     setScale(1.0);
   };
 
-  const detectChessBoards = async () => {
+  const detectChessBoards = async (maxPages?: number, startPage?: number) => {
     if (!pdfFile) {
       setError('No PDF file available for chess board detection');
       return;
     }
 
     setDetectingChess(true);
+    setError(null);
+    
     try {
-      console.log('Detecting chess boards in PDF...');
-      const boundingBoxes = await chessVisionService.detectChessBoards(pdfFile);
+      console.log('Detecting chess boards in PDF...', { maxPages, startPage });
+      
+      // Show progress message
+      const progressMessage = maxPages 
+        ? `Processing ${maxPages} pages starting from page ${startPage || 1}...`
+        : 'Processing all pages...';
+      
+      console.log(progressMessage);
+      
+      const boundingBoxes = await chessVisionService.detectChessBoards(pdfFile, maxPages, startPage);
       console.log('Chess boards detected:', boundingBoxes);
+      
       setChessBoards(boundingBoxes);
       setShowBoundingBoxes(true);
-    } catch (err) {
+      
+      // Show success message
+      const successMessage = `Found ${boundingBoxes.length} chess boards${maxPages ? ` in ${maxPages} pages` : ''}`;
+      console.log(successMessage);
+      
+    } catch (err: any) {
       console.error('Error detecting chess boards:', err);
-      setError('Failed to detect chess boards. Please try again.');
+      
+      if (err.message.includes('timeout')) {
+        setError('PDF processing timed out. Try processing fewer pages at once or check if the PDF is too large.');
+      } else if (err.message.includes('Python service')) {
+        setError('Chess detection service is unavailable. Please make sure the Python service is running.');
+      } else {
+        setError(err.message || 'Failed to detect chess boards. Please try again.');
+      }
     } finally {
       setDetectingChess(false);
     }
@@ -133,11 +156,20 @@ const ChessPDFViewer: React.FC<ChessPDFViewerProps> = ({
         <div className="flex items-center space-x-2">
           {/* Chess Detection Controls */}
           <button
-            onClick={detectChessBoards}
+            onClick={() => detectChessBoards(10, 1)} // Start with first 10 pages
             disabled={detectingChess || !pdfFile}
             className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
           >
             {detectingChess ? 'Detecting...' : 'Detect Chess Boards'}
+          </button>
+          
+          {/* Additional processing options */}
+          <button
+            onClick={() => detectChessBoards()} // Process all pages
+            disabled={detectingChess || !pdfFile}
+            className="px-3 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+          >
+            {detectingChess ? 'Processing...' : 'All Pages'}
           </button>
           
           {chessBoards.length > 0 && (

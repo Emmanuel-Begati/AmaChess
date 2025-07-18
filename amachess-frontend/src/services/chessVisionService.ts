@@ -43,12 +43,22 @@ export class ChessVisionService {
   /**
    * Detect chess boards in a PDF file by uploading it directly
    * @param pdfFile - PDF file object
+   * @param maxPages - Maximum number of pages to process (optional, defaults to 10)
+   * @param startPage - Starting page number (optional, defaults to 1)
    * @returns Promise containing detected bounding boxes
    */
-  async detectChessBoards(pdfFile: File): Promise<ChessBoundingBox[]> {
+  async detectChessBoards(pdfFile: File, maxPages?: number, startPage?: number): Promise<ChessBoundingBox[]> {
     try {
       const formData = new FormData();
       formData.append('pdf', pdfFile);
+      
+      // Add pagination parameters if provided
+      if (maxPages) {
+        formData.append('max_pages', maxPages.toString());
+      }
+      if (startPage) {
+        formData.append('start_page', startPage.toString());
+      }
 
       const response = await axios.post<ChessDetectionResponse>(
         `${API_BASE_URL}/get-board-bounds`,
@@ -58,6 +68,9 @@ export class ChessVisionService {
             ...this.getAuthHeaders(),
             'Content-Type': 'multipart/form-data',
           },
+          timeout: 120000, // 2 minute timeout for PDF processing
+          maxContentLength: 50 * 1024 * 1024, // 50MB
+          maxBodyLength: 50 * 1024 * 1024, // 50MB
         }
       );
       
@@ -71,6 +84,9 @@ export class ChessVisionService {
     } catch (error) {
       console.error('Error detecting chess boards:', error);
       if (axios.isAxiosError(error)) {
+        if (error.code === 'ECONNABORTED') {
+          throw new Error('Request timeout - PDF processing took too long. Try processing fewer pages at once.');
+        }
         throw new Error(error.response?.data?.message || 'Network error during chess board detection');
       }
       throw error;

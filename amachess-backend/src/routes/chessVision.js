@@ -66,12 +66,14 @@ router.post('/get-board-bounds', upload.single('pdf'), async (req, res) => {
       contentType: req.file.mimetype
     });
 
-    // Forward to Python service
+    // Forward to Python service with increased timeout
     const response = await axios.post(`${PYTHON_SERVICE_URL}/detect-boards`, formData, {
       headers: {
         ...formData.getHeaders(),
       },
-      timeout: 30000, // 30 second timeout
+      timeout: 120000, // 2 minute timeout for PDF processing
+      maxContentLength: 50 * 1024 * 1024, // 50MB
+      maxBodyLength: 50 * 1024 * 1024, // 50MB
     });
 
     // Return the response from Python service

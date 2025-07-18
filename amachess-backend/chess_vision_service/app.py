@@ -107,8 +107,22 @@ def detect_chessboard_contours(image):
         # Convert to grayscale
         gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         
+        # Resize image if too large for faster processing
+        height, width = gray.shape
+        if width > 1500 or height > 1500:
+            scale_factor = min(1500/width, 1500/height)
+            new_width = int(width * scale_factor)
+            new_height = int(height * scale_factor)
+            gray = cv2.resize(gray, (new_width, new_height))
+            scale_back = 1 / scale_factor
+        else:
+            scale_back = 1
+        
+        # Apply Gaussian blur to reduce noise
+        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+        
         # Apply adaptive thresholding to handle different lighting conditions
-        adaptive_thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+        adaptive_thresh = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
                                                cv2.THRESH_BINARY, 11, 2)
         
         # Find contours
@@ -116,44 +130,94 @@ def detect_chessboard_contours(image):
         
         chessboard_candidates = []
         
+        # Filter contours more efficiently
         for contour in contours:
-            # Filter by area (chess boards should be reasonably large)
+            # Quick area filter (chess boards should be reasonably large)
             area = cv2.contourArea(contour)
-            if area < 10000:  # Minimum area threshold
+            min_area = 5000 * (scale_back ** 2)  # Adjust for scaling
+            if area < min_area:
                 continue
                 
-            # Approximate the contour to get vertices
-            epsilon = 0.02 * cv2.arcLength(contour, True)
-            approx = cv2.approxPolyDP(contour, epsilon, True)
+            # Get bounding rectangle directly (faster than approximation)
+            x, y, w, h = cv2.boundingRect(contour)
             
-            # Look for 4-point contours (rectangles/squares)
-            if len(approx) == 4:
-                # Get bounding rectangle
-                x, y, w, h = cv2.boundingRect(approx)
+            # Check aspect ratio (chess boards are roughly square)
+            aspect_ratio = w / h
+            if not (0.6 <= aspect_ratio <= 1.4):  # Allow some tolerance
+                continue
                 
-                # Check aspect ratio (chess boards are roughly square)
-                aspect_ratio = w / h
-                if 0.7 <= aspect_ratio <= 1.3:  # Allow some tolerance
-                    
-                    # Calculate confidence based on various factors
-                    confidence = calculate_chessboard_confidence(gray[y:y+h, x:x+w], approx, area)
-                    
-                    if confidence > 0.3:  # Minimum confidence threshold
-                        chessboard_candidates.append({
-                            'x': int(x),
-                            'y': int(y),
-                            'width': int(w),
-                            'height': int(h),
-                            'confidence': round(confidence, 2)
-                        })
+            # Scale coordinates back to original size
+            x = int(x * scale_back)
+            y = int(y * scale_back)
+            w = int(w * scale_back)
+            h = int(h * scale_back)
+            
+            # Calculate confidence based on size and aspect ratio
+            confidence = calculate_chessboard_confidence_fast(area, aspect_ratio, w, h)
+            
+            if confidence > 0.3:  # Minimum confidence threshold
+                chessboard_candidates.append({
+                    'x': x,
+                    'y': y,
+                    'width': w,
+                    'height': h,
+                    'confidence': round(confidence, 2)
+                })
         
         # Sort by confidence and return top candidates
+        chessboard_candidates.sort(key=lambda x: x['confidence'], reverse=True)
+        return chessboard_candidates[:10]  # Return top 10 candidates
+        
+    except Exception as e:
+        logger.error(f"Error in detect_chessboard_contours: {str(e)}")
+        return []
         chessboard_candidates.sort(key=lambda x: x['confidence'], reverse=True)
         return chessboard_candidates[:5]  # Return top 5 candidates
         
     except Exception as e:
         logger.error(f"Error in chessboard detection: {str(e)}")
         return []
+
+def calculate_chessboard_confidence_fast(area, aspect_ratio, width, height):
+    """
+    Fast confidence calculation for chessboard detection
+    """
+    try:
+        confidence = 0.0
+        
+        # Area-based confidence (larger areas get higher confidence)
+        if area > 50000:
+            confidence += 0.4
+        elif area > 20000:
+            confidence += 0.3
+        elif area > 10000:
+            confidence += 0.2
+        else:
+            confidence += 0.1
+        
+        # Aspect ratio confidence (closer to square is better)
+        aspect_diff = abs(aspect_ratio - 1.0)
+        if aspect_diff < 0.1:
+            confidence += 0.3
+        elif aspect_diff < 0.2:
+            confidence += 0.2
+        elif aspect_diff < 0.3:
+            confidence += 0.1
+        
+        # Size confidence (reasonable chess board size)
+        if 150 <= width <= 600 and 150 <= height <= 600:
+            confidence += 0.3
+        elif 100 <= width <= 800 and 100 <= height <= 800:
+            confidence += 0.2
+        else:
+            confidence += 0.1
+        
+        return min(confidence, 1.0)
+        
+    except Exception as e:
+        logger.error(f"Error calculating confidence: {str(e)}")
+        return 0.0
+
 
 def calculate_chessboard_confidence(roi, contour, area):
     """
@@ -225,15 +289,26 @@ def detect_boards():
         pdf_hash = generate_pdf_hash(pdf_data)
         logger.info(f"Processing PDF file: {file.filename}, Size: {len(pdf_data)} bytes, Hash: {pdf_hash[:8]}...")
         
+        # Get optional parameters for pagination
+        max_pages = request.form.get('max_pages', type=int, default=None)
+        start_page = request.form.get('start_page', type=int, default=1)
+        
         # Check cache first
         cached_images = get_cached_pdf_images(pdf_hash)
         if cached_images:
             logger.info("Using cached PDF images")
             images = cached_images
         else:
-            # Convert PDF to images
+            # Convert PDF to images with optimized settings
             try:
-                images = convert_from_bytes(pdf_data, dpi=200)  # Higher DPI for better detection
+                logger.info("Converting PDF to images...")
+                images = convert_from_bytes(
+                    pdf_data, 
+                    dpi=150,  # Reduced DPI for faster processing while maintaining quality
+                    first_page=start_page,
+                    last_page=max_pages + start_page - 1 if max_pages else None,
+                    thread_count=2  # Use multiple threads for conversion
+                )
                 logger.info(f"Converted PDF to {len(images)} images")
                 # Cache the images
                 cache_pdf_images(pdf_hash, images)
@@ -246,8 +321,13 @@ def detect_boards():
         
         all_bounding_boxes = []
         
-        # Process each page
+        # Process each page with progress logging
+        total_pages = len(images)
+        logger.info(f"Processing {total_pages} pages for chess board detection...")
+        
         for page_num, image in enumerate(images, 1):
+            logger.info(f"Processing page {page_num}/{total_pages}...")
+            
             # Convert PIL image to numpy array
             image_array = np.array(image)
             
@@ -256,18 +336,26 @@ def detect_boards():
             
             # Add page number to each bounding box
             for box in bounding_boxes:
-                box['page'] = page_num
+                box['page'] = page_num + start_page - 1  # Adjust for start_page
                 all_bounding_boxes.append(box)
             
             logger.info(f"Page {page_num}: Found {len(bounding_boxes)} potential chessboards")
+            
+            # Add a small delay to prevent overwhelming the system
+            if page_num % 5 == 0:
+                import time
+                time.sleep(0.1)
         
-        logger.info(f"Total chessboards detected: {len(all_bounding_boxes)}")
+        logger.info(f"Completed processing: {len(all_bounding_boxes)} total chessboards detected")
         
+        # Return results with processing info
         return jsonify({
             'success': True,
             'boundingBoxes': all_bounding_boxes,
-            'message': f'Found {len(all_bounding_boxes)} chess boards across {len(images)} pages',
-            'pdf_hash': pdf_hash
+            'message': f'Found {len(all_bounding_boxes)} chess boards across {total_pages} pages',
+            'pdf_hash': pdf_hash,
+            'pages_processed': total_pages,
+            'processing_time': f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         })
         
     except Exception as e:
