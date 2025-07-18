@@ -16,6 +16,7 @@ const booksRoutes = require('./routes/books');
 const puzzleRoutes = require('./routes/puzzles');
 const userPuzzleRoutes = require('./routes/userPuzzles'); // New user puzzle routes
 const chesscomRoutes = require('./routes/chesscom'); // Import Chess.com routes
+const chessVisionRoutes = require('./routes/chessVision'); // Chess vision/PDF detection routes
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -44,6 +45,7 @@ app.use('/api/chesscom', chesscomRoutes); // Add dedicated Chess.com endpoint
 app.use('/api/analyze', analyzeRoutes);
 app.use('/api/books', booksRoutes);
 app.use('/api/puzzles', puzzleRoutes);
+app.use('/api', chessVisionRoutes); // Chess vision endpoints (detect-chess, get-fen, etc.)
 
 // Enhanced health check with database status
 app.get('/api/health', async (req, res) => {

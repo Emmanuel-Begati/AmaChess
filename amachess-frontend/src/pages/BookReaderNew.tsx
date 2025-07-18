@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
-import SimplePDFViewer from '../components/SimplePDFViewer';
+import ChessPDFViewer from '../components/ChessPDFViewer';
 import { booksApiService } from '../services/booksApi';
+import type { ChessBoundingBox } from '../services/chessVisionService';
 
 const BookReader = () => {
   const { bookId } = useParams();
@@ -14,6 +15,7 @@ const BookReader = () => {
   const [loading, setLoading] = useState(!bookFromState);
   const [error, setError] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [hasPDF, setHasPDF] = useState(false);
   
   // Upload state
@@ -51,6 +53,15 @@ const BookReader = () => {
         if (pdfAvailable) {
           const pdfFileUrl = await booksApiService.getPDFUrl(bookId);
           setPdfUrl(pdfFileUrl);
+          
+          // Also try to get the PDF file for chess detection
+          try {
+            const pdfFile = await booksApiService.getPDFFile(bookId);
+            setPdfFile(pdfFile);
+          } catch (pdfFileError) {
+            console.log('Could not load PDF file for chess detection:', pdfFileError);
+            // PDF URL is still available for viewing
+          }
         }
         
       } catch (err) {
@@ -100,6 +111,12 @@ const BookReader = () => {
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleChessBoardClick = (fen: string, boundingBox: ChessBoundingBox) => {
+    console.log('Chess board clicked:', { fen, boundingBox });
+    // You can add logic here to handle the chess board click
+    // For example, display the FEN in a modal or analyze the position
   };
 
   // Show upload form if no book ID or if upload requested
@@ -333,8 +350,10 @@ const BookReader = () => {
         {/* Main Content Area - PDF Viewer */}
         <div className="flex-1 overflow-hidden">
           {hasPDF && pdfUrl ? (
-            <SimplePDFViewer 
+            <ChessPDFViewer
               pdfUrl={pdfUrl} 
+              {...(pdfFile && { pdfFile })}
+              onChessBoardClick={handleChessBoardClick}
               className="h-full w-full"
             />
           ) : (
