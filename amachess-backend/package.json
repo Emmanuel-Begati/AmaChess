@@ -14,6 +14,7 @@
     "test-books": "node scripts/test-books.js",
     "test-enhanced-parsing": "node scripts/test-enhanced-pdf-parsing.js",
     "test-chess-book": "node scripts/test-chess-book-parsing.js",
+    "test-chess-vision": "node scripts/test-chess-vision-endpoints.js",
     "reprocess-pdfs": "node scripts/reprocess-pdfs.js",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",

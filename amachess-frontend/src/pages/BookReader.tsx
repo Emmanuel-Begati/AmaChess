@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
-import SimplePDFViewer from '../components/SimplePDFViewer';
+import ChessPDFViewer from '../components/ChessPDFViewer';
 import LibraryChessAnalysisBoard from '../components/LibraryChessAnalysisBoard';
 import BookPositionsPanel from '../components/BookPositionsPanel';
 import { booksApiService } from '../services/booksApi';
+import type { ChessBoundingBox } from '../services/chessVisionService';
 
 const BookReader = () => {
   const { bookId } = useParams();
@@ -16,6 +17,7 @@ const BookReader = () => {
   const [loading, setLoading] = useState(!bookFromState);
   const [error, setError] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [hasPDF, setHasPDF] = useState(false);
   
   // Chess analysis state
@@ -62,6 +64,15 @@ const BookReader = () => {
         if (pdfAvailable) {
           const pdfFileUrl = await booksApiService.getPDFUrl(bookId);
           setPdfUrl(pdfFileUrl);
+          
+          // Also try to get the PDF file for chess detection
+          try {
+            const pdfFile = await booksApiService.getPDFFile(bookId);
+            setPdfFile(pdfFile);
+          } catch (pdfFileError) {
+            console.log('Could not load PDF file for chess detection:', pdfFileError);
+            // PDF URL is still available for viewing
+          }
         }
         
       } catch (err) {
@@ -124,6 +135,11 @@ const BookReader = () => {
 
   // Handle position selection from book diagrams
   const handlePositionSelect = (fen: string, description?: string) => {
+    setCurrentPosition(fen);
+  };
+
+  const handleChessBoardClick = (fen: string, boundingBox: ChessBoundingBox) => {
+    console.log('Chess board clicked:', { fen, boundingBox });
     setCurrentPosition(fen);
   };
 
@@ -358,8 +374,10 @@ const BookReader = () => {
         {/* Main Content Area - PDF Viewer */}
         <div className="flex-1 overflow-hidden">
           {hasPDF && pdfUrl ? (
-            <SimplePDFViewer 
+            <ChessPDFViewer
               pdfUrl={pdfUrl} 
+              {...(pdfFile && { pdfFile })}
+              onChessBoardClick={handleChessBoardClick}
               className="h-full w-full"
             />
           ) : (

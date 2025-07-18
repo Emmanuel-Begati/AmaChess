@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
-import SimplePDFViewer from '../components/SimplePDFViewer';
+import ChessPDFViewer from '../components/ChessPDFViewer';
 import { booksApiService } from '../services/booksApi';
+import type { ChessBoundingBox } from '../services/chessVisionService';
 
 const BookReader = () => {
   const { bookId } = useParams();

@@ -311,6 +311,24 @@ export class BooksApiService {
     }
   }
 
+  // Get PDF file for chess detection
+  async getPDFFile(bookId: string): Promise<File> {
+    try {
+      const response = await booksApi.get(`/${bookId}/pdf`, {
+        responseType: 'blob'
+      });
+      
+      // Create a File object from the blob
+      const pdfBlob = new Blob([response.data], { type: 'application/pdf' });
+      const pdfFile = new File([pdfBlob], `book-${bookId}.pdf`, { type: 'application/pdf' });
+      
+      return pdfFile;
+    } catch (error) {
+      console.error('Error getting PDF file:', error);
+      throw new Error('Failed to get PDF file');
+    }
+  }
+
   // Check if book has PDF available
   async hasPDFFile(bookId: string): Promise<boolean> {
     try {
