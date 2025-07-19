@@ -18,7 +18,6 @@ const ChessBookReader: React.FC<ChessBookReaderProps> = ({
   const [currentPosition, setCurrentPosition] = useState('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
   const [selectedBoundingBox, setSelectedBoundingBox] = useState<ChessBoundingBox | null>(null);
   const [detectedFen, setDetectedFen] = useState<string | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // Handle FEN detection from PDF
   const handleFenDetected = (fen: string, boundingBox: ChessBoundingBox) => {
@@ -31,10 +30,8 @@ const ChessBookReader: React.FC<ChessBookReaderProps> = ({
       setCurrentPosition(chess.fen());
       setDetectedFen(fen);
       setSelectedBoundingBox(boundingBox);
-      setIsAnalyzing(false);
     } catch (error) {
       console.error('Invalid FEN detected:', error);
-      setIsAnalyzing(false);
     }
   };
 
@@ -147,25 +144,17 @@ const ChessBookReader: React.FC<ChessBookReaderProps> = ({
             </div>
           )}
 
-          {/* Analysis Status */}
-          {isAnalyzing && (
-            <div className="mt-4 p-3 bg-blue-50 rounded text-sm">
-              <div className="flex items-center space-x-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                <span className="text-blue-600">Analyzing position...</span>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Instructions */}
         <div className="p-4 border-t border-gray-200 bg-gray-50">
           <h4 className="font-medium text-gray-700 mb-2">How to Use</h4>
           <ol className="text-xs text-gray-600 space-y-1">
-            <li>1. Click "Detect Chess" to find diagrams on the current page</li>
-            <li>2. Click on highlighted boxes to extract the position</li>
-            <li>3. The chess board will update to show the detected position</li>
-            <li>4. Use the board to analyze and play moves</li>
+            <li>1. Click "Detect Chess Boards" to find all chess diagrams in the PDF</li>
+            <li>2. Use page navigation to browse through pages with chess boards</li>
+            <li>3. Use board navigation if there are multiple boards on a page</li>
+            <li>4. The chess board automatically shows the current position</li>
+            <li>5. Use the board to analyze and play moves</li>
           </ol>
         </div>
       </div>
