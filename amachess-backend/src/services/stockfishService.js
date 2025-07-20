@@ -11,7 +11,8 @@ class StockfishService {
   getStockfishPath() {
     // Try multiple common Stockfish locations, prioritizing Linux binaries
     const possiblePaths = [
-      'stockfish', // Linux system installation (preferred)
+      path.join(__dirname, '../../stockfish/stockfish/stockfish-ubuntu-x86-64-avx2'), // Precompiled Linux binary (preferred)
+      'stockfish', // Linux system installation
       path.join(__dirname, '../../stockfish/stockfish'), // Unix executable
       path.join(__dirname, '../../stockfish/src/stockfish'), // Built from source Unix
       path.join(__dirname, '../../stockfish/stockfish.exe'), // Windows executable (fallback)
