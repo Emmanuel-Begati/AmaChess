@@ -13,7 +13,6 @@ model User {
   password        String
   name            String
   lichessUsername String?
-  chesscomUsername String?
   country         String?
   fideRating      String?
   createdAt       DateTime @default(now())

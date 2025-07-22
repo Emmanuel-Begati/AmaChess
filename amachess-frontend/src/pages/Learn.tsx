@@ -103,30 +103,6 @@ const Learn = () => {
     }
   };
 
-  const importFromChessCom = async (username) => {
-    setIsImporting(true);
-    try {
-      // Similar to Lichess import but for Chess.com
-      const response = await fetch(`http://localhost:3001/api/import/chesscom/${username}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Imported games:', data);
-      } else {
-        console.error('Import failed');
-      }
-    } catch (error) {
-      console.error('Error importing from Chess.com:', error);
-    } finally {
-      setIsImporting(false);
-    }
-  };
-
   const analyzeGame = async (game) => {
     if (!game.pgn && !game.moves) {
       setError('No game data available for analysis');
@@ -355,21 +331,6 @@ ${game.moves}`;
                     className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                   >
                     {isImporting ? 'Importing Games...' : 'Import Recent Games'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Import Buttons */}
-              <div className="flex justify-stretch">
-                <div className="flex flex-1 gap-2 sm:gap-3 flex-wrap px-3 sm:px-4 py-2 sm:py-3 justify-start">
-                  <button 
-                    onClick={() => importFromChessCom('username')}
-                    disabled={isImporting}
-                    className="flex min-w-0 flex-1 sm:min-w-[84px] sm:max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-8 sm:h-10 px-2 sm:px-4 bg-[#272e45] text-white text-xs sm:text-sm font-bold leading-normal tracking-[0.015em] disabled:opacity-50"
-                  >
-                    <span className="truncate">
-                      {isImporting ? 'Importing...' : 'Import from Chess.com'}
-                    </span>
                   </button>
                 </div>
               </div>

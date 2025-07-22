@@ -25,7 +25,6 @@ const authenticateToken = async (req, res, next) => {
         email: true, 
         name: true,
         lichessUsername: true,
-        chesscomUsername: true,
         country: true,
         fideRating: true,
         createdAt: true 

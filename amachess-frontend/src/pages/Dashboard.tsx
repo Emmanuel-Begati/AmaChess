@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import ChesscomStats from '../components/ChesscomStats';
 import LichessProgressStats from '../components/LichessProgressStats';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -11,7 +10,6 @@ const Dashboard = () => {
   const [puzzleCompleted, setPuzzleCompleted] = useState(false);
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [lichessStats, setLichessStats] = useState<any>(null);
-  const [chesscomStats, setChesscomStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
@@ -54,11 +52,6 @@ const Dashboard = () => {
         // Set Lichess stats from dashboard response if available
         if (response.data.data.lichessStats) {
           setLichessStats(response.data.data.lichessStats);
-        }
-        
-        // Set Chess.com stats from dashboard response if available
-        if (response.data.data.chesscomStats) {
-          setChesscomStats(response.data.data.chesscomStats);
         }
         
         setError(null);
@@ -106,30 +99,8 @@ const Dashboard = () => {
     };
   };
 
-  const processChesscomAnalytics = (analytics: any) => {
-    if (!analytics) return { change30Days: 0, peakRating: 'N/A', percentile: 'N/A' };
-    
-    // Find the most relevant performance data (prioritize rapid, then blitz, then bullet)
-    const perfTypes = ['rapid', 'blitz', 'bullet', 'daily'];
-    let selectedPerf = null;
-    
-    for (const perf of perfTypes) {
-      if (analytics.peakRatings?.[perf] || analytics.thirtyDayChanges?.[perf] !== undefined || analytics.percentiles?.[perf]) {
-        selectedPerf = perf;
-        break;
-      }
-    }
-    
-    return {
-      change30Days: selectedPerf ? (analytics.thirtyDayChanges?.[selectedPerf] || 0) : 0,
-      peakRating: selectedPerf ? (analytics.peakRatings?.[selectedPerf] || 'N/A') : 'N/A',
-      percentile: selectedPerf ? (analytics.percentiles?.[selectedPerf] || 'N/A') : 'N/A'
-    };
-  };
-
   // Use analytics data from API if available, fallback to static data
   const lichessAnalytics = processLichessAnalytics(dashboardData?.lichessAnalytics);
-  const chesscomAnalytics = processChesscomAnalytics(dashboardData?.chesscomAnalytics);
 
   const achievements = [
     { 
@@ -330,70 +301,7 @@ const Dashboard = () => {
               )}
             </div>
 
-            {/* Chess.com Stats */}
-            <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl p-8 border border-slate-700/50 backdrop-blur-sm">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold text-white">Chess.com</h3>
-                <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">♛</span>
-                </div>
-              </div>
-              
-              {loading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mr-2"></div>
-                  <span className="text-gray-400">Loading Chess.com stats...</span>
-                </div>
-              ) : error ? (
-                <div className="text-center py-8">
-                  <p className="text-red-400 mb-2">Error loading Chess.com stats</p>
-                  <p className="text-gray-400 text-sm">Please check your Chess.com username or try again later</p>
-                </div>
-              ) : !user?.chesscomUsername ? (
-                <div className="text-center py-8">
-                  <p className="text-red-400 mb-2">No Chess.com username found</p>
-                  <p className="text-gray-400 text-sm">Add your Chess.com username in your profile to see your stats</p>
-                </div>
-              ) : chesscomStats ? (
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <p className="text-gray-400 text-sm mb-1">Current Rating</p>
-                    <p className="text-3xl font-bold text-white">
-                      {chesscomStats.rating?.rapid || chesscomStats.rating?.blitz || chesscomStats.rating?.bullet || 'N/A'}
-                    </p>
-                    <p className="text-green-400 text-sm">
-                      Rapid
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400 text-sm mb-1">Games Played</p>
-                    <p className="text-3xl font-bold text-white">{chesscomStats.gameCount?.total || 0}</p>
-                    <p className="text-gray-400 text-sm">{chesscomStats.winRate ? Math.round(chesscomStats.winRate * 100) : 0}% win rate</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <p className="text-gray-400 text-sm mb-1">Current Rating</p>
-                    <p className="text-3xl font-bold text-white">--</p>
-                    <p className="text-gray-400 text-sm">No data</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400 text-sm mb-1">Games Played</p>
-                    <p className="text-3xl font-bold text-white">--</p>
-                    <p className="text-gray-400 text-sm">No data</p>
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
-
-          {/* Chess.com Statistics */}
-          {user?.chesscomUsername && (
-            <div className="mb-12">
-              <ChesscomStats username={user.chesscomUsername} />
-            </div>
-          )}
 
           {/* Lichess Progress Statistics */}
           {user?.lichessUsername && user.lichessUsername.trim().length > 0 && (
@@ -440,44 +348,6 @@ const Dashboard = () => {
                       <p className="text-gray-400 text-sm mb-2">Percentile</p>
                       <p className="text-2xl font-bold text-blue-400">
                         {lichessAnalytics.percentile !== 'N/A' ? `${lichessAnalytics.percentile}%` : 'N/A'}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Chess.com Analytics */}
-              <div className="mb-8">
-                <h4 className="text-lg font-semibold text-white mb-4 flex items-center">
-                  <span className="text-2xl mr-2">♕</span>
-                  Chess.com
-                  {loading && <span className="ml-2 text-sm text-gray-400">(Loading...)</span>}
-                </h4>
-                {!user?.chesscomUsername ? (
-                  <div className="text-center py-4">
-                    <p className="text-gray-400 text-sm">Connect your Chess.com account to see analytics</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="text-center">
-                      <p className="text-gray-400 text-sm mb-2">Peak Rating</p>
-                      <p className="text-2xl font-bold text-yellow-400">
-                        {chesscomAnalytics.peakRating !== 'N/A' ? chesscomAnalytics.peakRating : 'N/A'}
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-gray-400 text-sm mb-2">30-Day Change</p>
-                      <p className={`text-2xl font-bold ${chesscomAnalytics.change30Days >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {chesscomAnalytics.change30Days !== 0 ? 
-                          (chesscomAnalytics.change30Days > 0 ? `+${chesscomAnalytics.change30Days}` : chesscomAnalytics.change30Days) : 
-                          'N/A'
-                        }
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-gray-400 text-sm mb-2">Percentile</p>
-                      <p className="text-2xl font-bold text-blue-400">
-                        {chesscomAnalytics.percentile !== 'N/A' ? `${chesscomAnalytics.percentile}%` : 'N/A'}
                       </p>
                     </div>
                   </div>
@@ -606,7 +476,7 @@ const Dashboard = () => {
               {recentGames.length === 0 || recentGames[0]?.platform === 'demo' ? (
                 <div className="p-8 text-center">
                   <p className="text-gray-400 mb-2">No recent rapid games found</p>
-                  <p className="text-gray-500 text-sm">Connect your Lichess and Chess.com accounts to see your recent rapid games</p>
+                  <p className="text-gray-500 text-sm">Connect your Lichess account to see your recent rapid games</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -632,7 +502,7 @@ const Dashboard = () => {
                                   {game.platform === 'lichess' ? 'L' : '♛'}
                                 </span>
                               </div>
-                              <span className="text-gray-300 text-sm capitalize">{game.platform === 'chess.com' ? 'Chess.com' : game.platform}</span>
+                              <span className="text-gray-300 text-sm capitalize">{game.platform}</span>
                             </div>
                           </td>
                           <td className="px-6 py-4 text-white text-sm font-medium">{game.opponent}</td>

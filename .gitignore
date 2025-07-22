@@ -1,3 +1,4 @@
+# Environment files
 amachess-backend/.env
 
 # Virtual environments
@@ -22,3 +23,5 @@ amachess-backend/src/generated/
 
 # Node modules
 node_modules/
+
+Puzzle_Classifier/

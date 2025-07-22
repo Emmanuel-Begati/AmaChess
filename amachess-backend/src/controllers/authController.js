@@ -21,7 +21,6 @@ const register = async (req, res) => {
       password, 
       name, 
       lichessUsername, 
-      chesscomUsername, 
       country, 
       fideRating 
     } = req.body;
@@ -74,7 +73,6 @@ const register = async (req, res) => {
         password: hashedPassword,
         name,
         lichessUsername,
-        chesscomUsername,
         country,
         fideRating: fideRating ? String(fideRating) : null
       },
@@ -83,7 +81,6 @@ const register = async (req, res) => {
         email: true,
         name: true,
         lichessUsername: true,
-        chesscomUsername: true,
         country: true,
         fideRating: true,
         createdAt: true
@@ -217,7 +214,6 @@ const updateProfile = async (req, res) => {
     const { 
       name, 
       lichessUsername, 
-      chesscomUsername, 
       country, 
       fideRating 
     } = req.body;
@@ -234,7 +230,6 @@ const updateProfile = async (req, res) => {
     const updateData = {};
     if (name !== undefined) updateData.name = name.trim();
     if (lichessUsername !== undefined) updateData.lichessUsername = lichessUsername.trim() || null;
-    if (chesscomUsername !== undefined) updateData.chesscomUsername = chesscomUsername.trim() || null;
     if (country !== undefined) updateData.country = country.trim() || null;
     if (fideRating !== undefined) updateData.fideRating = fideRating ? String(fideRating) : null;
 
@@ -247,7 +242,6 @@ const updateProfile = async (req, res) => {
         email: true,
         name: true,
         lichessUsername: true,
-        chesscomUsername: true,
         country: true,
         fideRating: true,
         createdAt: true

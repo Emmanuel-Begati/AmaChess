@@ -9,7 +9,6 @@ export interface User {
   name?: string;
   createdAt: string;
   lichessUsername?: string;
-  chesscomUsername?: string;
   country?: string;
   fideRating?: number;
 }
@@ -30,7 +29,6 @@ export interface RegisterData {
   confirmPassword: string;
   name?: string;
   lichessUsername?: string;
-  chesscomUsername?: string;
   country?: string;
   fideRating?: string;
 }

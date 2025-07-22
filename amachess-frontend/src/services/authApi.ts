@@ -13,7 +13,6 @@ interface User {
   email: string;
   name: string;
   lichessUsername?: string;
-  chesscomUsername?: string;
   country?: string;
   fideRating?: string;
   createdAt: string;
@@ -22,7 +21,6 @@ interface User {
 interface UserProfileUpdate {
   name?: string;
   lichessUsername?: string;
-  chesscomUsername?: string;
   country?: string;
   fideRating?: string;
 }
@@ -74,7 +72,6 @@ class AuthApiService {
     password: string;
     name: string;
     lichessUsername?: string;
-    chesscomUsername?: string;
     country?: string;
     fideRating?: string;
   }): Promise<AuthResponse> {

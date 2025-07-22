@@ -59,10 +59,30 @@ async function initializeDatabase() {
   }
 }
 
+// Health check function for API
+async function healthCheck() {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return {
+      status: 'healthy',
+      connected: true,
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    return {
+      status: 'unhealthy',
+      connected: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    };
+  }
+}
+
 module.exports = {
   prisma,
   testConnection,
   initializeDatabase,
+  healthCheck,
   // Export individual models for easier access
   User: prisma.user,
   Book: prisma.book,

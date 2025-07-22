@@ -7,46 +7,92 @@ const AICoachModal = ({ onClose }) => {
   const [game] = useState(() => new Chess());
   const [currentPosition, setCurrentPosition] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
   const [moveNumber, setMoveNumber] = useState(1);
-  const [coachMessage, setCoachMessage] = useState("Welcome! Let's start with a training game. I'll guide you through important concepts as we play.");
+  const [coachMessage, setCoachMessage] = useState("Loading your personal chess coach...");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [aiMoveHistory, setAiMoveHistory] = useState([]);
+  const [aiMoveHistory, setAiMoveHistory] = useState<Array<{
+    playerMove: string;
+    playerFeedback: string;
+    aiMove: string;
+    aiExplanation: string;
+  }>>([]);
   const [difficulty, setDifficulty] = useState(5); // Default difficulty level
   const [showEvaluation, setShowEvaluation] = useState(true);
 
   const API_BASE_URL = 'http://localhost:3001/api';
+
+  // Load welcome message when modal opens
+  React.useEffect(() => {
+    const loadWelcomeMessage = async () => {
+      setIsAnalyzing(true);
+      try {
+        const difficultyLevel = difficulty <= 3 ? 'beginner' : difficulty <= 6 ? 'intermediate' : 'advanced';
+        const response = await fetch(`${API_BASE_URL}/coach/welcome`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            difficulty: difficultyLevel,
+            gameContext: {
+              newSession: true,
+              selectedDifficulty: difficulty
+            }
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setCoachMessage(data.welcome.message);
+        } else {
+          setCoachMessage("Welcome! I'm Magnus, your chess coach. Let's start with a training game where I'll guide you through important concepts as we play.");
+        }
+      } catch (error) {
+        console.error('Failed to load welcome message:', error);
+        setCoachMessage("Welcome! I'm Magnus, your chess coach. Let's start with a training game where I'll guide you through important concepts as we play.");
+      } finally {
+        setIsAnalyzing(false);
+      }
+    };
+
+    loadWelcomeMessage();
+  }, [API_BASE_URL, difficulty]);
 
   const handleStartGame = async () => {
     setGameStarted(true);
     setIsAnalyzing(true);
     
     try {
-      // Get initial coaching advice
-      const response = await fetch(`${API_BASE_URL}/stockfish/coach/hint`, {
+      // Get initial coaching advice from GPT-4o
+      const response = await fetch(`${API_BASE_URL}/coach/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          fen: currentPosition,
-          difficulty: 'easy'
+          position: currentPosition,
+          difficulty: difficulty <= 3 ? 'beginner' : difficulty <= 6 ? 'intermediate' : 'advanced',
+          gameContext: {
+            gameStart: true,
+            selectedDifficulty: difficulty
+          }
         })
       });
 
       if (response.ok) {
         const data = await response.json();
-        setCoachMessage(`Let's begin! ${data.hint.message}`);
+        setCoachMessage(data.coaching.message);
       } else {
-        setCoachMessage("Let's begin! Start by controlling the center with moves like e4 or d4.");
+        setCoachMessage("Welcome! Let's begin this training game. Start by controlling the center with moves like e4 or d4.");
       }
     } catch (error) {
-      console.error('Failed to get initial coaching hint:', error);
-      setCoachMessage("Let's begin! Start by controlling the center with moves like e4 or d4.");
+      console.error('Failed to get initial coaching:', error);
+      setCoachMessage("Welcome! Let's begin this training game. Start by controlling the center with moves like e4 or d4.");
     } finally {
       setIsAnalyzing(false);
     }
   };
 
-  const handleMove = useCallback(async (moveObj) => {
+  const handleMove = useCallback(async (moveObj: { from: string; to: string; promotion?: string }) => {
     console.log('Move received:', moveObj);
     
     // Create a new Chess instance with current position
@@ -79,7 +125,30 @@ const AICoachModal = ({ onClose }) => {
     setIsAnalyzing(true);
 
     try {
-      // Get AI's response move
+      // Get coaching feedback from GPT-4o about the player's move
+      const coachingResponse = await fetch(`${API_BASE_URL}/coach/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          position: newFen,
+          playerMove: moveResult.san,
+          difficulty: difficulty <= 3 ? 'beginner' : difficulty <= 6 ? 'intermediate' : 'advanced',
+          gameContext: {
+            moveNumber: moveNumber,
+            gamePhase: moveNumber <= 10 ? 'opening' : moveNumber <= 25 ? 'middlegame' : 'endgame'
+          }
+        })
+      });
+
+      let coachingFeedback = "Good move! Keep developing your pieces.";
+      if (coachingResponse.ok) {
+        const coachingData = await coachingResponse.json();
+        coachingFeedback = coachingData.coaching.message;
+      }
+
+      // Get AI's response move from Stockfish
       const aiMoveResponse = await fetch(`${API_BASE_URL}/stockfish/coach/move`, {
         method: 'POST',
         headers: {
@@ -87,7 +156,7 @@ const AICoachModal = ({ onClose }) => {
         },
         body: JSON.stringify({
           fen: newFen,
-          skillLevel: difficulty, // Use selected difficulty
+          skillLevel: difficulty,
           depth: 12
         })
       });
@@ -100,19 +169,41 @@ const AICoachModal = ({ onClose }) => {
         const aiMoveResult = aiGame.move(aiMoveData.coaching.suggestedMove);
         
         if (aiMoveResult) {
+          // Get coaching explanation for AI's move
+          const aiExplanationResponse = await fetch(`${API_BASE_URL}/coach/chat`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              position: aiGame.fen(),
+              playerMove: aiMoveResult.san,
+              difficulty: difficulty <= 3 ? 'beginner' : difficulty <= 6 ? 'intermediate' : 'advanced',
+              gameContext: {
+                isAIMove: true,
+                explanation: true,
+                moveNumber: moveNumber + 1
+              }
+            })
+          });
+
+          let aiExplanation = `I played ${aiMoveResult.san}. This continues developing pieces.`;
+          if (aiExplanationResponse.ok) {
+            const aiExplanationData = await aiExplanationResponse.json();
+            aiExplanation = `I played ${aiMoveResult.san}. ${aiExplanationData.coaching.message}`;
+          }
+
           // Update position after AI move with a small delay for better UX
           setTimeout(() => {
             setCurrentPosition(aiGame.fen());
-          }, 1000);
+          }, 1500);
           
-          // Provide feedback
-          const aiExplanation = aiMoveData.coaching.explanation || "I'm developing my pieces.";
-          setCoachMessage(`Good move! I'll play ${aiMoveData.coaching.suggestedMove}. ${aiExplanation}`);
+          setCoachMessage(aiExplanation);
           
           setAiMoveHistory(prev => [...prev, {
             playerMove: moveResult.san || `${moveObj.from}-${moveObj.to}`,
-            playerFeedback: "Good move!",
-            aiMove: aiMoveData.coaching.suggestedMove,
+            playerFeedback: coachingFeedback,
+            aiMove: aiMoveResult.san,
             aiExplanation: aiExplanation
           }]);
         }
@@ -122,20 +213,22 @@ const AICoachModal = ({ onClose }) => {
         const moves = fallbackGame.moves();
         if (moves.length > 0) {
           const randomMove = moves[Math.floor(Math.random() * moves.length)];
-          const fallbackMoveResult = fallbackGame.move(randomMove);
-          
-          setTimeout(() => {
-            setCurrentPosition(fallbackGame.fen());
-          }, 1000);
-          
-          setCoachMessage(`Good move! I'll play ${randomMove}. Keep developing your pieces.`);
-          
-          setAiMoveHistory(prev => [...prev, {
-            playerMove: moveResult.san || `${moveObj.from}-${moveObj.to}`,
-            playerFeedback: "Good move!",
-            aiMove: randomMove,
-            aiExplanation: "Keep developing your pieces."
-          }]);
+          if (randomMove) {
+            fallbackGame.move(randomMove);
+            
+            setTimeout(() => {
+              setCurrentPosition(fallbackGame.fen());
+            }, 1500);
+            
+            setCoachMessage(`Good move! I'll play ${randomMove}. Keep developing your pieces.`);
+            
+            setAiMoveHistory(prev => [...prev, {
+              playerMove: moveResult.san || `${moveObj.from}-${moveObj.to}`,
+              playerFeedback: "Good move!",
+              aiMove: randomMove,
+              aiExplanation: "Keep developing your pieces."
+            }]);
+          }
         }
       }
     } catch (error) {
@@ -157,29 +250,39 @@ const AICoachModal = ({ onClose }) => {
     setIsAnalyzing(true);
     
     try {
-      const response = await fetch(`${API_BASE_URL}/stockfish/coach/hint`, {
+      const response = await fetch(`${API_BASE_URL}/coach/hint`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          fen: currentPosition,
-          difficulty: 'medium'
+          position: currentPosition,
+          difficulty: difficulty <= 3 ? 'beginner' : difficulty <= 6 ? 'intermediate' : 'advanced',
+          gameContext: {
+            moveNumber: moveNumber,
+            gamePhase: moveNumber <= 10 ? 'opening' : moveNumber <= 25 ? 'middlegame' : 'endgame'
+          }
         })
       });
 
       if (response.ok) {
         const data = await response.json();
-        setCoachMessage(`Hint: ${data.hint.message}`);
+        setCoachMessage(`💡 Hint: ${data.hint.message}`);
       } else {
-        setCoachMessage("Look for the most forcing moves - checks, captures, and threats!");
+        setCoachMessage("💡 Hint: Look for the most forcing moves - checks, captures, and threats!");
       }
     } catch (error) {
       console.error('Failed to get hint:', error);
-      setCoachMessage("Look for the most forcing moves - checks, captures, and threats!");
+      setCoachMessage("💡 Hint: Look for the most forcing moves - checks, captures, and threats!");
     } finally {
       setIsAnalyzing(false);
     }
+  };
+
+  const handleMoveWrapper = (move: { from: string; to: string; san?: string }) => {
+    // Start the async move handling but return immediately
+    handleMove({ from: move.from, to: move.to, promotion: 'q' });
+    return true; // Return true to indicate the move was accepted
   };
 
   const resetGame = () => {
@@ -301,7 +404,7 @@ const AICoachModal = ({ onClose }) => {
                     <ChessGame
                       isModalMode={true}
                       position={currentPosition}
-                      onMove={handleMove}
+                      onMove={handleMoveWrapper}
                       interactive={!isAnalyzing}
                       showNotation={true}
                       engineEnabled={showEvaluation}

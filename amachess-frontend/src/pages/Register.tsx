@@ -9,7 +9,6 @@ const Register = () => {
     confirmPassword: '',
     name: '',
     lichessUsername: '',
-    chesscomUsername: '',
     country: '',
     fideRating: ''
   });
@@ -79,9 +78,9 @@ const Register = () => {
       const result = await register({
         email: formData.email,
         password: formData.password,
+        confirmPassword: formData.confirmPassword,
         name: formData.name,
         lichessUsername: formData.lichessUsername,
-        chesscomUsername: formData.chesscomUsername,
         country: formData.country,
         fideRating: formData.fideRating
       });
@@ -220,21 +219,6 @@ const Register = () => {
                       onChange={handleChange}
                       className="w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Your Lichess username"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="chesscomUsername" className="block text-xs font-medium text-gray-400 mb-1">
-                      Chess.com Username
-                    </label>
-                    <input
-                      id="chesscomUsername"
-                      name="chesscomUsername"
-                      type="text"
-                      value={formData.chesscomUsername}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Your Chess.com username"
                     />
                   </div>
                   

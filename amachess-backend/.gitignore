@@ -15,3 +15,5 @@ nul
 .cache/
 temp/
 stockfish/
+
+.env
