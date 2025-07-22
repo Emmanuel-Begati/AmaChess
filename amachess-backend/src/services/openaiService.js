@@ -18,98 +18,7 @@ class OpenAIService {
   }
 
   /**
-   * Generate chess coaching advice based on the current position and move
-   */
-  async generateChessCoaching(position, playerMove, gameContext = {}) {
-    if (!this.isConfigured()) {
-      console.warn('OpenAI API key not configured, using fallback coaching');
-      return this.getFallbackCoaching(playerMove);
-    }
-
-    try {
-      const chess = new Chess(position);
-      const moveHistory = gameContext.moveHistory || [];
-      const difficulty = gameContext.difficulty || 'intermediate';
-      const isAIMove = gameContext.isAIMove || false;
-      
-      // Create context about the position
-      const positionInfo = this.analyzePosition(chess);
-      
-      let systemPrompt;
-      let userPrompt;
-
-      if (isAIMove) {
-        // AI explaining its own move
-        systemPrompt = `You are Magnus Carlsen, the world chess champion, acting as a personal chess coach. You just made a move and need to explain your reasoning to help the student understand.
-
-Your teaching style:
-- Clear and educational explanations
-- Focus on the strategic/tactical reasons for the move
-- Keep it appropriate for ${difficulty} level players
-- Be encouraging and supportive
-- Limit to 2-3 sentences
-- Stay in character as Magnus
-
-Current position analysis:
-- Game phase: ${positionInfo.phase}
-- Material balance: ${positionInfo.materialBalance > 0 ? 'White ahead' : positionInfo.materialBalance < 0 ? 'Black ahead' : 'Equal material'}
-- Key features: ${positionInfo.keyFeatures.join(', ') || 'Balanced position'}`;
-
-        userPrompt = `I just played ${playerMove}. Explain briefly why this was a good move and what strategic/tactical idea it accomplishes.`;
-      } else {
-        // Coaching the human player's move
-        systemPrompt = `You are Magnus Carlsen, the world chess champion, acting as a personal chess coach. Analyze the student's move and provide encouraging, educational feedback.
-
-Your coaching style:
-- Always be positive and encouraging
-- Point out what was good about the move
-- Gently suggest improvements if needed
-- Focus on learning opportunities
-- Keep it appropriate for ${difficulty} level
-- Limit to 2-3 sentences
-- Stay in character as Magnus
-
-Current position analysis:
-- Game phase: ${positionInfo.phase}  
-- Move number: ${Math.floor(moveHistory.length / 2) + 1}
-- Material balance: ${positionInfo.materialBalance > 0 ? 'White ahead' : positionInfo.materialBalance < 0 ? 'Black ahead' : 'Equal material'}
-- Key features: ${positionInfo.keyFeatures.join(', ') || 'Balanced position'}
-- Tactical opportunities: ${positionInfo.tactics.length > 0 ? positionInfo.tactics.join(', ') : 'None obvious'}`;
-
-        userPrompt = playerMove 
-          ? `The student just played ${playerMove}. Provide encouraging feedback on this move and suggest what they should think about next.`
-          : `This is the starting position. Provide opening advice and encourage the student to make a good first move.`;
-      }
-
-      const response = await this.client.chat.completions.create({
-        model: this.model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        max_tokens: 150,
-        temperature: 0.7,
-        top_p: 0.9
-      });
-
-      const message = response.choices[0].message.content.trim();
-
-      return {
-        message,
-        coach: 'Coach B',
-        timestamp: new Date().toISOString(),
-        positionAnalysis: positionInfo
-      };
-
-    } catch (error) {
-      console.error('OpenAI API error:', error);
-      // Fallback to basic coaching
-      return this.getFallbackCoaching(playerMove);
-    }
-  }
-
-  /**
-   * Generate chess coaching hints with PGN context
+   * Generate chess coaching hints with PGN context (CRITICAL MOMENTS ONLY)
    */
   async generateHint(position, gameContext = {}) {
     if (!this.isConfigured()) {
@@ -169,6 +78,155 @@ ${moveHistory.length > 0 ? `Recent moves: ${moveHistory.slice(-6).join(' ')}` : 
       console.error('OpenAI API error for hint:', error);
       return this.getFallbackHint();
     }
+  }
+
+  /**
+   * Analyze a blunder and provide targeted coaching (CRITICAL MOMENTS ONLY)
+   */
+  async analyzeBlunder(position, playerMove, evaluationChange, gameContext = {}) {
+    if (!this.isConfigured()) {
+      console.warn('OpenAI API key not configured, using fallback blunder analysis');
+      return this.getFallbackBlunderAnalysis(evaluationChange, gameContext.isUserBlunder);
+    }
+
+    try {
+      const chess = new Chess(position);
+      const positionInfo = this.analyzePosition(chess);
+      const difficulty = gameContext.difficulty || 'intermediate';
+      const pgn = gameContext.pgn || '';
+      const isUserBlunder = gameContext.isUserBlunder || false;
+      const bestMove = gameContext.bestMove || '';
+
+      let systemPrompt;
+      let userPrompt;
+
+      if (isUserBlunder) {
+        // User made a blunder - provide constructive feedback
+        systemPrompt = `You are Coach B, a supportive chess instructor. The student just made a significant mistake (blunder). Your job is to help them learn without being harsh.
+
+Your coaching approach:
+- Be understanding and encouraging
+- Explain what went wrong briefly
+- Suggest what to look for next time
+- Keep it appropriate for ${difficulty} level
+- Limit to 2-3 sentences maximum
+- Focus on learning, not criticism
+
+Position analysis:
+- Game phase: ${positionInfo.phase}
+- Evaluation change: ${evaluationChange} centipawns
+- Key features: ${positionInfo.keyFeatures.join(', ') || 'Complex position'}
+${bestMove ? `- Better move was: ${bestMove}` : ''}
+
+${pgn ? `Game context: ${pgn.slice(-300)}` : ''}`;
+
+        userPrompt = `The student played ${playerMove} which was a blunder (evaluation dropped by ${Math.abs(evaluationChange)} centipawns). Provide supportive coaching to help them learn from this mistake.`;
+      } else {
+        // AI/Engine made a blunder - prompt user to find the punishment
+        systemPrompt = `You are Coach B, an encouraging chess instructor. The opponent (engine/AI) just made a blunder, creating a tactical opportunity for the student.
+
+Your coaching approach:
+- Alert them to the opportunity without giving away the solution
+- Encourage them to look for forcing moves
+- Build their confidence
+- Keep it appropriate for ${difficulty} level
+- Limit to 1-2 sentences maximum
+- Make them excited about the opportunity
+
+Position analysis:
+- Game phase: ${positionInfo.phase}
+- Evaluation swing: ${evaluationChange} centipawns in their favor
+- Key features: ${positionInfo.keyFeatures.join(', ') || 'Tactical position'}
+
+${pgn ? `Game context: ${pgn.slice(-300)}` : ''}`;
+
+        userPrompt = `The opponent just played ${playerMove} which was a blunder (evaluation improved by ${Math.abs(evaluationChange)} centipawns for the student). Encourage them to find the best response without giving away the exact move.`;
+      }
+
+      const response = await this.client.chat.completions.create({
+        model: this.model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        max_tokens: 150,
+        temperature: 0.8,
+        top_p: 0.9
+      });
+
+      return {
+        message: response.choices[0].message.content.trim(),
+        type: 'blunder_analysis',
+        coach: 'Coach B',
+        isUserBlunder,
+        evaluationChange,
+        severity: Math.abs(evaluationChange) > 300 ? 'major' : Math.abs(evaluationChange) > 150 ? 'moderate' : 'minor',
+        timestamp: new Date().toISOString()
+      };
+
+    } catch (error) {
+      console.error('OpenAI API error for blunder analysis:', error);
+      return this.getFallbackBlunderAnalysis(evaluationChange, gameContext.isUserBlunder);
+    }
+  }
+
+  /**
+   * Generate welcome coaching message for new training sessions
+   */
+  async generateWelcomeMessage(difficulty = 'intermediate', gameContext = {}) {
+    if (!this.isConfigured()) {
+      console.warn('OpenAI API key not configured, using fallback welcome');
+      return this.getFallbackWelcomeMessage(difficulty);
+    }
+
+    try {
+      const systemPrompt = `You are Coach B, an expert chess coach, welcoming a student to a personal chess training session. Create an encouraging, motivating welcome message that sets the tone for learning.
+
+Your welcome style:
+- Warm and encouraging
+- Briefly explain what they'll learn
+- Appropriate for ${difficulty} level players  
+- Keep it conversational and personal
+- Limit to 2-3 sentences
+- Make them excited to play and learn`;
+
+      const userPrompt = `Welcome a ${difficulty} level chess student to a new training session. Make them feel comfortable and excited to learn.`;
+
+      const response = await this.client.chat.completions.create({
+        model: this.model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        max_tokens: 120,
+        temperature: 0.8
+      });
+
+      return {
+        message: response.choices[0].message.content.trim(),
+        coach: 'Coach B',
+        timestamp: new Date().toISOString()
+      };
+
+    } catch (error) {
+      console.error('OpenAI API error for welcome message:', error);
+      return this.getFallbackWelcomeMessage(difficulty);
+    }
+  }
+
+  /**
+   * Determine if an evaluation change constitutes a blunder
+   */
+  static isBlunder(evaluationChange, gamePhase = 'middlegame') {
+    const threshold = gamePhase === 'endgame' ? 100 : 150; // Lower threshold for endgame
+    return Math.abs(evaluationChange) >= threshold;
+  }
+
+  /**
+   * Determine if an evaluation change is significant enough to warrant coaching
+   */
+  static isSignificantChange(evaluationChange) {
+    return Math.abs(evaluationChange) >= 75; // Significant but not necessarily blunder
   }
 
   /**
@@ -645,4 +703,10 @@ Your welcome style:
   }
 }
 
-module.exports = new OpenAIService();
+const openaiServiceInstance = new OpenAIService();
+
+// Make static methods accessible on the instance for route access
+openaiServiceInstance.isBlunder = OpenAIService.isBlunder;
+openaiServiceInstance.isSignificantChange = OpenAIService.isSignificantChange;
+
+module.exports = openaiServiceInstance;

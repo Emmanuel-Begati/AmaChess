@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const openaiService = require('../services/openaiService');
+const OpenAIService = require('../services/openaiService').constructor;
 const stockfishService = require('../services/stockfishService');
 const { Chess } = require('chess.js');
 
@@ -99,14 +100,16 @@ router.post('/chat', async (req, res) => {
 
 /**
  * POST /api/coach/hint
- * Get a helpful hint about the current position using GPT-4o
+ * Get strategic hints for the current position with PGN context (USER-REQUESTED ONLY)
  */
 router.post('/hint', async (req, res) => {
   try {
     const { 
-      position, 
+      position,
+      pgn = '',
+      moveHistory = [],
       difficulty = 'intermediate',
-      gameContext = {} 
+      gameContext = {}
     } = req.body;
 
     if (!position) {
@@ -120,25 +123,155 @@ router.post('/hint', async (req, res) => {
       return res.status(400).json({ error: 'Invalid FEN position' });
     }
 
-    // Create context for hint generation
-    const context = {
+    // Create enhanced context with PGN for deeper analysis
+    const enhancedContext = {
       difficulty,
+      pgn: pgn.trim(),
+      moveHistory,
       ...gameContext
     };
 
-    // Get hint from OpenAI GPT-4o
-    const hint = await openaiService.generateHint(position, context);
+    // Get strategic hint from Coach B with full game context
+    const hint = await openaiService.generateHint(position, enhancedContext);
+
+    // Also provide basic position analysis from Stockfish if available
+    let analysis = null;
+    try {
+      if (stockfishService) {
+        analysis = await stockfishService.analyzePosition(position, 10);
+      }
+    } catch (error) {
+      console.log('Stockfish analysis not available for hint:', error.message);
+    }
 
     res.json({
       success: true,
       hint,
+      analysis: analysis ? {
+        evaluation: analysis.evaluation,
+        bestMove: analysis.bestMove,
+        depth: analysis.depth
+      } : null,
       timestamp: new Date().toISOString()
     });
 
   } catch (error) {
-    console.error('Chess coach hint error:', error);
+    console.error('Chess hint error:', error);
     res.status(500).json({
-      error: 'Failed to get coaching hint',
+      error: 'Failed to generate hint',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/coach/blunder-analysis  
+ * Analyze blunders and provide targeted coaching (CRITICAL MOMENTS)
+ */
+router.post('/blunder-analysis', async (req, res) => {
+  try {
+    const { 
+      position,
+      playerMove,
+      evaluationChange,
+      isUserBlunder = false,
+      bestMove = '',
+      difficulty = 'intermediate',
+      gameContext = {}
+    } = req.body;
+
+    if (!position || !playerMove || evaluationChange === undefined) {
+      return res.status(400).json({ 
+        error: 'Position, player move, and evaluation change are required' 
+      });
+    }
+
+    // Validate FEN position
+    try {
+      new Chess(position);
+    } catch (error) {
+      return res.status(400).json({ error: 'Invalid FEN position' });
+    }
+
+    // Only provide coaching for significant blunders to save API costs
+    if (!openaiService.isBlunder(evaluationChange)) {
+      return res.json({
+        success: true,
+        shouldProvideCoaching: false,
+        message: 'Move evaluation change not significant enough for coaching intervention',
+        evaluationChange
+      });
+    }
+
+    // Create context for blunder analysis
+    const context = {
+      difficulty,
+      isUserBlunder,
+      bestMove,
+      ...gameContext
+    };
+
+    // Get targeted blunder coaching from Coach B
+    const coaching = await openaiService.analyzeBlunder(
+      position, 
+      playerMove, 
+      evaluationChange,
+      context
+    );
+
+    res.json({
+      success: true,
+      shouldProvideCoaching: true,
+      coaching,
+      evaluationChange,
+      severity: coaching.severity,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Blunder analysis error:', error);
+    res.status(500).json({
+      error: 'Failed to analyze blunder',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/coach/should-intervene
+ * Check if an evaluation change warrants coaching intervention (COST OPTIMIZATION)
+ */
+router.post('/should-intervene', async (req, res) => {
+  try {
+    const { 
+      evaluationChange,
+      gamePhase = 'middlegame'
+    } = req.body;
+
+    if (evaluationChange === undefined) {
+      return res.status(400).json({ 
+        error: 'Evaluation change is required' 
+      });
+    }
+
+    const isBlunder = openaiService.isBlunder(evaluationChange, gamePhase);
+    const isSignificant = openaiService.isSignificantChange(evaluationChange);
+
+    res.json({
+      success: true,
+      shouldIntervene: isBlunder,
+      isBlunder,
+      isSignificant,
+      evaluationChange,
+      gamePhase,
+      severity: isBlunder ? (Math.abs(evaluationChange) > 300 ? 'major' : Math.abs(evaluationChange) > 150 ? 'moderate' : 'minor') : 'none',
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Intervention check error:', error);
+    res.status(500).json({
+      error: 'Failed to check intervention criteria',
       details: error.message
     });
   }
@@ -234,6 +367,164 @@ router.post('/analyze-move', async (req, res) => {
     console.error('Move analysis error:', error);
     res.status(500).json({
       error: 'Failed to analyze move',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/coach/hint
+ * Get strategic hints for the current position with PGN context (USER-REQUESTED ONLY)
+ */
+router.post('/hint', async (req, res) => {
+  try {
+    const { 
+      position,
+      pgn = '',
+      moveHistory = [],
+      difficulty = 'intermediate',
+      gameContext = {}
+    } = req.body;
+
+    if (!position) {
+      return res.status(400).json({ error: 'Chess position (FEN) is required' });
+    }
+
+    // Validate FEN position
+    try {
+      new Chess(position);
+    } catch (error) {
+      return res.status(400).json({ error: 'Invalid FEN position' });
+    }
+
+    // Create enhanced context with PGN for deeper analysis
+    const enhancedContext = {
+      difficulty,
+      pgn: pgn.trim(),
+      moveHistory,
+      ...gameContext
+    };
+
+    // Get strategic hint from Coach B with full game context
+    const hint = await openaiService.generateHint(position, enhancedContext);
+
+    // Also provide basic position analysis from Stockfish if available
+    let analysis = null;
+    try {
+      if (stockfishService) {
+        analysis = await stockfishService.analyzePosition(position, 10);
+      }
+    } catch (error) {
+      console.log('Stockfish analysis not available for hint:', error.message);
+    }
+
+    res.json({
+      success: true,
+      hint,
+      analysis: analysis ? {
+        evaluation: analysis.evaluation,
+        bestMove: analysis.bestMove,
+        depth: analysis.depth
+      } : null,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Chess hint error:', error);
+    res.status(500).json({
+      error: 'Failed to generate hint',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/coach/evaluation-monitor
+ * Monitor evaluation changes and trigger coaching for critical moments
+ */
+router.post('/evaluation-monitor', async (req, res) => {
+  try {
+    const { 
+      previousEvaluation,
+      currentEvaluation,
+      playerMove,
+      position,
+      gamePhase = 'middlegame',
+      isUserMove = true,
+      difficulty = 'intermediate',
+      gameContext = {}
+    } = req.body;
+
+    if (previousEvaluation === undefined || currentEvaluation === undefined || !playerMove || !position) {
+      return res.status(400).json({ 
+        error: 'Previous evaluation, current evaluation, player move, and position are required' 
+      });
+    }
+
+    // Calculate evaluation change (positive = better for current player)
+    const evaluationChange = isUserMove 
+      ? currentEvaluation - previousEvaluation  // User move: + is good, - is bad
+      : previousEvaluation - currentEvaluation; // Engine move: flipped perspective
+
+    // Check if this warrants coaching intervention
+    const isBlunder = openaiService.isBlunder(Math.abs(evaluationChange), gamePhase);
+    
+    if (!isBlunder) {
+      return res.json({
+        success: true,
+        shouldIntervene: false,
+        evaluationChange,
+        severity: 'none',
+        message: 'No coaching intervention needed'
+      });
+    }
+
+    // Determine who made the blunder
+    const isUserBlunder = isUserMove && evaluationChange < 0;
+    const isEngineBlunder = !isUserMove && evaluationChange > 0;
+
+    if (!isUserBlunder && !isEngineBlunder) {
+      return res.json({
+        success: true,
+        shouldIntervene: false,
+        evaluationChange,
+        severity: 'none',
+        message: 'Evaluation change not significant enough'
+      });
+    }
+
+    // Create context for blunder analysis
+    const context = {
+      difficulty,
+      isUserBlunder,
+      gamePhase,
+      ...gameContext
+    };
+
+    // Get targeted coaching from Coach B for critical moment
+    const coaching = await openaiService.analyzeBlunder(
+      position, 
+      playerMove, 
+      Math.abs(evaluationChange),
+      context
+    );
+
+    res.json({
+      success: true,
+      shouldIntervene: true,
+      coaching,
+      evaluationChange,
+      isUserBlunder,
+      isEngineBlunder,
+      severity: coaching.severity,
+      criticalMoment: true,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Evaluation monitoring error:', error);
+    res.status(500).json({
+      error: 'Failed to monitor evaluation',
       details: error.message
     });
   }

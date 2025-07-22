@@ -1,10 +1,14 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import ChessGame from './ChessGame';
 import { Chess } from 'chess.js';
 
-const AICoachModal = ({ onClose }) => {
+interface AICoachModalProps {
+  onClose: () => void;
+  evaluation?: number | null;
+}
+
+const AICoachModal: React.FC<AICoachModalProps> = ({ onClose, evaluation = null }) => {
   const [gameStarted, setGameStarted] = useState(false);
-  const [game] = useState(() => new Chess());
   const [currentPosition, setCurrentPosition] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
   const [moveNumber, setMoveNumber] = useState(1);
   const [coachMessage, setCoachMessage] = useState("Loading your personal chess coach...");
@@ -17,6 +21,8 @@ const AICoachModal = ({ onClose }) => {
   }>>([]);
   const [difficulty, setDifficulty] = useState(5); // Default difficulty level
   const [showEvaluation, setShowEvaluation] = useState(true);
+  const [previousEvaluation, setPreviousEvaluation] = useState<number | null>(null);
+  const [gamePhase, setGamePhase] = useState<'opening' | 'middlegame' | 'endgame'>('opening');
 
   const API_BASE_URL = 'http://localhost:3001/api';
 
@@ -44,11 +50,11 @@ const AICoachModal = ({ onClose }) => {
           const data = await response.json();
           setCoachMessage(data.welcome.message);
         } else {
-          setCoachMessage("Welcome! I'm Magnus, your chess coach. Let's start with a training game where I'll guide you through important concepts as we play.");
+          setCoachMessage("Welcome! I'm Coach B, your personal chess coach. Let's start with a training game where I'll guide you through important concepts as we play.");
         }
       } catch (error) {
         console.error('Failed to load welcome message:', error);
-        setCoachMessage("Welcome! I'm Magnus, your chess coach. Let's start with a training game where I'll guide you through important concepts as we play.");
+        setCoachMessage("Welcome! I'm Coach B, your personal chess coach. Let's start with a training game where I'll guide you through important concepts as we play.");
       } finally {
         setIsAnalyzing(false);
       }
@@ -250,6 +256,18 @@ const AICoachModal = ({ onClose }) => {
     setIsAnalyzing(true);
     
     try {
+      const difficultyLevel = difficulty <= 3 ? 'beginner' : difficulty <= 6 ? 'intermediate' : 'advanced';
+      const currentGamePhase = moveNumber <= 10 ? 'opening' : moveNumber <= 25 ? 'middlegame' : 'endgame';
+      
+      // Build PGN from move history
+      const gamePgn = aiMoveHistory.map((move, index) => {
+        const fullMoveNumber = Math.floor(index / 2) + 1;
+        const isWhiteMove = index % 2 === 0;
+        return isWhiteMove 
+          ? `${fullMoveNumber}.${move.playerMove} ${move.aiMove || ''}` 
+          : move.playerMove;
+      }).join(' ');
+
       const response = await fetch(`${API_BASE_URL}/coach/hint`, {
         method: 'POST',
         headers: {
@@ -257,27 +275,89 @@ const AICoachModal = ({ onClose }) => {
         },
         body: JSON.stringify({
           position: currentPosition,
-          difficulty: difficulty <= 3 ? 'beginner' : difficulty <= 6 ? 'intermediate' : 'advanced',
+          pgn: gamePgn,
+          moveHistory: aiMoveHistory.flatMap(m => [m.playerMove, m.aiMove]).filter(Boolean),
+          difficulty: difficultyLevel,
           gameContext: {
             moveNumber: moveNumber,
-            gamePhase: moveNumber <= 10 ? 'opening' : moveNumber <= 25 ? 'middlegame' : 'endgame'
+            gamePhase: currentGamePhase
           }
         })
       });
 
       if (response.ok) {
         const data = await response.json();
-        setCoachMessage(`💡 Hint: ${data.hint.message}`);
+        setCoachMessage(`💡 Coach B: ${data.hint.message}`);
       } else {
-        setCoachMessage("💡 Hint: Look for the most forcing moves - checks, captures, and threats!");
+        setCoachMessage("💡 Coach B: Look for the most forcing moves - checks, captures, and threats!");
       }
     } catch (error) {
       console.error('Failed to get hint:', error);
-      setCoachMessage("💡 Hint: Look for the most forcing moves - checks, captures, and threats!");
+      setCoachMessage("💡 Coach B: Look for the most forcing moves - checks, captures, and threats!");
     } finally {
       setIsAnalyzing(false);
     }
   };
+
+  // Monitor evaluation changes and trigger coaching when blunders detected
+  useEffect(() => {
+    const monitorEvaluation = async () => {
+      if (previousEvaluation === null || !currentPosition) return;
+
+      const currentEval = evaluation;
+      if (currentEval === null) return;
+
+      const evalChange = Math.abs(currentEval - previousEvaluation);
+      
+      // Only check for significant evaluation swings (potential blunders)
+      if (evalChange >= 0.5) {
+        try {
+          // Build PGN for context
+          const gamePgn = aiMoveHistory.map((move, index) => {
+            const fullMoveNumber = Math.floor(index / 2) + 1;
+            const isWhiteMove = index % 2 === 0;
+            return isWhiteMove 
+              ? `${fullMoveNumber}.${move.playerMove} ${move.aiMove || ''}` 
+              : move.playerMove;
+          }).join(' ');
+
+          const response = await fetch(`${API_BASE_URL}/coach/evaluation-monitor`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              position: currentPosition,
+              evaluation: currentEval,
+              previousEvaluation: previousEvaluation,
+              pgn: gamePgn,
+              lastMove: aiMoveHistory.length > 0 ? aiMoveHistory[aiMoveHistory.length - 1]?.playerMove || null : null,
+              difficulty: difficulty <= 3 ? 'beginner' : difficulty <= 6 ? 'intermediate' : 'advanced'
+            })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.shouldIntervene && data.analysis) {
+              setCoachMessage(`⚠️ Coach B: ${data.analysis.message}`);
+            }
+          }
+        } catch (error) {
+          console.error('Evaluation monitoring failed:', error);
+        }
+      }
+
+      setPreviousEvaluation(currentEval);
+    };
+
+    monitorEvaluation();
+  }, [evaluation, currentPosition, previousEvaluation, aiMoveHistory, difficulty, API_BASE_URL]);
+
+  // Update game phase when move number changes
+  useEffect(() => {
+    const phase = moveNumber <= 10 ? 'opening' : moveNumber <= 25 ? 'middlegame' : 'endgame';
+    setGamePhase(phase);
+  }, [moveNumber]);
 
   const handleMoveWrapper = (move: { from: string; to: string; san?: string }) => {
     // Start the async move handling but return immediately
