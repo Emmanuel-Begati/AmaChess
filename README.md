@@ -20,57 +20,57 @@ AmaChess is a comprehensive chess learning platform that combines interactive ga
 ## 📸 Screenshots
 
 ### Dashboard & Home
-<img src="amachess-frontend/screenshots/Screenshot 2025-07-24 013244.png" alt="AmaChess Dashboard" width="800">
+<img src="amachess-frontend/screenshots/01-dashboard-home.png" alt="AmaChess Dashboard" width="800">
 
 *Main dashboard showing user statistics, recent games, and performance metrics*
 
 ### Interactive Chess Gameplay
-<img src="amachess-frontend/screenshots/Screenshot 2025-07-24 042538.png" alt="Chess Gameplay" width="800">
+<img src="amachess-frontend/screenshots/02-chess-gameplay.png" alt="Chess Gameplay" width="800">
 
 *Play against AI with multiple difficulty levels and real-time analysis*
 
 ### Puzzle Training System
-<img src="amachess-frontend/screenshots/Screenshot 2025-07-24 094227.png" alt="Puzzle Training" width="800">
+<img src="amachess-frontend/screenshots/03-puzzle-training.png" alt="Puzzle Training" width="800">
 
 *Solve tactical puzzles with hints, themes, and difficulty progression*
 
-<img src="amachess-frontend/screenshots/Screenshot 2025-07-24 094517.png" alt="Puzzle Interface" width="800">
+<img src="amachess-frontend/screenshots/04-puzzle-interface.png" alt="Puzzle Interface" width="800">
 
 *Clean puzzle interface with move notation and analysis*
 
 ### Game Analysis & Learning
-<img src="amachess-frontend/screenshots/Screenshot 2025-07-24 101224.png" alt="Game Analysis" width="800">
+<img src="amachess-frontend/screenshots/05-game-analysis.png" alt="Game Analysis" width="800">
 
 *Detailed game analysis with move evaluation and recommendations*
 
-<img src="amachess-frontend/screenshots/Screenshot 2025-07-24 101242.png" alt="Learning Interface" width="800">
+<img src="amachess-frontend/screenshots/06-learning-interface.png" alt="Learning Interface" width="800">
 
 *Learn from your games with AI-powered insights*
 
 ### Chess Library & Book Reader
-<img src="amachess-frontend/screenshots/Screenshot 2025-07-24 101312.png" alt="Chess Library" width="800">
+<img src="amachess-frontend/screenshots/07-chess-library.png" alt="Chess Library" width="800">
 
 *Browse and read chess books with interactive position analysis*
 
-<img src="amachess-frontend/screenshots/Screenshot 2025-07-24 101919.png" alt="Book Reader" width="800">
+<img src="amachess-frontend/screenshots/08-book-reader.png" alt="Book Reader" width="800">
 
 *PDF chess book reader with position extraction and analysis*
 
 ### Settings & Customization
-<img src="amachess-frontend/screenshots/Screenshot 2025-07-24 104228.png" alt="Settings" width="800">
+<img src="amachess-frontend/screenshots/09-settings.png" alt="Settings" width="800">
 
 *Customize themes, preferences, and account settings*
 
 ### Daily Challenges & Statistics
-<img src="amachess-frontend/screenshots/Screenshot 2025-07-24 170302.png" alt="Daily Challenges" width="800">
+<img src="amachess-frontend/screenshots/10-daily-challenges.png" alt="Daily Challenges" width="800">
 
 *Daily puzzle challenges with community statistics*
 
-<img src="amachess-frontend/screenshots/Screenshot 2025-07-24 193245.png" alt="Statistics" width="800">
+<img src="amachess-frontend/screenshots/11-statistics.png" alt="Statistics" width="800">
 
 *Detailed performance tracking and progress analytics*
 
-<img src="amachess-frontend/screenshots/Screenshot 2025-07-24 193257.png" alt="Progress Tracking" width="800">
+<img src="amachess-frontend/screenshots/12-progress-tracking.png" alt="Progress Tracking" width="800">
 
 *Track your improvement over time with comprehensive metrics*
 
