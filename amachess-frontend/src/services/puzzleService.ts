@@ -36,6 +36,43 @@ export interface PuzzleFilters {
   difficulty?: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
 }
 
+export interface UserPuzzleStats {
+  id: string;
+  userId: string;
+  totalPuzzlesSolved: number;
+  currentPuzzleRating: number;
+  bestPuzzleRating: number;
+  currentStreak: number;
+  bestStreak: number;
+  totalTimeSpent: number;
+  averageAccuracy: number;
+  averageTimePerPuzzle: number;
+  favoriteThemes: string;
+  weeklyGoal: number;
+  weeklyProgress: number;
+  monthlyGoal: number;
+  monthlyProgress: number;
+  lastActiveDate: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DailyChallenge extends LichessPuzzle {
+  isDailyChallenge: true;
+  challengeDate: string;
+}
+
+export interface DailyChallengeStats {
+  puzzle: DailyChallenge;
+  stats: {
+    totalAttempts: number;
+    solvedAttempts: number;
+    successRate: number;
+    averageTime: number;
+    challengeDate: string;
+  };
+}
+
 class PuzzleService {
   async getRandomPuzzle(filters?: PuzzleFilters): Promise<LichessPuzzle> {
     try {
@@ -53,8 +90,21 @@ class PuzzleService {
       }
       
       return response.data.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading random puzzle:', error);
+      
+      // Handle specific error cases
+      if (error.response?.status === 500) {
+        // Check if it's a database-related error
+        const errorMessage = error.response?.data?.message || error.message;
+        
+        if (errorMessage.includes('No puzzles found') || errorMessage.includes('database')) {
+          console.log('Database is empty, returning fallback puzzle');
+          // Return a fallback puzzle when database is empty
+          return this.getFallbackPuzzle();
+        }
+      }
+      
       throw error;
     }
   }
@@ -198,6 +248,113 @@ class PuzzleService {
       console.error('Error loading puzzle analysis:', error);
       throw error;
     }
+  }
+
+  // User Statistics Methods
+  async getUserStats(userId: string): Promise<UserPuzzleStats> {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await axios.get(`${API_BASE_URL}/puzzles/user/${userId}/stats`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to load user statistics');
+      }
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Error loading user statistics:', error);
+      throw error;
+    }
+  }
+
+  async updateUserStats(userId: string, puzzleData: LichessPuzzle, isCorrect: boolean, timeSpent: number): Promise<UserPuzzleStats> {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await axios.post(`${API_BASE_URL}/puzzles/user/${userId}/stats/update`, {
+        puzzleData,
+        isCorrect,
+        timeSpent
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to update user statistics');
+      }
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Error updating user statistics:', error);
+      throw error;
+    }
+  }
+
+  // Daily Challenge Methods
+  async getDailyChallenge(): Promise<DailyChallenge> {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/puzzles/daily-challenge`);
+      
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to load daily challenge');
+      }
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Error loading daily challenge:', error);
+      throw error;
+    }
+  }
+
+  async getDailyChallengeStats(date?: string): Promise<DailyChallengeStats> {
+    try {
+      const params = date ? `?date=${date}` : '';
+      const response = await axios.get(`${API_BASE_URL}/puzzles/daily-challenge/stats${params}`);
+      
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to load daily challenge statistics');
+      }
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Error loading daily challenge statistics:', error);
+      throw error;
+    }
+  }
+
+  // Fallback puzzle for when database is empty or unavailable
+  private getFallbackPuzzle(): LichessPuzzle {
+    return {
+      id: 'fallback-001',
+      fen: 'r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 4 4',
+      moves: ['Bxf7+', 'Kxf7', 'Ng5+'],
+      rating: 1200,
+      themes: ['fork', 'tactics'], // Ensure this is an array
+      gameUrl: '',
+      difficulty: 'Beginner',
+      popularity: 85,
+      solution: ['Bxf7+', 'Kxf7', 'Ng5+'],
+      description: 'Find the best move to win material',
+      hint: 'Look for a forcing move that attacks the king',
+      sideToMove: 'white',
+      userSide: 'white',
+      pgn: '',
+      analysis: {
+        themes: ['fork', 'tactics'], // Ensure this is an array
+        sideToMove: 'white',
+        difficulty: 'Beginner',
+        hint: 'Look for a forcing move that attacks the king',
+        description: 'Find the best move to win material',
+        moveSequence: ['Bxf7+', 'Kxf7', 'Ng5+'],
+        continuationLength: 3
+      }
+    };
   }
 }
 

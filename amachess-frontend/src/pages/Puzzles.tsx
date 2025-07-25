@@ -4,14 +4,20 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ChessGame from '../components/ChessGame';
 import { usePuzzle } from '../hooks/usePuzzle';
-import { LichessPuzzle } from '../services/puzzleService';
+import { LichessPuzzle, UserPuzzleStats, DailyChallenge, DailyChallengeStats, puzzleService } from '../services/puzzleService';
 
 const Puzzles = () => {
   const [activeTab, setActiveTab] = useState('All');
   const [selectedDifficulty, setSelectedDifficulty] = useState('All');
   const [dailyPuzzleCompleted, setDailyPuzzleCompleted] = useState(false);
-  const [showSolution, setShowSolution] = useState(false);
   const [randomPuzzleMode, setRandomPuzzleMode] = useState(false);
+  
+  // New state for user statistics and daily challenge
+  const [userStats, setUserStats] = useState<UserPuzzleStats | null>(null);
+  const [dailyChallenge, setDailyChallenge] = useState<DailyChallenge | null>(null);
+  const [dailyChallengeStats, setDailyChallengeStats] = useState<DailyChallengeStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState<string | null>(null);
   
   // Use the puzzle hook for Lichess puzzle integration
   const {
@@ -28,34 +34,65 @@ const Puzzles = () => {
     showSolution: solutionVisible
   } = usePuzzle();
 
-  // User puzzle statistics
-  const userStats = {
-    puzzlesSolved: 1247,
-    puzzleRating: 1685,
-    bestStreak: 23,
-    currentStreak: 8,
-    averageRating: 1542,
-    improvementThisMonth: 87,
-    accuracyRate: 76.3,
-    averageTime: 45,
-    favoriteTheme: "Pin"
-  };
-
-  // Daily Challenge
-  const dailyChallenge = {
-    id: "daily_2024_01_20",
-    title: "Daily Challenge - January 20",
-    fen: "r2qkb1r/pp2nppp/3p4/2pP4/4P3/2N2N2/PPP2PPP/R1BQKB1R w KQkq c6 0 6",
-    theme: "Discovered Attack",
-    rating: 1650,
-    movesToMate: 3,
-    averageTime: 63,
-    solveCount: 2847,
-    attempts: 4521,
-    successRate: 63,
-    solution: ["1. Nxe7+", "Qxe7", "2. Nd5"],
-    description: "White has a powerful discovered attack. Find the winning sequence!"
-  };
+  // Load user statistics and daily challenge data
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        setStatsLoading(true);
+        setStatsError(null);
+        
+        // Load daily challenge (public endpoint)
+        try {
+          const challenge = await puzzleService.getDailyChallenge();
+          setDailyChallenge(challenge);
+          
+          // Load daily challenge statistics
+          const challengeStats = await puzzleService.getDailyChallengeStats();
+          setDailyChallengeStats(challengeStats);
+        } catch (error) {
+          console.error('Failed to load daily challenge:', error);
+        }
+        
+        // Try to load user statistics (requires auth)
+        try {
+          const userId = 'user123'; // In a real app, get from auth context
+          const stats = await puzzleService.getUserStats(userId);
+          setUserStats(stats);
+        } catch (error) {
+          console.warn('User not authenticated, using default stats:', error);
+          // Set default/guest user stats
+          setUserStats({
+            id: 'guest',
+            userId: 'guest',
+            totalPuzzlesSolved: 0,
+            currentPuzzleRating: 1200,
+            bestPuzzleRating: 1200,
+            currentStreak: 0,
+            bestStreak: 0,
+            totalTimeSpent: 0,
+            averageAccuracy: 0,
+            averageTimePerPuzzle: 0,
+            favoriteThemes: '',
+            weeklyGoal: 50,
+            weeklyProgress: 0,
+            monthlyGoal: 200,
+            monthlyProgress: 0,
+            lastActiveDate: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          });
+        }
+        
+      } catch (error) {
+        console.error('Failed to load user data:', error);
+        setStatsError('Failed to load user data');
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+    
+    loadUserData();
+  }, []);
 
   // Featured Puzzles with tactical motifs
   const featuredPuzzles = [
@@ -200,23 +237,30 @@ const Puzzles = () => {
 
   const loadPuzzleThemes = async () => {
     try {
-      const [themesResponse, statsResponse] = await Promise.all([
-        fetch('/api/puzzles/themes'),
-        fetch('/api/puzzles/stats')
-      ]);
+      // Load themes from backend API
+      const themesResponse = await fetch('http://localhost:3001/api/puzzles/themes');
+      
+      if (!themesResponse.ok) {
+        throw new Error(`HTTP error! status: ${themesResponse.status}`);
+      }
       
       const themesData = await themesResponse.json();
-      const statsData = await statsResponse.json();
       
-      if (themesData.success && statsData.success) {
+      if (themesData.success && themesData.data) {
         const themeColors = [
           "bg-blue-600", "bg-green-600", "bg-purple-600", "bg-red-600",
           "bg-orange-600", "bg-indigo-600", "bg-pink-600", "bg-teal-600",
           "bg-cyan-600", "bg-yellow-600", "bg-rose-600", "bg-violet-600"
         ];
         
+        // For now, assign random counts since we don't have stats endpoint
         const themesWithData = themesData.data.map((theme: string, index: number) => {
-          const count = statsData.data.byTheme[theme] || 0;
+          // Estimate count based on theme popularity (this would come from stats in real app)
+          const baseCount = Math.floor(Math.random() * 800) + 200;
+          const count = theme === 'mate' ? baseCount + 500 : 
+                       theme === 'fork' ? baseCount + 300 : 
+                       theme === 'pin' ? baseCount + 250 : baseCount;
+          
           const difficulty = count > 1000 ? "★☆☆" : count > 500 ? "★★☆" : count > 200 ? "★★★" : "★★★★";
           
           return {
@@ -225,14 +269,14 @@ const Puzzles = () => {
             difficulty: difficulty,
             color: themeColors[index % themeColors.length]
           };
-        }).filter((theme: any) => theme.count > 0)
-          .sort((a: any, b: any) => b.count - a.count)
+        }).sort((a: any, b: any) => b.count - a.count)
           .slice(0, 12); // Show top 12 themes
         
         setPuzzleThemes(themesWithData);
       }
     } catch (error) {
       console.error('Failed to load puzzle themes:', error);
+      // Keep the default themes if API fails
     }
   };
 
@@ -552,10 +596,10 @@ const Puzzles = () => {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-[#97a1c4] text-xs sm:text-sm lg:text-base">Puzzles Solved</p>
-                    <p className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-white">{userStats.puzzlesSolved.toLocaleString()}</p>
+                    <div className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-white mb-1 sm:mb-2">{userStats?.totalPuzzlesSolved?.toLocaleString() || '0'}</div>
+                    <div className="text-[#97a1c4] text-xs sm:text-sm lg:text-base xl:text-lg">+{userStats?.monthlyProgress || 0} this month</div>
                   </div>
                 </div>
-                <p className="text-green-400 text-xs sm:text-sm">+{userStats.improvementThisMonth} this month</p>
               </div>
 
               <div className="bg-gradient-to-br from-[#1e293b] to-[#334155] rounded-lg xs:rounded-xl p-3 sm:p-4 lg:p-6 border border-[#475569]">
@@ -565,10 +609,10 @@ const Puzzles = () => {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-[#97a1c4] text-xs sm:text-sm lg:text-base">Puzzle Rating</p>
-                    <p className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-white">{userStats.puzzleRating}</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-white">{userStats?.currentPuzzleRating || '0'}</p>
                   </div>
                 </div>
-                <p className="text-purple-400 text-xs sm:text-sm">Top 15% globally</p>
+                <p className="text-purple-400 text-xs sm:text-sm">Best: {userStats?.bestPuzzleRating || '0'}</p>
               </div>
 
               <div className="bg-gradient-to-br from-[#1e293b] to-[#334155] rounded-lg xs:rounded-xl p-3 sm:p-4 lg:p-6 border border-[#475569]">
@@ -578,10 +622,10 @@ const Puzzles = () => {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-[#97a1c4] text-xs sm:text-sm lg:text-base">Best Streak</p>
-                    <p className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-white">{userStats.bestStreak}</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-white">{userStats?.bestStreak || '0'}</p>
                   </div>
                 </div>
-                <p className="text-orange-400 text-xs sm:text-sm">Current: {userStats.currentStreak}</p>
+                <p className="text-orange-400 text-xs sm:text-sm">Current: {userStats?.currentStreak || '0'}</p>
               </div>
 
               <div className="bg-gradient-to-br from-[#1e293b] to-[#334155] rounded-lg xs:rounded-xl p-3 sm:p-4 lg:p-6 border border-[#475569]">
@@ -591,10 +635,10 @@ const Puzzles = () => {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-[#97a1c4] text-xs sm:text-sm lg:text-base">Accuracy Rate</p>
-                    <p className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-white">{userStats.accuracyRate}%</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-white">{userStats?.averageAccuracy?.toFixed(1) || '0.0'}%</p>
                   </div>
                 </div>
-                <p className="text-green-400 text-xs sm:text-sm">Avg time: {userStats.averageTime}s</p>
+                <p className="text-green-400 text-xs sm:text-sm">Avg time: {userStats?.averageTimePerPuzzle?.toFixed(0) || '0'}s</p>
               </div>
             </div>
 
@@ -605,8 +649,12 @@ const Puzzles = () => {
                   <span className="text-xl xs:text-2xl sm:text-3xl">👑</span>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-xl xs:text-2xl sm:text-3xl lg:text-4xl font-bold text-white leading-tight">{dailyChallenge.title}</h2>
-                  <p className="text-[#97a1c4] text-sm xs:text-base lg:text-lg break-words">{dailyChallenge.theme} • Rating: {dailyChallenge.rating}</p>
+                  <h2 className="text-xl xs:text-2xl sm:text-3xl lg:text-4xl font-bold text-white leading-tight">
+                    Daily Challenge - {dailyChallenge?.challengeDate ? new Date(dailyChallenge.challengeDate).toLocaleDateString() : 'Today'}
+                  </h2>
+                  <p className="text-[#97a1c4] text-sm xs:text-base lg:text-lg break-words">
+                    {dailyChallenge?.themes?.[0] || 'Tactical'} • Rating: {dailyChallenge?.rating || 'N/A'}
+                  </p>
                 </div>
               </div>
 
@@ -614,17 +662,23 @@ const Puzzles = () => {
                 {/* Chess Board */}
                 <div className="bg-[#334155] rounded-lg xs:rounded-xl p-3 sm:p-4 lg:p-6 order-2 lg:order-1">
                   <div className="flex justify-center mb-3 sm:mb-4">
-                    <ChessGame
-                      isModalMode={true}
-                      position={dailyChallenge.fen}
-                      onMove={handleDailyPuzzleMove}
-                      interactive={!dailyPuzzleCompleted}
-                      showNotation={false}
-                      engineEnabled={false}
-                    />
+                    {dailyChallenge ? (
+                      <ChessGame
+                        isModalMode={true}
+                        position={dailyChallenge.fen}
+                        onMove={handleDailyPuzzleMove}
+                        interactive={!dailyPuzzleCompleted}
+                        showNotation={false}
+                        engineEnabled={false}
+                      />
+                    ) : (
+                      <div className="w-64 h-64 bg-[#455173] rounded-lg flex items-center justify-center">
+                        <p className="text-[#97a1c4]">Loading daily challenge...</p>
+                      </div>
+                    )}
                   </div>
                   <div className="text-center">
-                    <p className="text-[#97a1c4] text-sm xs:text-base mb-3 xs:mb-4 leading-relaxed">{dailyChallenge.description}</p>
+                    <p className="text-[#97a1c4] text-sm xs:text-base mb-3 xs:mb-4 leading-relaxed">{dailyChallenge?.description || 'Loading puzzle description...'}</p>
                     {!dailyPuzzleCompleted ? (
                       <p className="text-blue-400 text-sm xs:text-base font-medium">
                         Make your move on the board above
@@ -645,19 +699,19 @@ const Puzzles = () => {
                     <div className="grid grid-cols-2 gap-3 xs:gap-4 sm:gap-6">
                       <div>
                         <p className="text-[#97a1c4] text-xs sm:text-sm lg:text-base">Average Time</p>
-                        <p className="text-lg xs:text-xl sm:text-2xl lg:text-3xl font-bold text-blue-400">{dailyChallenge.averageTime}s</p>
+                        <p className="text-lg xs:text-xl sm:text-2xl lg:text-3xl font-bold text-blue-400">{dailyChallengeStats?.stats?.averageTime?.toFixed(0) || '0'}s</p>
                       </div>
                       <div>
                         <p className="text-[#97a1c4] text-xs sm:text-sm lg:text-base">Success Rate</p>
-                        <p className="text-lg xs:text-xl sm:text-2xl lg:text-3xl font-bold text-green-400">{dailyChallenge.successRate}%</p>
+                        <p className="text-lg xs:text-xl sm:text-2xl lg:text-3xl font-bold text-green-400">{dailyChallengeStats?.stats?.successRate?.toFixed(1) || '0.0'}%</p>
                       </div>
                       <div>
                         <p className="text-[#97a1c4] text-xs sm:text-sm lg:text-base">Solved By</p>
-                        <p className="text-lg xs:text-xl sm:text-2xl lg:text-3xl font-bold text-purple-400">{dailyChallenge.solveCount.toLocaleString()}</p>
+                        <p className="text-lg xs:text-xl sm:text-2xl lg:text-3xl font-bold text-purple-400">{dailyChallengeStats?.stats?.solvedAttempts?.toLocaleString() || '0'}</p>
                       </div>
                       <div>
                         <p className="text-[#97a1c4] text-xs sm:text-sm lg:text-base">Attempts</p>
-                        <p className="text-lg xs:text-xl sm:text-2xl lg:text-3xl font-bold text-orange-400">{dailyChallenge.attempts.toLocaleString()}</p>
+                        <p className="text-lg xs:text-xl sm:text-2xl lg:text-3xl font-bold text-orange-400">{dailyChallengeStats?.stats?.totalAttempts?.toLocaleString() || '0'}</p>
                       </div>
                     </div>
                   </div>
@@ -667,15 +721,15 @@ const Puzzles = () => {
                     <div className="space-y-3 xs:space-y-4">
                       <div className="flex justify-between items-center">
                         <span className="text-[#97a1c4] text-sm xs:text-base">Theme:</span>
-                        <span className="text-white font-medium text-sm xs:text-base break-words text-right">{dailyChallenge.theme}</span>
+                        <span className="text-white font-medium text-sm xs:text-base break-words text-right">{dailyChallenge?.themes?.[0] || 'Tactical'}</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-[#97a1c4] text-sm xs:text-base">Moves to solve:</span>
-                        <span className="text-white font-medium text-sm xs:text-base">{dailyChallenge.movesToMate}</span>
+                        <span className="text-white font-medium text-sm xs:text-base">{dailyChallenge?.moves?.length || 'N/A'}</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-[#97a1c4] text-sm xs:text-base">Rating:</span>
-                        <span className="text-white font-medium text-sm xs:text-base">{dailyChallenge.rating}</span>
+                        <span className="text-white font-medium text-sm xs:text-base">{dailyChallenge?.rating || 'N/A'}</span>
                       </div>
                     </div>
                   </div>

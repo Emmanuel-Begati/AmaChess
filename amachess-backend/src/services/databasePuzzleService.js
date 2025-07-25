@@ -35,7 +35,13 @@ class DatabasePuzzleService {
       console.log(`📊 Total matching puzzles: ${totalCount}`);
       
       if (totalCount === 0) {
-        throw new Error('No puzzles found matching the criteria');
+        // Check if database is completely empty
+        const totalPuzzles = await prisma.puzzle.count();
+        if (totalPuzzles === 0) {
+          throw new Error('No puzzles found in database. Please seed the database with puzzles first.');
+        } else {
+          throw new Error(`No puzzles found matching the specified criteria. Total puzzles in database: ${totalPuzzles}`);
+        }
       }
 
       // Get a random puzzle
@@ -135,15 +141,24 @@ class DatabasePuzzleService {
 
       const allThemes = new Set();
       puzzles.forEach((puzzle, index) => {
-        if (puzzle.themes && Array.isArray(puzzle.themes)) {
-          puzzle.themes.forEach(theme => {
-            if (theme && typeof theme === 'string') {
-              allThemes.add(theme);
+        if (puzzle.themes) {
+          try {
+            // Parse JSON string to get array of themes
+            const themesArray = typeof puzzle.themes === 'string' 
+              ? JSON.parse(puzzle.themes) 
+              : puzzle.themes;
+            
+            if (Array.isArray(themesArray)) {
+              themesArray.forEach(theme => {
+                if (theme && typeof theme === 'string') {
+                  allThemes.add(theme);
+                }
+              });
             }
-          });
-        } else {
-          if (index < 5) { // Log first few issues
-            console.log(`⚠️ Puzzle ${index} has invalid themes:`, puzzle.themes);
+          } catch (error) {
+            if (index < 5) { // Log first few parsing issues
+              console.log(`⚠️ Puzzle ${index} has invalid themes JSON:`, puzzle.themes);
+            }
           }
         }
       });
@@ -266,27 +281,7 @@ class DatabasePuzzleService {
     }
   }
 
-  async getUserStats(userId) {
-    await this.initialize();
 
-    try {
-      let stats = await prisma.userStats.findUnique({
-        where: { userId }
-      });
-
-      if (!stats) {
-        // Create default stats if they don't exist
-        stats = await prisma.userStats.create({
-          data: { userId }
-        });
-      }
-
-      return stats;
-    } catch (error) {
-      console.error('Error getting user stats:', error);
-      throw error;
-    }
-  }
 
   // Helper methods
   buildWhereClause(filters) {
@@ -357,9 +352,12 @@ class DatabasePuzzleService {
       
       console.log('🔧 Normalized themes for database query:', normalizedThemes);
       
-      where.themes = {
-        hasSome: normalizedThemes
-      };
+      // Since themes are stored as JSON strings, we need to use contains with OR logic
+      where.OR = normalizedThemes.map(theme => ({
+        themes: {
+          contains: `"${theme}"`
+        }
+      }));
     }
 
     if (filters.difficulty) {
@@ -373,24 +371,38 @@ class DatabasePuzzleService {
   }
 
   formatPuzzleForFrontend(puzzle) {
+    // Helper function to safely parse JSON strings
+    const safeJsonParse = (jsonString, fallback = []) => {
+      try {
+        return typeof jsonString === 'string' ? JSON.parse(jsonString) : jsonString || fallback;
+      } catch (error) {
+        console.warn('Failed to parse JSON:', jsonString, error);
+        return fallback;
+      }
+    };
+
+    const moves = safeJsonParse(puzzle.moves, []);
+    const themes = safeJsonParse(puzzle.themes, []);
+    const openingTags = safeJsonParse(puzzle.openingTags, []);
+
     return {
       id: puzzle.id,
       lichessId: puzzle.lichessId,
       fen: puzzle.fen,
-      moves: puzzle.moves,
+      moves: moves,
       rating: puzzle.rating,
-      themes: puzzle.themes,
+      themes: themes,
       gameUrl: puzzle.gameUrl,
       difficulty: puzzle.difficulty,
       popularity: puzzle.popularity,
-      solution: puzzle.moves, // For compatibility with frontend
+      solution: moves, // For compatibility with frontend
       description: puzzle.description,
       hint: puzzle.hint,
       sideToMove: puzzle.sideToMove,
       userSide: puzzle.sideToMove === 'white' ? 'black' : 'white', // User plays opposite
       // Additional metadata
       totalAttempts: puzzle._count?.attempts || 0,
-      openingTags: puzzle.openingTags,
+      openingTags: openingTags,
     };
   }
 
@@ -403,6 +415,228 @@ class DatabasePuzzleService {
       feedback: 'Move validation implementation needed',
       nextMove: null
     };
+  }
+
+  // Get or create user statistics
+  async getUserStats(userId) {
+    await this.initialize();
+    
+    try {
+      let userStats = await prisma.userStats.findUnique({
+        where: { userId }
+      });
+      
+      if (!userStats) {
+        userStats = await prisma.userStats.create({
+          data: {
+            userId,
+            favoriteThemes: JSON.stringify([]),
+            totalPuzzlesSolved: 0,
+            currentPuzzleRating: 1200,
+            bestPuzzleRating: 1200,
+            currentStreak: 0,
+            bestStreak: 0,
+            totalTimeSpent: 0,
+            averageAccuracy: 0.0,
+            averageTimePerPuzzle: 0.0,
+            weeklyGoal: 50,
+            weeklyProgress: 0,
+            monthlyGoal: 200,
+            monthlyProgress: 0
+          }
+        });
+      }
+      
+      return userStats;
+    } catch (error) {
+      console.error('Error getting user stats:', error);
+      throw error;
+    }
+  }
+
+  // Update user statistics after puzzle completion
+  async updateUserStatsAfterPuzzle(userId, puzzleData, isCorrect, timeSpent) {
+    await this.initialize();
+    
+    try {
+      const userStats = await this.getUserStats(userId);
+      const puzzleRating = puzzleData.rating;
+      
+      // Calculate new statistics
+      const newTotalSolved = userStats.totalPuzzlesSolved + (isCorrect ? 1 : 0);
+      const newCurrentStreak = isCorrect ? userStats.currentStreak + 1 : 0;
+      const newBestStreak = Math.max(userStats.bestStreak, newCurrentStreak);
+      const newTotalTime = userStats.totalTimeSpent + timeSpent;
+      
+      // Calculate new accuracy (based on all attempts)
+      const totalAttempts = await prisma.puzzleAttempt.count({ where: { userId } });
+      const correctAttempts = await prisma.puzzleAttempt.count({ 
+        where: { userId, isSolved: true } 
+      });
+      const newAccuracy = totalAttempts > 0 ? (correctAttempts / totalAttempts) * 100 : 0;
+      
+      // Calculate average puzzle rating (only for solved puzzles)
+      if (isCorrect && newTotalSolved > 0) {
+        const avgRatingResult = await prisma.puzzleAttempt.aggregate({
+          where: { 
+            userId, 
+            isSolved: true 
+          },
+          _avg: {
+            // We need to join with puzzle to get rating, for now use current rating
+          }
+        });
+        
+        // For now, use a simple weighted average
+        const currentAvg = userStats.currentPuzzleRating;
+        const newAvg = Math.round(
+          (currentAvg * (newTotalSolved - 1) + puzzleRating) / newTotalSolved
+        );
+        
+        await prisma.userStats.update({
+          where: { userId },
+          data: {
+            totalPuzzlesSolved: newTotalSolved,
+            currentPuzzleRating: newAvg,
+            bestPuzzleRating: Math.max(userStats.bestPuzzleRating, newAvg),
+            currentStreak: newCurrentStreak,
+            bestStreak: newBestStreak,
+            totalTimeSpent: newTotalTime,
+            averageAccuracy: newAccuracy,
+            averageTimePerPuzzle: newTotalTime / Math.max(totalAttempts, 1),
+            lastActiveDate: new Date()
+          }
+        });
+      } else {
+        // Update stats even for incorrect attempts
+        await prisma.userStats.update({
+          where: { userId },
+          data: {
+            currentStreak: newCurrentStreak,
+            bestStreak: newBestStreak,
+            totalTimeSpent: newTotalTime,
+            averageAccuracy: newAccuracy,
+            averageTimePerPuzzle: newTotalTime / Math.max(totalAttempts, 1),
+            lastActiveDate: new Date()
+          }
+        });
+      }
+      
+      return await this.getUserStats(userId);
+    } catch (error) {
+      console.error('Error updating user stats:', error);
+      throw error;
+    }
+  }
+
+  // Get daily challenge puzzle (same for all users)
+  async getDailyChallenge() {
+    await this.initialize();
+    
+    try {
+      // Generate a consistent seed based on current date
+      const today = new Date();
+      const dateString = today.toISOString().split('T')[0]; // YYYY-MM-DD
+      const seed = dateString.split('-').reduce((acc, val) => acc + parseInt(val), 0);
+      
+      // Get total puzzle count
+      const totalCount = await prisma.puzzle.count();
+      
+      if (totalCount === 0) {
+        throw new Error('No puzzles available for daily challenge');
+      }
+      
+      // Use seed to get consistent puzzle index for the day
+      const puzzleIndex = seed % totalCount;
+      
+      const puzzle = await prisma.puzzle.findFirst({
+        skip: puzzleIndex,
+        include: {
+          _count: {
+            select: {
+              attempts: true,
+            }
+          }
+        }
+      });
+      
+      if (!puzzle) {
+        throw new Error('Failed to retrieve daily challenge puzzle');
+      }
+      
+      return {
+        ...this.formatPuzzleForFrontend(puzzle),
+        isDailyChallenge: true,
+        challengeDate: dateString
+      };
+    } catch (error) {
+      console.error('Error getting daily challenge:', error);
+      throw error;
+    }
+  }
+
+  // Get daily challenge statistics
+  async getDailyChallengeStats(challengeDate = null) {
+    await this.initialize();
+    
+    try {
+      const today = challengeDate || new Date().toISOString().split('T')[0];
+      const startOfDay = new Date(today + 'T00:00:00.000Z');
+      const endOfDay = new Date(today + 'T23:59:59.999Z');
+      
+      // Get daily challenge puzzle
+      const dailyPuzzle = await this.getDailyChallenge();
+      
+      // Get statistics for this puzzle today
+      const totalAttempts = await prisma.puzzleAttempt.count({
+        where: {
+          puzzleId: dailyPuzzle.id,
+          createdAt: {
+            gte: startOfDay,
+            lte: endOfDay
+          }
+        }
+      });
+      
+      const solvedAttempts = await prisma.puzzleAttempt.count({
+        where: {
+          puzzleId: dailyPuzzle.id,
+          isSolved: true,
+          createdAt: {
+            gte: startOfDay,
+            lte: endOfDay
+          }
+        }
+      });
+      
+      const averageTime = await prisma.puzzleAttempt.aggregate({
+        where: {
+          puzzleId: dailyPuzzle.id,
+          isSolved: true,
+          createdAt: {
+            gte: startOfDay,
+            lte: endOfDay
+          }
+        },
+        _avg: {
+          timeSpent: true
+        }
+      });
+      
+      return {
+        puzzle: dailyPuzzle,
+        stats: {
+          totalAttempts,
+          solvedAttempts,
+          successRate: totalAttempts > 0 ? (solvedAttempts / totalAttempts) * 100 : 0,
+          averageTime: Math.round(averageTime._avg.timeSpent || 0),
+          challengeDate: today
+        }
+      };
+    } catch (error) {
+      console.error('Error getting daily challenge stats:', error);
+      throw error;
+    }
   }
 }
 

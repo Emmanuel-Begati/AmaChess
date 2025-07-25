@@ -3,17 +3,23 @@ const { Chess } = require('chess.js');
 
 class OpenAIService {
   constructor() {
-    this.client = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY
-    });
-    // Use GPT-4o for enhanced chess understanding and coaching
-    this.model = 'gpt-4o';
+    if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'your-openai-api-key-here') {
+      this.client = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY
+      });
+      // Use GPT-4o for enhanced chess understanding and coaching
+      this.model = 'gpt-4o';
+    } else {
+      this.client = null;
+      this.model = null;
+      console.warn('⚠️  OpenAI API key not configured. AI coaching features will be disabled.');
+    }
   }
 
   isConfigured() {
-    return this.client.apiKey && 
-           this.client.apiKey !== 'your-openai-api-key-here' &&
+    return this.client && 
            this.client.apiKey && 
+           this.client.apiKey !== 'your-openai-api-key-here' &&
            this.client.apiKey.length > 20;
   }
 

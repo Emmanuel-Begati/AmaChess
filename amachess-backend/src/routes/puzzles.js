@@ -1,12 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const puzzleService = require('../services/puzzleService'); // Legacy CSV service
-const databasePuzzleService = require('../services/databasePuzzleService'); // New database service
-const auth = require('../middleware/auth'); // For protected routes
+const databasePuzzleService = require('../services/databasePuzzleService');
+const { authenticateToken: auth } = require('../middleware/auth'); // For protected routes
 
-// Choose which service to use based on environment or preference
-const USE_DATABASE = process.env.USE_DATABASE_PUZZLES === 'true' || true; // Default to database
-const activePuzzleService = USE_DATABASE ? databasePuzzleService : puzzleService;
+// Use database service as the single source of truth
+const activePuzzleService = databasePuzzleService;
 
 // Get a random puzzle with optional filters
 router.get('/random', async (req, res) => {
@@ -47,7 +45,7 @@ router.get('/theme/:theme', async (req, res) => {
     const { theme } = req.params;
     const { limit = 10 } = req.query;
 
-    const puzzles = await puzzleService.getPuzzlesByTheme(theme, parseInt(limit));
+    const puzzles = await activePuzzleService.getPuzzlesByTheme(theme, parseInt(limit));
     
     res.json({
       success: true,
@@ -135,35 +133,14 @@ router.post('/validate', async (req, res) => {
   }
 });
 
-// Initialize puzzle database (load puzzles into memory)
-router.post('/initialize', async (req, res) => {
-  try {
-    await puzzleService.loadPuzzles();
-    const stats = puzzleService.getPuzzleStats();
-    
-    res.json({
-      success: true,
-      message: 'Puzzle database initialized successfully',
-      data: stats
-    });
-  } catch (error) {
-    console.error('Error initializing puzzle database:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to initialize puzzle database',
-      message: error.message
-    });
-  }
-});
-
-// Get puzzle with complete game context (PGN, etc.)
+// Get puzzle with complete game context
 router.get('/:puzzleId/context', async (req, res) => {
   try {
     const { puzzleId } = req.params;
     
-    const puzzleWithContext = await puzzleService.getPuzzleWithGameContext(puzzleId);
+    const puzzle = await activePuzzleService.getPuzzleById(puzzleId);
     
-    if (!puzzleWithContext) {
+    if (!puzzle) {
       return res.status(404).json({
         success: false,
         error: 'Puzzle not found'
@@ -172,7 +149,7 @@ router.get('/:puzzleId/context', async (req, res) => {
     
     res.json({
       success: true,
-      data: puzzleWithContext
+      data: puzzle
     });
   } catch (error) {
     console.error('Error getting puzzle context:', error);
@@ -189,9 +166,9 @@ router.get('/:puzzleId/analysis', async (req, res) => {
   try {
     const { puzzleId } = req.params;
     
-    const puzzleAnalysis = await puzzleService.getPuzzleWithAnalysis(puzzleId);
+    const puzzle = await activePuzzleService.getPuzzleById(puzzleId);
     
-    if (!puzzleAnalysis) {
+    if (!puzzle) {
       return res.status(404).json({
         success: false,
         error: 'Puzzle not found'
@@ -200,7 +177,7 @@ router.get('/:puzzleId/analysis', async (req, res) => {
     
     res.json({
       success: true,
-      data: puzzleAnalysis
+      data: puzzle
     });
   } catch (error) {
     console.error('Error getting puzzle analysis:', error);
@@ -249,6 +226,94 @@ router.post('/:puzzleId/validate', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to validate solution',
+      message: error.message
+    });
+  }
+});
+
+// Get user puzzle statistics
+router.get('/user/:userId/stats', auth, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    const userStats = await activePuzzleService.getUserStats(userId);
+    
+    res.json({
+      success: true,
+      data: userStats
+    });
+  } catch (error) {
+    console.error('Error getting user stats:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load user statistics',
+      message: error.message
+    });
+  }
+});
+
+// Update user statistics after puzzle completion
+router.post('/user/:userId/stats/update', auth, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { puzzleData, isCorrect, timeSpent } = req.body;
+    
+    const updatedStats = await activePuzzleService.updateUserStatsAfterPuzzle(
+      userId, 
+      puzzleData, 
+      isCorrect, 
+      timeSpent
+    );
+    
+    res.json({
+      success: true,
+      data: updatedStats
+    });
+  } catch (error) {
+    console.error('Error updating user stats:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update user statistics',
+      message: error.message
+    });
+  }
+});
+
+// Get daily challenge puzzle
+router.get('/daily-challenge', async (req, res) => {
+  try {
+    const dailyChallenge = await activePuzzleService.getDailyChallenge();
+    
+    res.json({
+      success: true,
+      data: dailyChallenge
+    });
+  } catch (error) {
+    console.error('Error getting daily challenge:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load daily challenge',
+      message: error.message
+    });
+  }
+});
+
+// Get daily challenge statistics
+router.get('/daily-challenge/stats', async (req, res) => {
+  try {
+    const { date } = req.query;
+    
+    const challengeStats = await activePuzzleService.getDailyChallengeStats(date);
+    
+    res.json({
+      success: true,
+      data: challengeStats
+    });
+  } catch (error) {
+    console.error('Error getting daily challenge stats:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load daily challenge statistics',
       message: error.message
     });
   }
