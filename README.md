@@ -72,7 +72,6 @@ AmaChess is a comprehensive chess learning platform that combines interactive ga
 
 <img src="amachess-frontend/screenshots/12-progress-tracking.png" alt="Progress Tracking" width="800">
 
-*Track your improvement over time with comprehensive metrics*
 
 ## ✨ Key Features
 
