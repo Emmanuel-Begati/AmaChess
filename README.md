@@ -1,7 +1,5 @@
 # AmaChess - Advanced Chess Learning Platform
 
-![AmaChess Logo](https://amachess.xyz/logo.png)
-
 AmaChess is a comprehensive chess learning platform that combines interactive gameplay, puzzle solving, game analysis, and educational resources. Built with modern web technologies, it offers a seamless chess experience for players of all skill levels.
 
 ## 🚀 Live Demo
