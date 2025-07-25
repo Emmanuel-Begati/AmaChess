@@ -1,5 +1,7 @@
 # AmaChess - Advanced Chess Learning Platform
 
+![AmaChess Logo](https://amachess.xyz/logo.png)
+
 AmaChess is a comprehensive chess learning platform that combines interactive gameplay, puzzle solving, game analysis, and educational resources. Built with modern web technologies, it offers a seamless chess experience for players of all skill levels.
 
 ## 🚀 Live Demo
@@ -8,7 +10,7 @@ AmaChess is a comprehensive chess learning platform that combines interactive ga
 
 ## 🎥 Demo Video
 
-[**5-Minute Demo Video**](https://youtu.be/GvLlZSZeCM0) 
+[**5-Minute Demo Video**](https://youtu.be/YOUR_VIDEO_ID) - *Coming Soon*
 
 *The demo showcases core functionalities including:*
 - Interactive chess gameplay with AI opponents
@@ -16,6 +18,63 @@ AmaChess is a comprehensive chess learning platform that combines interactive ga
 - Game analysis and performance tracking
 - PDF chess book reader with position analysis
 - Lichess integration for live statistics
+
+## 📸 Screenshots
+
+### Dashboard & Home
+<img src="amachess-frontend/screenshots/Screenshot 2025-07-24 013244.png" alt="AmaChess Dashboard" width="800">
+
+*Main dashboard showing user statistics, recent games, and performance metrics*
+
+### Interactive Chess Gameplay
+<img src="amachess-frontend/screenshots/Screenshot 2025-07-24 042538.png" alt="Chess Gameplay" width="800">
+
+*Play against AI with multiple difficulty levels and real-time analysis*
+
+### Puzzle Training System
+<img src="amachess-frontend/screenshots/Screenshot 2025-07-24 094227.png" alt="Puzzle Training" width="800">
+
+*Solve tactical puzzles with hints, themes, and difficulty progression*
+
+<img src="amachess-frontend/screenshots/Screenshot 2025-07-24 094517.png" alt="Puzzle Interface" width="800">
+
+*Clean puzzle interface with move notation and analysis*
+
+### Game Analysis & Learning
+<img src="amachess-frontend/screenshots/Screenshot 2025-07-24 101224.png" alt="Game Analysis" width="800">
+
+*Detailed game analysis with move evaluation and recommendations*
+
+<img src="amachess-frontend/screenshots/Screenshot 2025-07-24 101242.png" alt="Learning Interface" width="800">
+
+*Learn from your games with AI-powered insights*
+
+### Chess Library & Book Reader
+<img src="amachess-frontend/screenshots/Screenshot 2025-07-24 101312.png" alt="Chess Library" width="800">
+
+*Browse and read chess books with interactive position analysis*
+
+<img src="amachess-frontend/screenshots/Screenshot 2025-07-24 101919.png" alt="Book Reader" width="800">
+
+*PDF chess book reader with position extraction and analysis*
+
+### Settings & Customization
+<img src="amachess-frontend/screenshots/Screenshot 2025-07-24 104228.png" alt="Settings" width="800">
+
+*Customize themes, preferences, and account settings*
+
+### Daily Challenges & Statistics
+<img src="amachess-frontend/screenshots/Screenshot 2025-07-24 170302.png" alt="Daily Challenges" width="800">
+
+*Daily puzzle challenges with community statistics*
+
+<img src="amachess-frontend/screenshots/Screenshot 2025-07-24 193245.png" alt="Statistics" width="800">
+
+*Detailed performance tracking and progress analytics*
+
+<img src="amachess-frontend/screenshots/Screenshot 2025-07-24 193257.png" alt="Progress Tracking" width="800">
+
+*Track your improvement over time with comprehensive metrics*
 
 ## ✨ Key Features
 
