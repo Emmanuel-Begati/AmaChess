@@ -10,7 +10,7 @@ AmaChess is a comprehensive chess learning platform that combines interactive ga
 
 ## 🎥 Demo Video
 
-[**5-Minute Demo Video**](https://youtu.be/YOUR_VIDEO_ID) - *Coming Soon*
+[**5-Minute Demo Video**](https://youtu.be/GvLlZSZeCM0) 
 
 *The demo showcases core functionalities including:*
 - Interactive chess gameplay with AI opponents
