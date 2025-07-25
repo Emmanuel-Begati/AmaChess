@@ -319,4 +319,47 @@ router.get('/daily-challenge/stats', async (req, res) => {
   }
 });
 
+// Get puzzle rating leaderboard
+router.get('/leaderboard', async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+    
+    const leaderboard = await activePuzzleService.getLeaderboard(parseInt(limit));
+    
+    res.json({
+      success: true,
+      data: leaderboard
+    });
+  } catch (error) {
+    console.error('Error getting leaderboard:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load leaderboard',
+      message: error.message
+    });
+  }
+});
+
+// Get user performance analytics
+router.get('/user/:userId/analytics', auth, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { days = 7 } = req.query; // Default to last 7 days
+    
+    const analytics = await activePuzzleService.getUserAnalytics(userId, parseInt(days));
+    
+    res.json({
+      success: true,
+      data: analytics
+    });
+  } catch (error) {
+    console.error('Error getting user analytics:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load user analytics',
+      message: error.message
+    });
+  }
+});
+
 module.exports = router;

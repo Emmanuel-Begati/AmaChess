@@ -328,6 +328,43 @@ class PuzzleService {
     }
   }
 
+  // Leaderboard Methods
+  async getLeaderboard(limit: number = 10): Promise<any[]> {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/puzzles/leaderboard?limit=${limit}`);
+      
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to load leaderboard');
+      }
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Error loading leaderboard:', error);
+      throw error;
+    }
+  }
+
+  // Performance Analytics Methods
+  async getUserAnalytics(userId: string, days: number = 7): Promise<any> {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await axios.get(`${API_BASE_URL}/puzzles/user/${userId}/analytics?days=${days}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to load user analytics');
+      }
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Error loading user analytics:', error);
+      throw error;
+    }
+  }
+
   // Fallback puzzle for when database is empty or unavailable
   private getFallbackPuzzle(): LichessPuzzle {
     return {

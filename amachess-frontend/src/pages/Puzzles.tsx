@@ -4,9 +4,11 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ChessGame from '../components/ChessGame';
 import { usePuzzle } from '../hooks/usePuzzle';
+import { useAuth } from '../contexts/AuthContext';
 import { LichessPuzzle, UserPuzzleStats, DailyChallenge, DailyChallengeStats, puzzleService } from '../services/puzzleService';
 
 const Puzzles = () => {
+  const { user, isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState('All');
   const [selectedDifficulty, setSelectedDifficulty] = useState('All');
   const [dailyPuzzleCompleted, setDailyPuzzleCompleted] = useState(false);
@@ -18,6 +20,12 @@ const Puzzles = () => {
   const [dailyChallengeStats, setDailyChallengeStats] = useState<DailyChallengeStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState<string | null>(null);
+  
+  // New state for leaderboard and analytics
+  const [realLeaderboard, setRealLeaderboard] = useState<any[]>([]);
+  const [realPerformanceData, setRealPerformanceData] = useState<any>(null);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(true);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
   
   // Use the puzzle hook for Lichess puzzle integration
   const {
@@ -53,14 +61,34 @@ const Puzzles = () => {
           console.error('Failed to load daily challenge:', error);
         }
         
-        // Try to load user statistics (requires auth)
+        // Load leaderboard (public endpoint)
         try {
-          const userId = 'user123'; // In a real app, get from auth context
-          const stats = await puzzleService.getUserStats(userId);
-          setUserStats(stats);
+          setLeaderboardLoading(true);
+          const leaderboardData = await puzzleService.getLeaderboard(10);
+          setRealLeaderboard(leaderboardData);
         } catch (error) {
-          console.warn('User not authenticated, using default stats:', error);
-          // Set default/guest user stats
+          console.error('Failed to load leaderboard:', error);
+        } finally {
+          setLeaderboardLoading(false);
+        }
+        
+        // Try to load user statistics and analytics (requires auth)
+        if (isAuthenticated && user?.id) {
+          try {
+            const stats = await puzzleService.getUserStats(user.id);
+            setUserStats(stats);
+            
+            // Load user analytics
+            setAnalyticsLoading(true);
+            const analytics = await puzzleService.getUserAnalytics(user.id, 7);
+            setRealPerformanceData(analytics);
+          } catch (error) {
+            console.warn('Failed to load authenticated user data:', error);
+          } finally {
+            setAnalyticsLoading(false);
+          }
+        } else {
+          // Set default/guest user stats for non-authenticated users
           setUserStats({
             id: 'guest',
             userId: 'guest',
@@ -81,6 +109,7 @@ const Puzzles = () => {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
           });
+          setAnalyticsLoading(false);
         }
         
       } catch (error) {
@@ -92,80 +121,69 @@ const Puzzles = () => {
     };
     
     loadUserData();
-  }, []);
+  }, [isAuthenticated, user?.id]);
 
-  // Featured Puzzles with tactical motifs
-  const featuredPuzzles = [
-    {
-      id: 1,
-      title: "Tactical Masterpiece",
-      description: "A brilliant combination featuring multiple tactical motifs",
-      difficulty: "Expert",
-      rating: 2100,
-      theme: "Combination",
-      subThemes: ["Pin", "Fork", "Deflection"],
-      gradient: "from-purple-600 to-indigo-600",
-      fen: "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 4 4",
-      movesToSolve: 4,
-      solveRate: 34,
-      averageTime: 182
-    },
-    {
-      id: 2,
-      title: "Endgame Precision",
-      description: "Test your endgame technique in this critical position",
-      difficulty: "Advanced",
-      rating: 1850,
-      theme: "Endgame",
-      subThemes: ["King Activity", "Pawn Promotion"],
-      gradient: "from-blue-600 to-cyan-600",
-      fen: "8/8/8/3k4/8/3K4/3P4/8 w - - 0 1",
-      movesToSolve: 6,
-      solveRate: 67,
-      averageTime: 94
-    },
-    {
-      id: 3,
-      title: "Attacking Fury",
-      description: "Launch a devastating attack against the enemy king",
-      difficulty: "Hard",
-      rating: 1750,
-      theme: "Attack",
-      subThemes: ["Sacrifice", "Mating Attack"],
-      gradient: "from-red-600 to-pink-600",
-      fen: "r2qkb1r/ppp2ppp/2np1n2/4p3/2B1P3/3P1N2/PPP2PPP/RNBQ1RK1 b kq - 0 5",
-      movesToSolve: 5,
-      solveRate: 45,
-      averageTime: 156
-    }
-  ];
+  // Handle puzzle completion and update user statistics
+  useEffect(() => {
+    const handlePuzzleCompletion = async () => {
+      if (puzzleCompleted && currentLichessPuzzle && isAuthenticated && user?.id) {
+        try {
+          // Calculate time spent (placeholder - you'd track this properly)
+          const timeSpent = 30; // seconds, should be tracked from puzzle start
+          const isCorrect = true; // Should be determined from puzzle solution validation
+          
+          // Update user statistics in backend
+          const updatedStats = await puzzleService.updateUserStats(
+            user.id,
+            currentLichessPuzzle,
+            isCorrect,
+            timeSpent
+          );
+          
+          // Update local state with new statistics
+          setUserStats(updatedStats);
+          
+          // Reload analytics data to reflect the new puzzle completion
+          try {
+            const analytics = await puzzleService.getUserAnalytics(user.id, 7);
+            setRealPerformanceData(analytics);
+          } catch (error) {
+            console.error('Failed to reload analytics after puzzle completion:', error);
+          }
+          
+          console.log('User statistics updated after puzzle completion');
+        } catch (error) {
+          console.error('Failed to update user statistics:', error);
+        }
+      }
+    };
+    
+    handlePuzzleCompletion();
+  }, [puzzleCompleted, currentLichessPuzzle, isAuthenticated, user?.id]);
 
-  // Performance Analytics Data
-  const performanceData = {
+  // Performance Analytics Data - use real data if available, fallback to mock data
+  const performanceData = realPerformanceData || {
     weeklyProgress: [
-      { day: 'Mon', solved: 12, accuracy: 78 },
-      { day: 'Tue', solved: 15, accuracy: 82 },
-      { day: 'Wed', solved: 18, accuracy: 75 },
-      { day: 'Thu', solved: 22, accuracy: 80 },
-      { day: 'Fri', solved: 19, accuracy: 85 },
-      { day: 'Sat', solved: 25, accuracy: 88 },
-      { day: 'Sun', solved: 20, accuracy: 83 }
+      { day: 'Mon', solved: 0, accuracy: 0 },
+      { day: 'Tue', solved: 0, accuracy: 0 },
+      { day: 'Wed', solved: 0, accuracy: 0 },
+      { day: 'Thu', solved: 0, accuracy: 0 },
+      { day: 'Fri', solved: 0, accuracy: 0 },
+      { day: 'Sat', solved: 0, accuracy: 0 },
+      { day: 'Sun', solved: 0, accuracy: 0 }
     ],
-    themePerformance: [
-      { theme: "Pin", solved: 89, accuracy: 82, rating: 1720 },
-      { theme: "Fork", solved: 76, accuracy: 79, rating: 1680 },
-      { theme: "Skewer", solved: 54, accuracy: 85, rating: 1750 },
-      { theme: "Back Rank", solved: 43, accuracy: 77, rating: 1640 },
-      { theme: "Deflection", solved: 38, accuracy: 81, rating: 1695 },
-      { theme: "Discovery", solved: 32, accuracy: 74, rating: 1615 }
-    ],
+    themePerformance: [],
+    difficultyPerformance: [],
     ratingHistory: [
-      { month: 'Sep', rating: 1520 },
-      { month: 'Oct', rating: 1548 },
-      { month: 'Nov', rating: 1591 },
-      { month: 'Dec', rating: 1634 },
-      { month: 'Jan', rating: 1685 }
-    ]
+      { month: 'Jan', rating: 1200 },
+      { month: 'Feb', rating: 1200 },
+      { month: 'Mar', rating: 1200 },
+      { month: 'Apr', rating: 1200 },
+      { month: 'May', rating: 1200 }
+    ],
+    totalAttempts: 0,
+    totalSolved: 0,
+    overallAccuracy: 0
   };
 
   // Latest Achievements
@@ -208,14 +226,14 @@ const Puzzles = () => {
     }
   ];
 
-  // Leaderboard
-  const leaderboard = [
-    { rank: 1, username: "TacticalMaster", rating: 2847, solved: 5642, country: "🇷🇺" },
-    { rank: 2, username: "ChessNinja", rating: 2798, solved: 4891, country: "🇺🇸" },
-    { rank: 3, username: "PuzzleKing", rating: 2756, solved: 6234, country: "🇮🇳" },
-    { rank: 4, username: "EndgameHero", rating: 2734, solved: 3987, country: "🇩🇪" },
-    { rank: 5, username: "TacticQueen", rating: 2712, solved: 4156, country: "🇫🇷" },
-    { rank: 67, username: "You", rating: 1685, solved: 1247, country: "🇺🇸", highlight: true },
+  // Leaderboard - use real data if available, fallback to empty array
+  const leaderboard = realLeaderboard.length > 0 ? realLeaderboard.map(player => ({
+    ...player,
+    country: "🌍", // Default country flag since we don't have country data
+    highlight: isAuthenticated && user?.id === player.userId
+  })) : [
+    // Fallback empty leaderboard message
+    { rank: 1, username: "No players yet", rating: 0, solved: 0, country: "🌍" }
   ];
 
   // Practice puzzles by theme - will be loaded from database
@@ -756,97 +774,7 @@ const Puzzles = () => {
               </div>
             </div>
 
-            {/* Featured Puzzles Section - Responsive Layout */}
-            <div className="mb-6 sm:mb-8">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
-                <h2 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-white">Featured Puzzles</h2>
-                <div className="flex flex-wrap gap-2">
-                  {['All', 'Easy', 'Medium', 'Hard', 'Expert'].map((difficulty) => (
-                    <button
-                      key={difficulty}
-                      onClick={() => setSelectedDifficulty(difficulty)}
-                      className={`px-3 sm:px-4 lg:px-5 py-1.5 sm:py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${
-                        selectedDifficulty === difficulty
-                          ? 'bg-blue-800 text-white'
-                          : 'bg-[#374162] text-[#97a1c4] hover:bg-[#455173] hover:text-white'
-                      }`}
-                    >
-                      {difficulty}
-                    </button>
-                  ))}
-                </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-                {featuredPuzzles.map((puzzle) => (
-                  <div key={puzzle.id} className="bg-gradient-to-br from-[#272e45] to-[#374162] rounded-xl overflow-hidden border border-[#374162] hover:border-blue-600 transition-all duration-300 hover:transform hover:scale-105">
-                    {/* Chess Board for Puzzle */}
-                    <div className="p-3 sm:p-4 lg:p-6 bg-[#374162]">
-                      <div className="flex justify-center">
-                        <ChessGame
-                          isModalMode={true}
-                          position={puzzle.fen}
-                          onMove={(moveObj) => handlePuzzleMove(moveObj, null)}
-                          interactive={false}
-                          showNotation={false}
-                          engineEnabled={false}
-                        />
-                      </div>
-                      
-                      {/* Rating badge overlay */}
-                      <div className="flex justify-between items-center mt-3 sm:mt-4">
-                        <span className="bg-black/30 backdrop-blur-sm rounded-lg px-2 sm:px-3 py-1 sm:py-1.5 text-white text-xs sm:text-sm font-medium">
-                          {puzzle.rating}
-                        </span>
-                        <span className="bg-black/30 backdrop-blur-sm rounded-lg px-2 sm:px-3 py-1 sm:py-1.5 text-white text-xs sm:text-sm font-medium">
-                          {puzzle.difficulty}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="p-4 sm:p-6 lg:p-8">
-                      <h3 className="text-base sm:text-lg lg:text-xl font-bold text-white mb-2 sm:mb-3 leading-tight">{puzzle.title}</h3>
-                      <p className="text-[#97a1c4] text-sm sm:text-base mb-3 sm:mb-4 leading-relaxed">{puzzle.description}</p>
-                      
-                      {/* Theme badge */}
-                      <div className="flex justify-center mb-3 sm:mb-4">
-                        <span className="bg-blue-800/20 text-blue-400 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium">
-                          {puzzle.theme}
-                        </span>
-                      </div>
-                      
-                      {/* Tactical themes */}
-                      <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-3 sm:mb-4">
-                        {puzzle.subThemes.map((theme, index) => (
-                          <span key={index} className="bg-blue-800/20 text-blue-400 px-2 sm:px-3 py-1 sm:py-1.5 rounded text-xs sm:text-sm font-medium">
-                            {theme}
-                          </span>
-                        ))}
-                      </div>
-
-                      {/* Puzzle stats */}
-                      <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6 text-sm sm:text-base">
-                        <div>
-                          <p className="text-[#97a1c4]">Success Rate</p>
-                          <p className="text-white font-semibold">{puzzle.solveRate}%</p>
-                        </div>
-                        <div>
-                          <p className="text-[#97a1c4]">Avg Time</p>
-                          <p className="text-white font-semibold">{puzzle.averageTime}s</p>
-                        </div>
-                      </div>
-
-                      <Link 
-                        to={`/puzzle-solver?theme=${puzzle.theme}&difficulty=${puzzle.difficulty}`}
-                        className="w-full bg-blue-800 hover:bg-blue-700 text-white py-2.5 sm:py-3 lg:py-4 rounded-lg font-semibold transition-colors block text-center text-sm sm:text-base lg:text-lg"
-                      >
-                        Solve Puzzle
-                      </Link>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
 
             {/* Performance Analytics - Responsive Grid */}
             <div className="mb-6 sm:mb-8">

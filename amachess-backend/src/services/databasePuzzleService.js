@@ -529,6 +529,194 @@ class DatabasePuzzleService {
     }
   }
 
+  // Get puzzle rating leaderboard
+  async getLeaderboard(limit = 10) {
+    await this.initialize();
+    
+    try {
+      const leaderboard = await prisma.userStats.findMany({
+        where: {
+          totalPuzzlesSolved: {
+            gt: 0 // Only users who have solved at least one puzzle
+          }
+        },
+        orderBy: [
+          { currentPuzzleRating: 'desc' },
+          { totalPuzzlesSolved: 'desc' },
+          { bestStreak: 'desc' }
+        ],
+        take: limit,
+        select: {
+          userId: true,
+          totalPuzzlesSolved: true,
+          currentPuzzleRating: true,
+          bestPuzzleRating: true,
+          currentStreak: true,
+          bestStreak: true,
+          averageAccuracy: true,
+          lastActiveDate: true
+        }
+      });
+      
+      // Format leaderboard data with rankings
+      const formattedLeaderboard = leaderboard.map((user, index) => ({
+        rank: index + 1,
+        userId: user.userId,
+        username: user.userId, // In a real app, you'd join with User table for actual username
+        rating: user.currentPuzzleRating,
+        puzzlesSolved: user.totalPuzzlesSolved,
+        bestStreak: user.bestStreak,
+        accuracy: Math.round(user.averageAccuracy * 100) / 100, // Round to 2 decimal places
+        lastActive: user.lastActiveDate
+      }));
+      
+      return formattedLeaderboard;
+    } catch (error) {
+      console.error('Error getting leaderboard:', error);
+      throw error;
+    }
+  }
+
+  // Get user performance analytics
+  async getUserAnalytics(userId, days = 7) {
+    await this.initialize();
+    
+    try {
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+      
+      // Get puzzle attempts for the specified period
+      const attempts = await prisma.puzzleAttempt.findMany({
+        where: {
+          userId,
+          completedAt: {
+            gte: startDate
+          }
+        },
+        include: {
+          puzzle: {
+            select: {
+              themes: true,
+              rating: true,
+              difficulty: true
+            }
+          }
+        },
+        orderBy: {
+          completedAt: 'asc'
+        }
+      });
+      
+      // Generate daily progress data
+      const dailyProgress = [];
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      
+      for (let i = days - 1; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dayStart = new Date(date.setHours(0, 0, 0, 0));
+        const dayEnd = new Date(date.setHours(23, 59, 59, 999));
+        
+        const dayAttempts = attempts.filter(attempt => {
+          const attemptDate = new Date(attempt.completedAt);
+          return attemptDate >= dayStart && attemptDate <= dayEnd;
+        });
+        
+        const solved = dayAttempts.filter(a => a.isSolved).length;
+        const total = dayAttempts.length;
+        const accuracy = total > 0 ? Math.round((solved / total) * 100) : 0;
+        
+        dailyProgress.push({
+          day: dayNames[date.getDay()],
+          solved,
+          accuracy
+        });
+      }
+      
+      // Analyze themes performance
+      const themeStats = {};
+      attempts.forEach(attempt => {
+        if (attempt.puzzle && attempt.puzzle.themes) {
+          const themes = typeof attempt.puzzle.themes === 'string' 
+            ? JSON.parse(attempt.puzzle.themes) 
+            : attempt.puzzle.themes;
+          
+          themes.forEach(theme => {
+            if (!themeStats[theme]) {
+              themeStats[theme] = { total: 0, solved: 0 };
+            }
+            themeStats[theme].total++;
+            if (attempt.isSolved) {
+              themeStats[theme].solved++;
+            }
+          });
+        }
+      });
+      
+      const themePerformance = Object.entries(themeStats)
+        .map(([theme, stats]) => ({
+          theme,
+          accuracy: Math.round((stats.solved / stats.total) * 100),
+          attempts: stats.total
+        }))
+        .sort((a, b) => b.attempts - a.attempts)
+        .slice(0, 10); // Top 10 most practiced themes
+      
+      // Calculate difficulty distribution
+      const difficultyStats = {
+        Beginner: { total: 0, solved: 0 },
+        Intermediate: { total: 0, solved: 0 },
+        Advanced: { total: 0, solved: 0 },
+        Expert: { total: 0, solved: 0 }
+      };
+      
+      attempts.forEach(attempt => {
+        if (attempt.puzzle && attempt.puzzle.difficulty) {
+          const difficulty = attempt.puzzle.difficulty;
+          if (difficultyStats[difficulty]) {
+            difficultyStats[difficulty].total++;
+            if (attempt.isSolved) {
+              difficultyStats[difficulty].solved++;
+            }
+          }
+        }
+      });
+      
+      const difficultyPerformance = Object.entries(difficultyStats)
+        .map(([difficulty, stats]) => ({
+          difficulty,
+          accuracy: stats.total > 0 ? Math.round((stats.solved / stats.total) * 100) : 0,
+          attempts: stats.total
+        }));
+      
+      // Generate rating history (placeholder - could be enhanced with actual historical data)
+      const currentRating = await this.getUserStats(userId).then(stats => stats.currentPuzzleRating).catch(() => 1200);
+      const ratingHistory = [
+        { month: 'Jan', rating: Math.max(1200, currentRating - 100) },
+        { month: 'Feb', rating: Math.max(1200, currentRating - 80) },
+        { month: 'Mar', rating: Math.max(1200, currentRating - 60) },
+        { month: 'Apr', rating: Math.max(1200, currentRating - 40) },
+        { month: 'May', rating: Math.max(1200, currentRating - 20) },
+        { month: 'Jun', rating: currentRating }
+      ];
+      
+      return {
+        weeklyProgress: dailyProgress,
+        themePerformance,
+        difficultyPerformance,
+        ratingHistory,
+        totalAttempts: attempts.length,
+        totalSolved: attempts.filter(a => a.isSolved).length,
+        overallAccuracy: attempts.length > 0 
+          ? Math.round((attempts.filter(a => a.isSolved).length / attempts.length) * 100) 
+          : 0
+      };
+    } catch (error) {
+      console.error('Error getting user analytics:', error);
+      throw error;
+    }
+  }
+
   // Get daily challenge puzzle (same for all users)
   async getDailyChallenge() {
     await this.initialize();
