@@ -1059,7 +1059,7 @@ const Puzzles = () => {
             {/* Search and Filter Bar - Responsive */}
             <div className="bg-[#272e45] rounded-xl lg:rounded-2xl p-4 sm:p-6 lg:p-8 border border-[#374162] mb-6">
               <h3 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-semibold text-white mb-4 sm:mb-6 lg:mb-8">Find Specific Puzzles</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+              {/* <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
                 <div>
                   <label className="block text-[#97a1c4] text-sm sm:text-base lg:text-lg mb-2 sm:mb-3">Search puzzles</label>
                   <input
@@ -1088,7 +1088,7 @@ const Puzzles = () => {
                     <option>Deflection</option>
                   </select>
                 </div>
-              </div>
+              </div> */}
               <div className="mt-4 sm:mt-6 lg:mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4 lg:gap-6">
                 <Link 
                   to="/puzzle-solver"
