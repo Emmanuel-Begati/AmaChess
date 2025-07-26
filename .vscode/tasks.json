@@ -12,7 +12,10 @@
 			"options": {
 				"cwd": "${workspaceFolder}/amachess-frontend"
 			},
-			"group": "build",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
 			"isBackground": true,
 			"problemMatcher": []
 		},
