@@ -22,34 +22,60 @@ class DatabasePuzzleService {
     }
   }
 
-  async getRandomPuzzle(filters = {}) {
+  async getRandomPuzzle(filters = {}, userId = null) {
     await this.initialize();
-    console.log('🎲 getRandomPuzzle called with filters:', JSON.stringify(filters, null, 2));
-
+    
     try {
+      console.log('🎲 Getting random puzzle with filters:', filters, 'for user:', userId);
+      
+      // If userId provided, get user's rating for adaptive difficulty
+      if (userId && !filters.minRating && !filters.maxRating) {
+        try {
+          const userStats = await this.getUserStats(userId);
+          const userRating = userStats.currentPuzzleRating;
+          const ratingRange = 200; // ±200 rating points
+          
+          filters.minRating = Math.max(600, userRating - ratingRange);
+          filters.maxRating = Math.min(3000, userRating + ratingRange);
+          
+          console.log(`🎯 Adaptive difficulty: User rating ${userRating}, puzzle range ${filters.minRating}-${filters.maxRating}`);
+        } catch (error) {
+          console.warn('⚠️ Could not get user stats for adaptive difficulty:', error.message);
+          // Continue without rating-based filtering
+        }
+      }
+      
       // Build where clause based on filters
       const where = this.buildWhereClause(filters);
       
-      // Get total count for random selection
+      // Get total count of puzzles matching criteria
       const totalCount = await prisma.puzzle.count({ where });
-      console.log(`📊 Total matching puzzles: ${totalCount}`);
       
       if (totalCount === 0) {
-        // Check if database is completely empty
         const totalPuzzles = await prisma.puzzle.count();
         if (totalPuzzles === 0) {
           throw new Error('No puzzles found in database. Please seed the database with puzzles first.');
         } else {
-          throw new Error(`No puzzles found matching the specified criteria. Total puzzles in database: ${totalPuzzles}`);
+          // If no puzzles in user's rating range, expand the range
+          if (userId && filters.minRating && filters.maxRating) {
+            console.log('🔄 No puzzles in rating range, expanding search...');
+            delete filters.minRating;
+            delete filters.maxRating;
+            return this.getRandomPuzzle(filters, null); // Retry without rating filter
+          }
+          throw new Error(`No puzzles found matching criteria. Total puzzles in database: ${totalPuzzles}`);
         }
       }
-
-      // Get a random puzzle
-      const skip = Math.floor(Math.random() * totalCount);
       
+      console.log(`📊 Found ${totalCount} puzzles matching criteria`);
+      
+      // Generate random offset
+      const randomOffset = Math.floor(Math.random() * totalCount);
+      
+      // Get random puzzle
       const puzzle = await prisma.puzzle.findFirst({
         where,
-        skip,
+        skip: randomOffset,
         include: {
           _count: {
             select: {
@@ -58,16 +84,16 @@ class DatabasePuzzleService {
           }
         }
       });
-
+      
       if (!puzzle) {
-        throw new Error('Failed to retrieve puzzle');
+        throw new Error('Failed to retrieve random puzzle');
       }
-
-      // Format for frontend consumption
+      
+      console.log(`🧩 Selected puzzle: ${puzzle.lichessId} (rating: ${puzzle.rating}, difficulty: ${puzzle.difficulty})`);
+      
       return this.formatPuzzleForFrontend(puzzle);
-
     } catch (error) {
-      console.error('Error getting random puzzle:', error);
+      console.error('❌ Error getting random puzzle:', error);
       throw error;
     }
   }
@@ -454,77 +480,113 @@ class DatabasePuzzleService {
     }
   }
 
-  // Update user statistics after puzzle completion
-  async updateUserStatsAfterPuzzle(userId, puzzleData, isCorrect, timeSpent) {
+  // Calculate ELO rating change based on puzzle difficulty and result
+  calculateEloRatingChange(userRating, puzzleRating, solved, timeSpent = 0) {
+    const K = 32; // ELO K-factor (higher = more volatile rating changes)
+    
+    // Calculate expected score (probability of solving)
+    const expected = 1 / (1 + Math.pow(10, (puzzleRating - userRating) / 400));
+    
+    // Actual score (1 for solved, 0 for failed)
+    const actual = solved ? 1 : 0;
+    
+    // Basic ELO calculation
+    let ratingChange = K * (actual - expected);
+    
+    // Time bonus/penalty (optional enhancement)
+    if (solved && timeSpent > 0) {
+      // Bonus for solving quickly (under 30 seconds)
+      if (timeSpent < 30) {
+        ratingChange *= 1.1; // 10% bonus
+      }
+      // Penalty for taking too long (over 5 minutes)
+      else if (timeSpent > 300) {
+        ratingChange *= 0.9; // 10% penalty
+      }
+    }
+    
+    return Math.round(ratingChange);
+  }
+
+  // Update user statistics after puzzle completion with ELO rating
+  async updateUserStatsAfterPuzzle(userId, puzzleData, isCorrect, timeSpent = 0, hintsUsed = 0, solutionShown = false) {
     await this.initialize();
     
     try {
-      const userStats = await this.getUserStats(userId);
-      const puzzleRating = puzzleData.rating;
+      console.log(`📊 Updating stats for user ${userId}: puzzle ${puzzleData.id}, correct: ${isCorrect}, time: ${timeSpent}s`);
       
-      // Calculate new statistics
+      // Get current user stats
+      const userStats = await this.getUserStats(userId);
+      const puzzleRating = puzzleData.rating || 1500;
+      
+      // Calculate ELO rating change
+      const ratingChange = this.calculateEloRatingChange(
+        userStats.currentPuzzleRating,
+        puzzleRating,
+        isCorrect,
+        timeSpent
+      );
+      
+      const newRating = Math.max(600, userStats.currentPuzzleRating + ratingChange); // Minimum rating of 600
+      
+      console.log(`🎯 Rating change: ${userStats.currentPuzzleRating} + ${ratingChange} = ${newRating}`);
+      
+      // Save puzzle attempt to database
+      const puzzleAttempt = await prisma.puzzleAttempt.create({
+        data: {
+          userId,
+          puzzleId: puzzleData.id,
+          isCompleted: true,
+          isSolved: isCorrect,
+          movesPlayed: JSON.stringify([]), // Could be enhanced to track actual moves
+          timeSpent: Math.round(timeSpent),
+          hintsUsed: hintsUsed,
+          solutionShown: solutionShown,
+          accuracy: isCorrect ? 100 : 0, // Could be more nuanced
+          completedAt: new Date()
+        }
+      });
+      
+      console.log(`💾 Saved puzzle attempt: ${puzzleAttempt.id}`);
+      
+      // Calculate updated statistics
       const newTotalSolved = userStats.totalPuzzlesSolved + (isCorrect ? 1 : 0);
       const newCurrentStreak = isCorrect ? userStats.currentStreak + 1 : 0;
       const newBestStreak = Math.max(userStats.bestStreak, newCurrentStreak);
-      const newTotalTime = userStats.totalTimeSpent + timeSpent;
+      const newTotalTime = userStats.totalTimeSpent + Math.round(timeSpent);
       
-      // Calculate new accuracy (based on all attempts)
+      // Get updated accuracy from all attempts
       const totalAttempts = await prisma.puzzleAttempt.count({ where: { userId } });
       const correctAttempts = await prisma.puzzleAttempt.count({ 
         where: { userId, isSolved: true } 
       });
       const newAccuracy = totalAttempts > 0 ? (correctAttempts / totalAttempts) * 100 : 0;
       
-      // Calculate average puzzle rating (only for solved puzzles)
-      if (isCorrect && newTotalSolved > 0) {
-        const avgRatingResult = await prisma.puzzleAttempt.aggregate({
-          where: { 
-            userId, 
-            isSolved: true 
-          },
-          _avg: {
-            // We need to join with puzzle to get rating, for now use current rating
-          }
-        });
-        
-        // For now, use a simple weighted average
-        const currentAvg = userStats.currentPuzzleRating;
-        const newAvg = Math.round(
-          (currentAvg * (newTotalSolved - 1) + puzzleRating) / newTotalSolved
-        );
-        
-        await prisma.userStats.update({
-          where: { userId },
-          data: {
-            totalPuzzlesSolved: newTotalSolved,
-            currentPuzzleRating: newAvg,
-            bestPuzzleRating: Math.max(userStats.bestPuzzleRating, newAvg),
-            currentStreak: newCurrentStreak,
-            bestStreak: newBestStreak,
-            totalTimeSpent: newTotalTime,
-            averageAccuracy: newAccuracy,
-            averageTimePerPuzzle: newTotalTime / Math.max(totalAttempts, 1),
-            lastActiveDate: new Date()
-          }
-        });
-      } else {
-        // Update stats even for incorrect attempts
-        await prisma.userStats.update({
-          where: { userId },
-          data: {
-            currentStreak: newCurrentStreak,
-            bestStreak: newBestStreak,
-            totalTimeSpent: newTotalTime,
-            averageAccuracy: newAccuracy,
-            averageTimePerPuzzle: newTotalTime / Math.max(totalAttempts, 1),
-            lastActiveDate: new Date()
-          }
-        });
-      }
+      // Update user statistics
+      const updatedStats = await prisma.userStats.update({
+        where: { userId },
+        data: {
+          totalPuzzlesSolved: newTotalSolved,
+          currentPuzzleRating: newRating,
+          bestPuzzleRating: Math.max(userStats.bestPuzzleRating, newRating),
+          currentStreak: newCurrentStreak,
+          bestStreak: newBestStreak,
+          totalTimeSpent: newTotalTime,
+          averageAccuracy: Math.round(newAccuracy * 100) / 100, // Round to 2 decimal places
+          averageTimePerPuzzle: Math.round((newTotalTime / Math.max(totalAttempts, 1)) * 100) / 100,
+          lastActiveDate: new Date()
+        }
+      });
       
-      return await this.getUserStats(userId);
+      console.log(`✅ Updated user stats: solved ${newTotalSolved}, rating ${newRating}, accuracy ${newAccuracy.toFixed(1)}%`);
+      
+      return {
+        ...updatedStats,
+        ratingChange: ratingChange,
+        attemptId: puzzleAttempt.id
+      };
     } catch (error) {
-      console.error('Error updating user stats:', error);
+      console.error('❌ Error updating user stats:', error);
       throw error;
     }
   }

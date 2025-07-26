@@ -8,7 +8,6 @@ import ContactUs from './pages/ContactUs';
 import Learn from './pages/Learn';
 import Puzzles from './pages/Puzzles';
 import PuzzleSolver from './pages/PuzzleSolver';
-import PuzzleTraining from './pages/PuzzleTraining';
 import Library from './pages/Library';
 import BookReader from './pages/BookReader';
 import Settings from './pages/Settings';
@@ -109,7 +108,6 @@ function App() {
                 <Route path="/learn" element={<Learn />} />
                 <Route path="/puzzles" element={<Puzzles />} />
                 <Route path="/puzzle-solver" element={<PuzzleSolver />} />
-                <Route path="/puzzle-training" element={<PuzzleTraining />} />
                 <Route path="/library" element={<Library />} />
                 <Route path="/book" element={<BookReader />} />
                 <Route path="/library/book/:bookId" element={<BookReader />} />

@@ -5,7 +5,7 @@ import Footer from '../components/Footer';
 import ChessGame from '../components/ChessGame';
 import { usePuzzle } from '../hooks/usePuzzle';
 import { useAuth } from '../contexts/AuthContext';
-import { LichessPuzzle, UserPuzzleStats, DailyChallenge, DailyChallengeStats, puzzleService } from '../services/puzzleService';
+import { Puzzle, UserPuzzleStats, DailyChallenge, DailyChallengeStats, puzzleService } from '../services/puzzleService';
 
 const Puzzles = () => {
   const { user, isAuthenticated } = useAuth();
@@ -29,7 +29,7 @@ const Puzzles = () => {
   
   // Use the puzzle hook for Lichess puzzle integration
   const {
-    puzzle: currentLichessPuzzle,
+    puzzle: currentPuzzle,
     isLoading: puzzleLoading,
     error: puzzleError,
     isCompleted: puzzleCompleted,
@@ -126,7 +126,7 @@ const Puzzles = () => {
   // Handle puzzle completion and update user statistics
   useEffect(() => {
     const handlePuzzleCompletion = async () => {
-      if (puzzleCompleted && currentLichessPuzzle && isAuthenticated && user?.id) {
+      if (puzzleCompleted && currentPuzzle && isAuthenticated && user?.id) {
         try {
           // Calculate time spent (placeholder - you'd track this properly)
           const timeSpent = 30; // seconds, should be tracked from puzzle start
@@ -135,7 +135,7 @@ const Puzzles = () => {
           // Update user statistics in backend
           const updatedStats = await puzzleService.updateUserStats(
             user.id,
-            currentLichessPuzzle,
+            currentPuzzle,
             isCorrect,
             timeSpent
           );
@@ -159,7 +159,7 @@ const Puzzles = () => {
     };
     
     handlePuzzleCompletion();
-  }, [puzzleCompleted, currentLichessPuzzle, isAuthenticated, user?.id]);
+  }, [puzzleCompleted, currentPuzzle, isAuthenticated, user?.id]);
 
   // Performance Analytics Data - use real data if available, fallback to mock data
   const performanceData = realPerformanceData || {
@@ -390,15 +390,15 @@ const Puzzles = () => {
   };
 
   const handleRandomPuzzleMove = (move: { from: string; to: string; san?: string }) => {
-    if (!currentLichessPuzzle || puzzleCompleted) return;
+    if (!currentPuzzle || puzzleCompleted) return;
     
     console.log('Random puzzle move:', move);
-    console.log('Current puzzle:', currentLichessPuzzle);
+    console.log('Current puzzle:', currentPuzzle);
     
     // Convert move to UCI format
     const uciMove = `${move.from}${move.to}`;
     console.log('UCI move:', uciMove);
-    console.log('Expected move:', currentLichessPuzzle.moves[0]);
+    console.log('Expected move:', currentPuzzle.moves[0]);
     
     // Use the puzzle hook's move validation
     const isCorrect = makeMove(uciMove);
@@ -473,14 +473,14 @@ const Puzzles = () => {
                         </button>
                       </div>
                     </div>
-                  ) : currentLichessPuzzle && (
+                  ) : currentPuzzle && (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 xs:gap-6 lg:gap-8">
                       {/* Puzzle Board */}
                       <div className="bg-[#475569] rounded-lg xs:rounded-xl p-3 xs:p-4 sm:p-6 order-2 lg:order-1">
                         <div className="flex justify-center mb-3 xs:mb-4">
                           <ChessGame
                             isModalMode={true}
-                            position={currentLichessPuzzle.fen}
+                            position={currentPuzzle.fen}
                             onMove={handleRandomPuzzleMove}
                             interactive={!puzzleCompleted}
                             showNotation={false}
@@ -490,7 +490,7 @@ const Puzzles = () => {
                         
                         {/* Puzzle Status */}
                         <div className="text-center">
-                          <p className="text-[#97a1c4] text-sm xs:text-base mb-3 xs:mb-4 leading-relaxed">{currentLichessPuzzle.description}</p>
+                          <p className="text-[#97a1c4] text-sm xs:text-base mb-3 xs:mb-4 leading-relaxed">{currentPuzzle.description}</p>
                           {puzzleError ? (
                             <div className="bg-red-600 text-white p-3 xs:p-4 rounded-lg">
                               <p className="font-semibold text-sm xs:text-base">✗ {puzzleError}</p>
@@ -516,19 +516,19 @@ const Puzzles = () => {
                           <div className="grid grid-cols-2 gap-3 xs:gap-4 sm:gap-6">
                             <div>
                               <p className="text-[#97a1c4] text-sm xs:text-base">Theme</p>
-                              <p className="text-white font-semibold text-base xs:text-lg lg:text-xl break-words">{currentLichessPuzzle.themes?.[0] || 'Unknown'}</p>
+                              <p className="text-white font-semibold text-base xs:text-lg lg:text-xl break-words">{currentPuzzle.themes?.[0] || 'Unknown'}</p>
                             </div>
                             <div>
                               <p className="text-[#97a1c4] text-sm xs:text-base">Rating</p>
-                              <p className="text-white font-semibold text-base xs:text-lg lg:text-xl">{currentLichessPuzzle.rating}</p>
+                              <p className="text-white font-semibold text-base xs:text-lg lg:text-xl">{currentPuzzle.rating}</p>
                             </div>
                             <div>
                               <p className="text-[#97a1c4] text-sm xs:text-base">Difficulty</p>
-                              <p className="text-white font-semibold text-base xs:text-lg lg:text-xl">{currentLichessPuzzle.difficulty}</p>
+                              <p className="text-white font-semibold text-base xs:text-lg lg:text-xl">{currentPuzzle.difficulty}</p>
                             </div>
                             <div>
                               <p className="text-[#97a1c4] text-sm xs:text-base">Moves</p>
-                              <p className="text-white font-semibold text-base xs:text-lg lg:text-xl">{currentLichessPuzzle.moves?.length || 0}</p>
+                              <p className="text-white font-semibold text-base xs:text-lg lg:text-xl">{currentPuzzle.moves?.length || 0}</p>
                             </div>
                           </div>
                         </div>
@@ -570,19 +570,19 @@ const Puzzles = () => {
                         </div>
 
                         {/* Hint Display */}
-                        {hintVisible && currentLichessPuzzle && (
+                        {hintVisible && currentPuzzle && (
                           <div className="bg-[#475569] rounded-lg p-4 xs:p-6">
                             <h4 className="text-white font-semibold mb-3 xs:mb-4 text-base xs:text-lg">Hint:</h4>
-                            <p className="text-[#97a1c4] text-sm xs:text-base">{currentLichessPuzzle.hint}</p>
+                            <p className="text-[#97a1c4] text-sm xs:text-base">{currentPuzzle.hint}</p>
                           </div>
                         )}
 
                         {/* Solution Display */}
-                        {solutionVisible && currentLichessPuzzle && (
+                        {solutionVisible && currentPuzzle && (
                           <div className="bg-[#475569] rounded-lg p-4 xs:p-6">
                             <h4 className="text-white font-semibold mb-3 xs:mb-4 text-base xs:text-lg">Solution:</h4>
                             <div className="flex flex-wrap gap-2 xs:gap-3">
-                              {currentLichessPuzzle.moves.map((move, index) => (
+                              {currentPuzzle.moves.map((move, index) => (
                                 <span key={index} className="bg-blue-800 text-white px-3 xs:px-4 py-2 rounded text-sm xs:text-base font-medium">
                                   {index + 1}. {move}
                                 </span>

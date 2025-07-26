@@ -6,24 +6,27 @@ const { authenticateToken: auth } = require('../middleware/auth'); // For protec
 // Use database service as the single source of truth
 const activePuzzleService = databasePuzzleService;
 
-// Get a random puzzle with optional filters
+// Get a random puzzle with adaptive difficulty
 router.get('/random', async (req, res) => {
   try {
-    const { 
-      minRating, 
-      maxRating, 
-      themes, 
-      difficulty 
-    } = req.query;
-
-    const filters = {};
+    const { themes, difficulty, minRating, maxRating, userId } = req.query;
     
-    if (minRating) filters.minRating = parseInt(minRating);
-    if (maxRating) filters.maxRating = parseInt(maxRating);
-    if (themes) filters.themes = Array.isArray(themes) ? themes : themes.split(',');
-    if (difficulty) filters.difficulty = difficulty;
-
-    const puzzle = await activePuzzleService.getRandomPuzzle(filters);
+    const filters = {};
+    if (themes) {
+      filters.themes = themes.split(',').map(t => t.trim());
+    }
+    if (difficulty) {
+      filters.difficulty = difficulty;
+    }
+    if (minRating) {
+      filters.minRating = parseInt(minRating);
+    }
+    if (maxRating) {
+      filters.maxRating = parseInt(maxRating);
+    }
+    
+    // Pass userId for adaptive difficulty
+    const puzzle = await activePuzzleService.getRandomPuzzle(filters, userId);
     
     res.json({
       success: true,

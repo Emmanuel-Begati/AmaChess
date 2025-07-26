@@ -5,6 +5,7 @@ import Footer from '../components/Footer';
 import ChessGame from '../components/ChessGame';
 import { usePuzzle } from '../hooks/usePuzzle';
 import { Chess } from 'chess.js';
+import { puzzleService } from '../services/puzzleService';
 
 interface PuzzleTheme {
   name: string;
@@ -31,6 +32,10 @@ const PuzzleSolver = () => {
     streak: 0,
     averageTime: 0
   });
+  const [userId] = useState('user123'); // TODO: Get from auth context
+  const [puzzleStartTime, setPuzzleStartTime] = useState<number>(Date.now());
+  const [hintsUsed, setHintsUsed] = useState(0);
+  const [solutionShown, setSolutionShown] = useState(false);
 
   // Use the enhanced puzzle hook
   const {
@@ -92,15 +97,39 @@ const PuzzleSolver = () => {
       const userSide = turn === 'white' ? 'black' : 'white';
       setActiveColor(userSide);
     }
+    
+    // Reset tracking variables for new puzzle
+    if (currentPuzzle) {
+      setPuzzleStartTime(Date.now());
+      setHintsUsed(0);
+      setSolutionShown(false);
+    }
   }, [currentPuzzle]);
 
   useEffect(() => {
-    // Show notification when puzzle is completed
-    if (isCompleted && solvedMoves === totalMoves) {
+    // Show notification when puzzle is completed and update backend stats
+    if (isCompleted && solvedMoves === totalMoves && currentPuzzle) {
+      const timeSpent = Math.floor((Date.now() - puzzleStartTime) / 1000);
+      
       setNotification({
         type: 'success',
         message: `Excellent! Puzzle solved in ${solvedMoves} moves!`
       });
+      
+      // Update backend stats
+      puzzleService.updateUserStats(
+        userId,
+        currentPuzzle,
+        true, // isCorrect
+        timeSpent,
+        hintsUsed,
+        solutionShown
+      ).then(() => {
+        console.log('User stats updated successfully');
+      }).catch((error) => {
+        console.error('Failed to update user stats:', error);
+      });
+      
       // Update local stats
       setPuzzleStats(prev => ({
         ...prev,
@@ -108,7 +137,7 @@ const PuzzleSolver = () => {
         streak: prev.streak + 1
       }));
     }
-  }, [isCompleted, solvedMoves, totalMoves]);
+  }, [isCompleted, solvedMoves, totalMoves, currentPuzzle, puzzleStartTime, userId, hintsUsed, solutionShown]);
 
   useEffect(() => {
     // Show notification for errors
@@ -225,6 +254,7 @@ const PuzzleSolver = () => {
 
   const handleShowHint = () => {
     showHintAction();
+    setHintsUsed(prev => prev + 1);
     setNotification({
       type: 'info',
       message: 'Hint revealed!'
@@ -233,6 +263,7 @@ const PuzzleSolver = () => {
 
   const handleShowSolution = () => {
     showSolutionAction(); // This starts the interactive solution mode
+    setSolutionShown(true);
     setNotification({
       type: 'info',
       message: 'Solution mode activated! Use the controls to step through.'

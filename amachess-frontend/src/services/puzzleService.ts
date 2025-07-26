@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:3001/api';
 
-export interface LichessPuzzle {
+export interface Puzzle {
   id: string;
   fen: string;
   moves: string[];
@@ -57,7 +57,7 @@ export interface UserPuzzleStats {
   updatedAt: string;
 }
 
-export interface DailyChallenge extends LichessPuzzle {
+export interface DailyChallenge extends Puzzle {
   isDailyChallenge: true;
   challengeDate: string;
 }
@@ -74,42 +74,45 @@ export interface DailyChallengeStats {
 }
 
 class PuzzleService {
-  async getRandomPuzzle(filters?: PuzzleFilters): Promise<LichessPuzzle> {
+  async getRandomPuzzle(filters?: PuzzleFilters, userId?: string): Promise<Puzzle> {
     try {
       const params = new URLSearchParams();
       
-      if (filters?.minRating) params.append('minRating', filters.minRating.toString());
-      if (filters?.maxRating) params.append('maxRating', filters.maxRating.toString());
-      if (filters?.themes) params.append('themes', filters.themes.join(','));
-      if (filters?.difficulty) params.append('difficulty', filters.difficulty);
-
+      if (filters?.minRating) {
+        params.append('minRating', filters.minRating.toString());
+      }
+      if (filters?.maxRating) {
+        params.append('maxRating', filters.maxRating.toString());
+      }
+      if (filters?.themes && filters.themes.length > 0) {
+        params.append('themes', filters.themes.join(','));
+      }
+      if (filters?.difficulty) {
+        params.append('difficulty', filters.difficulty);
+      }
+      if (userId) {
+        params.append('userId', userId);
+      }
+      
       const response = await axios.get(`${API_BASE_URL}/puzzles/random?${params.toString()}`);
       
-      if (!response.data.success) {
-        throw new Error(response.data.error || 'Failed to load puzzle');
+      if (response.data.success) {
+        return response.data.data;
+      } else {
+        throw new Error(response.data.error || 'Failed to fetch puzzle');
       }
-      
-      return response.data.data;
-    } catch (error: any) {
-      console.error('Error loading random puzzle:', error);
-      
-      // Handle specific error cases
-      if (error.response?.status === 500) {
-        // Check if it's a database-related error
-        const errorMessage = error.response?.data?.message || error.message;
-        
-        if (errorMessage.includes('No puzzles found') || errorMessage.includes('database')) {
-          console.log('Database is empty, returning fallback puzzle');
-          // Return a fallback puzzle when database is empty
-          return this.getFallbackPuzzle();
-        }
+    } catch (error) {
+      console.error('Error fetching random puzzle:', error);
+      // Return fallback puzzle if API fails
+      if (axios.isAxiosError(error) && error.response?.status === 500) {
+        console.warn('Database error detected, using fallback puzzle');
+        return this.getFallbackPuzzle();
       }
-      
       throw error;
     }
   }
 
-  async getPuzzlesByTheme(theme: string, limit: number = 10): Promise<LichessPuzzle[]> {
+  async getPuzzlesByTheme(theme: string, limit: number = 10): Promise<Puzzle[]> {
     try {
       const response = await axios.get(`${API_BASE_URL}/puzzles/theme/${theme}?limit=${limit}`);
       
@@ -169,7 +172,124 @@ class PuzzleService {
     }
   }
 
-  // Utility function to validate user moves against puzzle solution
+  // User Statistics Methods
+  async getUserStats(userId: string): Promise<UserPuzzleStats> {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await axios.get(`${API_BASE_URL}/puzzles/user/${userId}/stats`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to load user statistics');
+      }
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Error loading user statistics:', error);
+      throw error;
+    }
+  }
+
+  async updateUserStats(userId: string, puzzleData: Puzzle, isCorrect: boolean, timeSpent: number, hintsUsed: number = 0, solutionShown: boolean = false): Promise<UserPuzzleStats> {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await axios.post(`${API_BASE_URL}/puzzles/user/${userId}/stats/update`, {
+        puzzleData,
+        isCorrect,
+        timeSpent,
+        hintsUsed,
+        solutionShown
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to update user statistics');
+      }
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Error updating user statistics:', error);
+      throw error;
+    }
+  }
+
+  // Daily Challenge Methods
+  async getDailyChallenge(): Promise<DailyChallenge> {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/puzzles/daily-challenge`);
+      
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to load daily challenge');
+      }
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Error loading daily challenge:', error);
+      throw error;
+    }
+  }
+
+  async getDailyChallengeStats(date?: string): Promise<DailyChallengeStats> {
+    try {
+      const params = new URLSearchParams();
+      if (date) params.append('date', date);
+      
+      const response = await axios.get(`${API_BASE_URL}/puzzles/daily-challenge/stats?${params.toString()}`);
+      
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to load daily challenge stats');
+      }
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Error loading daily challenge stats:', error);
+      throw error;
+    }
+  }
+
+  async getLeaderboard(limit: number = 10): Promise<any[]> {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/puzzles/leaderboard?limit=${limit}`);
+      
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to load leaderboard');
+      }
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Error loading leaderboard:', error);
+      throw error;
+    }
+  }
+
+  async getUserAnalytics(userId: string, days: number = 30): Promise<any> {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await axios.get(`${API_BASE_URL}/puzzles/user/${userId}/analytics?days=${days}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to load user analytics');
+      }
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Error loading user analytics:', error);
+      throw error;
+    }
+  }
+
+  // Utility methods
   validateMove(userMove: string, expectedMoves: string[], moveIndex: number = 0): boolean {
     if (!expectedMoves || expectedMoves.length === 0) return false;
     if (moveIndex >= expectedMoves.length) return false;
@@ -211,18 +331,6 @@ class PuzzleService {
     return uciMove;
   }
 
-  // Convert UCI moves to SAN (Standard Algebraic Notation) for display
-  uciToSan(uciMove: string): string {
-    // This is a simplified conversion - you might want to use chess.js for proper conversion
-    if (uciMove.length < 4) return uciMove;
-    
-    const from = uciMove.substring(0, 2);
-    const to = uciMove.substring(2, 4);
-    const promotion = uciMove.length > 4 ? uciMove.substring(4) : '';
-    
-    return `${from}-${to}${promotion}`;
-  }
-
   // Get difficulty-based rating ranges
   getDifficultyRange(difficulty: string): { min: number; max: number } {
     const ranges = {
@@ -235,144 +343,14 @@ class PuzzleService {
     return ranges[difficulty as keyof typeof ranges] || { min: 0, max: 3000 };
   }
 
-  async getPuzzleAnalysis(puzzleId: string): Promise<LichessPuzzle> {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/puzzles/${puzzleId}/analysis`);
-      
-      if (!response.data.success) {
-        throw new Error(response.data.error || 'Failed to load puzzle analysis');
-      }
-      
-      return response.data.data;
-    } catch (error) {
-      console.error('Error loading puzzle analysis:', error);
-      throw error;
-    }
-  }
-
-  // User Statistics Methods
-  async getUserStats(userId: string): Promise<UserPuzzleStats> {
-    try {
-      const token = localStorage.getItem('authToken');
-      const response = await axios.get(`${API_BASE_URL}/puzzles/user/${userId}/stats`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (!response.data.success) {
-        throw new Error(response.data.error || 'Failed to load user statistics');
-      }
-      
-      return response.data.data;
-    } catch (error) {
-      console.error('Error loading user statistics:', error);
-      throw error;
-    }
-  }
-
-  async updateUserStats(userId: string, puzzleData: LichessPuzzle, isCorrect: boolean, timeSpent: number): Promise<UserPuzzleStats> {
-    try {
-      const token = localStorage.getItem('authToken');
-      const response = await axios.post(`${API_BASE_URL}/puzzles/user/${userId}/stats/update`, {
-        puzzleData,
-        isCorrect,
-        timeSpent
-      }, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.data.success) {
-        throw new Error(response.data.error || 'Failed to update user statistics');
-      }
-      
-      return response.data.data;
-    } catch (error) {
-      console.error('Error updating user statistics:', error);
-      throw error;
-    }
-  }
-
-  // Daily Challenge Methods
-  async getDailyChallenge(): Promise<DailyChallenge> {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/puzzles/daily-challenge`);
-      
-      if (!response.data.success) {
-        throw new Error(response.data.error || 'Failed to load daily challenge');
-      }
-      
-      return response.data.data;
-    } catch (error) {
-      console.error('Error loading daily challenge:', error);
-      throw error;
-    }
-  }
-
-  async getDailyChallengeStats(date?: string): Promise<DailyChallengeStats> {
-    try {
-      const params = date ? `?date=${date}` : '';
-      const response = await axios.get(`${API_BASE_URL}/puzzles/daily-challenge/stats${params}`);
-      
-      if (!response.data.success) {
-        throw new Error(response.data.error || 'Failed to load daily challenge statistics');
-      }
-      
-      return response.data.data;
-    } catch (error) {
-      console.error('Error loading daily challenge statistics:', error);
-      throw error;
-    }
-  }
-
-  // Leaderboard Methods
-  async getLeaderboard(limit: number = 10): Promise<any[]> {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/puzzles/leaderboard?limit=${limit}`);
-      
-      if (!response.data.success) {
-        throw new Error(response.data.error || 'Failed to load leaderboard');
-      }
-      
-      return response.data.data;
-    } catch (error) {
-      console.error('Error loading leaderboard:', error);
-      throw error;
-    }
-  }
-
-  // Performance Analytics Methods
-  async getUserAnalytics(userId: string, days: number = 7): Promise<any> {
-    try {
-      const token = localStorage.getItem('authToken');
-      const response = await axios.get(`${API_BASE_URL}/puzzles/user/${userId}/analytics?days=${days}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (!response.data.success) {
-        throw new Error(response.data.error || 'Failed to load user analytics');
-      }
-      
-      return response.data.data;
-    } catch (error) {
-      console.error('Error loading user analytics:', error);
-      throw error;
-    }
-  }
-
   // Fallback puzzle for when database is empty or unavailable
-  private getFallbackPuzzle(): LichessPuzzle {
+  private getFallbackPuzzle(): Puzzle {
     return {
       id: 'fallback-001',
       fen: 'r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 4 4',
       moves: ['Bxf7+', 'Kxf7', 'Ng5+'],
       rating: 1200,
-      themes: ['fork', 'tactics'], // Ensure this is an array
+      themes: ['fork', 'tactics'],
       gameUrl: '',
       difficulty: 'Beginner',
       popularity: 85,
@@ -383,7 +361,7 @@ class PuzzleService {
       userSide: 'white',
       pgn: '',
       analysis: {
-        themes: ['fork', 'tactics'], // Ensure this is an array
+        themes: ['fork', 'tactics'],
         sideToMove: 'white',
         difficulty: 'Beginner',
         hint: 'Look for a forcing move that attacks the king',
