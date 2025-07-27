@@ -6,6 +6,7 @@ import ChessGame from '../components/ChessGame';
 import { usePuzzle } from '../hooks/usePuzzle';
 import { useAuth } from '../contexts/AuthContext';
 import { Puzzle, UserPuzzleStats, DailyChallenge, DailyChallengeStats, puzzleService } from '../services/puzzleService';
+import { dailyPuzzleService } from '../services/dailyPuzzleService';
 
 const Puzzles = () => {
   const { user, isAuthenticated } = useAuth();
@@ -49,9 +50,9 @@ const Puzzles = () => {
         setStatsLoading(true);
         setStatsError(null);
         
-        // Load daily challenge (public endpoint)
+        // Load daily challenge using unified service
         try {
-          const challenge = await puzzleService.getDailyChallenge();
+          const challenge = await dailyPuzzleService.getDailyPuzzle();
           setDailyChallenge(challenge);
           
           // Load daily challenge statistics
@@ -725,7 +726,7 @@ const Puzzles = () => {
                   <div className="text-center space-y-3">
                     <p className="text-[#97a1c4] text-sm xs:text-base mb-3 xs:mb-4 leading-relaxed">{dailyChallenge?.description || 'Loading puzzle description...'}</p>
                     <button 
-                      onClick={() => navigate(`/puzzle-solver?daily=${dailyChallenge?.id || 'daily-' + new Date().toISOString().split('T')[0]}&theme=${dailyChallenge?.themes?.[0]?.toLowerCase() || 'tactical'}&rating=${dailyChallenge?.rating || 1500}`)}
+                      onClick={() => navigate(dailyPuzzleService.getPuzzleSolverUrl(dailyChallenge || undefined))}
                       className="w-full py-3 bg-gradient-to-r from-[#115fd4] to-[#4a90e2] text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-[#115fd4]/25 transition-all duration-300"
                     >
                       🎯 Take Daily Challenge

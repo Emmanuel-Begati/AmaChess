@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import ChessGame from '../components/ChessGame';
 import LichessProgressStats from '../components/LichessProgressStats';
 import { useAuth } from '../contexts/AuthContext';
-import { puzzleService } from '../services/puzzleService';
+import { puzzleService, DailyChallenge } from '../services/puzzleService';
+import { dailyPuzzleService } from '../services/dailyPuzzleService';
+import axios from 'axios';
 
 const Dashboard = () => {
   const [dashboardData, setDashboardData] = useState<any>(null);
@@ -17,7 +19,9 @@ const Dashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
-  
+  const [dailyPuzzle, setDailyPuzzle] = useState<DailyChallenge | null>(null);
+  const [dailyPuzzleLoading, setDailyPuzzleLoading] = useState(true);
+
   const currentDate = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
@@ -190,14 +194,22 @@ const Dashboard = () => {
     }
   ];
 
-  const dailyPuzzle = {
-    id: 'daily-' + new Date().toISOString().split('T')[0], // Generate unique daily ID
-    fen: 'r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 4 4',
-    solution: 'Nxe5',
-    theme: 'Fork',
-    rating: 1500,
-    moves: 3
-  };
+  // Load daily puzzle on component mount
+  useEffect(() => {
+    const loadDailyPuzzle = async () => {
+      try {
+        setDailyPuzzleLoading(true);
+        const puzzle = await dailyPuzzleService.getDailyPuzzle();
+        setDailyPuzzle(puzzle);
+      } catch (error) {
+        console.error('Failed to load daily puzzle:', error);
+      } finally {
+        setDailyPuzzleLoading(false);
+      }
+    };
+
+    loadDailyPuzzle();
+  }, []);
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-[#0a0f1c] via-[#111827] to-[#0a0f1c] text-white">
@@ -449,18 +461,40 @@ const Dashboard = () => {
               <h3 className="text-2xl font-bold text-white mb-4">Daily Challenge</h3>
               <div className="bg-slate-700/50 rounded-xl p-4 mb-4">
                 <div className="aspect-square bg-gradient-to-br from-amber-100 to-amber-200 rounded-lg mb-4 flex items-center justify-center">
-                  <span className="text-slate-800 text-4xl">♛</span>
+                  {dailyPuzzleLoading ? (
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800"></div>
+                  ) : dailyPuzzle ? (
+                    <div className="relative w-full h-full">
+                      <ChessGame
+                        isModalMode={true}
+                        position={dailyPuzzle.fen}
+                        onMove={() => {}} // Disabled interaction
+                        interactive={false}
+                        showNotation={false}
+                        engineEnabled={false}
+                      />
+                      {/* Preview overlay */}
+                      <div className="absolute inset-0 bg-black/10 rounded-lg flex items-center justify-center">
+                        <div className="bg-white/90 text-slate-800 px-2 py-1 rounded text-xs font-semibold">
+                          Preview
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-slate-800 text-4xl">♛</span>
+                  )}
                 </div>
                 <div className="space-y-2 text-sm">
-                  <p className="text-gray-400">Theme: <span className="text-white">{dailyPuzzle.theme}</span></p>
-                  <p className="text-gray-400">Rating: <span className="text-white">{dailyPuzzle.rating}</span></p>
-                  <p className="text-gray-400">Moves: <span className="text-white">{dailyPuzzle.moves}</span></p>
+                  <p className="text-gray-400">Theme: <span className="text-white">{dailyPuzzle?.themes?.[0] || 'Tactical'}</span></p>
+                  <p className="text-gray-400">Rating: <span className="text-white">{dailyPuzzle?.rating || 1500}</span></p>
+                  <p className="text-gray-400">Moves: <span className="text-white">{dailyPuzzle?.moves?.length || 'N/A'}</span></p>
                 </div>
               </div>
               <div className="space-y-3">
                 <button 
-                  onClick={() => navigate(`/puzzle-solver?daily=${dailyPuzzle.id}&theme=${dailyPuzzle.theme.toLowerCase()}&rating=${dailyPuzzle.rating}`)}
+                  onClick={() => navigate(dailyPuzzleService.getPuzzleSolverUrl(dailyPuzzle || undefined))}
                   className="w-full py-3 bg-gradient-to-r from-[#115fd4] to-[#4a90e2] text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-[#115fd4]/25 transition-all duration-300"
+                  disabled={dailyPuzzleLoading}
                 >
                   🎯 Take Daily Challenge
                 </button>

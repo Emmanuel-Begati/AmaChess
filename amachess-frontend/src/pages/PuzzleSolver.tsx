@@ -50,6 +50,7 @@ const PuzzleSolver = () => {
     isFailed,
     makeMove,
     loadRandomPuzzle,
+    loadPuzzleById,
     showHintAction,
     showSolutionAction,
     resetPuzzle,
@@ -110,13 +111,47 @@ const PuzzleSolver = () => {
   // Determine board orientation and turn indicator
   const [activeColor, setActiveColor] = useState<'white' | 'black'>('white');
 
+  // Load themes and user stats on mount
   useEffect(() => {
-    // Load available themes from the backend
     loadAvailableThemes();
-    
-    // Load user stats on component mount
     loadUserStats();
   }, []);
+
+  // Handle puzzle loading by ID (separate from filter-based loading)
+  useEffect(() => {
+    const puzzleId = searchParams.get('id');
+    
+    console.log('🔍 PuzzleSolver ID useEffect triggered');
+    console.log('- Puzzle ID from URL:', puzzleId);
+    
+    if (puzzleId) {
+      console.log('✅ Loading specific puzzle with ID:', puzzleId);
+      loadPuzzleById(puzzleId);
+    }
+  }, [searchParams.get('id')]);
+
+  // Handle filter-based puzzle loading (only when no ID is present)
+  useEffect(() => {
+    const puzzleId = searchParams.get('id');
+    
+    // Skip filter-based loading if a puzzle ID is present
+    if (puzzleId) {
+      console.log('⚠️ Skipping filter-based loading because puzzle ID is present:', puzzleId);
+      return;
+    }
+    
+    console.log('🎲 Loading random puzzle with filters');
+    const filters = {
+      ...(selectedTheme !== 'all' && { themes: [selectedTheme] }),
+      ...(selectedDifficulty !== 'all' && { difficulty: selectedDifficulty as any }),
+      ...(selectedRating !== 'all' && { 
+        minRating: parseInt(selectedRating) - 100, 
+        maxRating: parseInt(selectedRating) + 100 
+      })
+    };
+    console.log('🎯 Applying filters:', filters);
+    loadRandomPuzzle(filters);
+  }, [selectedTheme, selectedDifficulty, selectedRating, searchParams.get('id')]);
   
   // Load user stats from backend
   const loadUserStats = async () => {
@@ -150,9 +185,16 @@ const PuzzleSolver = () => {
   };
 
   useEffect(() => {
-    // Load initial puzzle with filters
-    loadPuzzleWithFilters();
-  }, [selectedTheme, selectedDifficulty, selectedRating]);
+    const puzzleId = searchParams.get('id');
+    
+    // Only load puzzle with filters if no specific ID is present
+    if (!puzzleId) {
+      console.log('🔄 Loading puzzle with filters (no ID present)');
+      loadPuzzleWithFilters();
+    } else {
+      console.log('⚠️ Skipping filter-based loading because puzzle ID is present:', puzzleId);
+    }
+  }, [selectedTheme, selectedDifficulty, selectedRating, searchParams.get('id')]);
 
   useEffect(() => {
     // Determine board orientation from which side the user is playing

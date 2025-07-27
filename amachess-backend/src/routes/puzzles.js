@@ -65,6 +65,34 @@ router.get('/theme/:theme', async (req, res) => {
   }
 });
 
+// Get puzzle by ID
+router.get('/:puzzleId', async (req, res) => {
+  try {
+    const { puzzleId } = req.params;
+    
+    const puzzle = await activePuzzleService.getPuzzleById(puzzleId);
+    
+    if (!puzzle) {
+      return res.status(404).json({
+        success: false,
+        error: 'Puzzle not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: puzzle
+    });
+  } catch (error) {
+    console.error('Error getting puzzle by ID:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load puzzle',
+      message: error.message
+    });
+  }
+});
+
 // Get available themes
 router.get('/themes', async (req, res) => {
   try {

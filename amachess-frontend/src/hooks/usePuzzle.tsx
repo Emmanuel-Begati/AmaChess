@@ -1,9 +1,9 @@
 import { useState, useCallback } from 'react';
 import { Chess } from 'chess.js';
-import { puzzleService, LichessPuzzle, PuzzleFilters } from '../services/puzzleService';
+import { puzzleService, Puzzle, PuzzleFilters } from '../services/puzzleService';
 
 interface PuzzleState {
-  currentPuzzle: LichessPuzzle | null;
+  currentPuzzle: Puzzle | null;
   isLoading: boolean;
   error: string | null;
   isCompleted: boolean;
@@ -50,6 +50,94 @@ export const usePuzzle = () => {
     solutionIndex: 0,
     boardKey: 0
   });
+
+  // Load a specific puzzle by ID
+  const loadPuzzleById = useCallback(async (puzzleId: string) => {
+    setState(prev => ({ ...prev, isLoading: true, error: null }));
+    
+    try {
+      const puzzle = await puzzleService.getPuzzleById(puzzleId);
+      
+      console.log('=== PUZZLE LOADED BY ID ===');
+      console.log('Puzzle ID:', puzzle.id);
+      console.log('FEN:', puzzle.fen);
+      console.log('Moves:', puzzle.moves);
+      
+      // Initialize chess position from the FEN
+      const chess = new Chess(puzzle.fen);
+      const sideToMove = chess.turn(); // 'w' or 'b'
+      
+      console.log('Side to move in FEN:', sideToMove);
+      
+      let currentChess = new Chess(puzzle.fen);
+      let currentMoveIndex = 0;
+      let userSide: 'white' | 'black';
+      
+      // Determine which side the user will be playing
+      if (sideToMove === 'w') {
+        userSide = 'black';
+      } else {
+        userSide = 'white';
+      }
+      
+      console.log('User will play as:', userSide);
+      
+      // Auto-play the first move if needed
+      if (puzzle.moves && puzzle.moves.length > 0) {
+        const firstMove = puzzle.moves[0];
+        if (firstMove) {
+          console.log('Auto-playing first move (opponent):', firstMove);
+          
+          try {
+            const moveObj = currentChess.move({
+              from: firstMove.slice(0, 2),
+              to: firstMove.slice(2, 4),
+              ...(firstMove.slice(4) && { promotion: firstMove.slice(4) })
+            });
+            
+            if (moveObj) {
+              currentMoveIndex = 1;
+              console.log('First move played successfully. User needs to find move:', puzzle.moves[1]);
+            }
+          } catch (error) {
+            console.warn('Error playing first move:', error);
+          }
+        }
+      }
+      
+      setState(prev => ({
+        ...prev,
+        currentPuzzle: puzzle,
+        isLoading: false,
+        error: null,
+        isCompleted: false,
+        isFailed: false,
+        currentMoveIndex: currentMoveIndex,
+        userMoves: [],
+        showHint: false,
+        showSolution: false,
+        gamePosition: currentChess.fen(),
+        chess: currentChess,
+        solvedMoves: 0,
+        totalMoves: puzzle.moves ? puzzle.moves.length : 0,
+        gameContext: null,
+        analysisMode: false,
+        userAttempts: [],
+        solutionMoves: [],
+        solutionModeActive: false,
+        solutionIndex: 0,
+        boardKey: prev.boardKey + 1
+      }));
+      
+    } catch (error) {
+      console.error('Error loading puzzle by ID:', error);
+      setState(prev => ({
+        ...prev,
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Failed to load puzzle'
+      }));
+    }
+  }, []);
 
   // Load a random puzzle with enhanced data
   const loadRandomPuzzle = useCallback(async (filters?: PuzzleFilters) => {
@@ -578,6 +666,7 @@ export const usePuzzle = () => {
     
     // Actions
     loadRandomPuzzle,
+    loadPuzzleById,
     makeMove,
     showHintAction: showHint,
     showSolutionAction: showSolution,

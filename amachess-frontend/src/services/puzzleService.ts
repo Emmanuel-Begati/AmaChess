@@ -79,6 +79,26 @@ export interface DailyChallengeStats {
 }
 
 class PuzzleService {
+  async getPuzzleById(puzzleId: string): Promise<Puzzle> {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/puzzles/${puzzleId}`);
+      
+      if (response.data.success) {
+        return response.data.data;
+      } else {
+        throw new Error(response.data.error || 'Failed to fetch puzzle');
+      }
+    } catch (error) {
+      console.error('Error fetching puzzle by ID:', error);
+      // Return fallback puzzle if API fails
+      if (axios.isAxiosError(error) && (error.response?.status === 404 || error.response?.status === 500)) {
+        console.warn('Puzzle not found or database error, using fallback puzzle');
+        return this.getFallbackPuzzle();
+      }
+      throw error;
+    }
+  }
+
   async getRandomPuzzle(filters?: PuzzleFilters, userId?: string): Promise<Puzzle> {
     try {
       const params = new URLSearchParams();
@@ -349,7 +369,7 @@ class PuzzleService {
   }
 
   // Fallback puzzle for when database is empty or unavailable
-  private getFallbackPuzzle(): Puzzle {
+  getFallbackPuzzle(): Puzzle {
     return {
       id: 'fallback-001',
       fen: 'r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 4 4',
