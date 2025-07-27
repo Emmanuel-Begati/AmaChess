@@ -32,7 +32,8 @@ const PuzzleSolver = () => {
     solved: 0,
     accuracy: 0,
     streak: 0,
-    averageTime: 0
+    averageTime: 0,
+    rating: 1200
   });
   const { user } = useAuth();
   const userId = user?.id || 'anonymous';
@@ -137,21 +138,42 @@ const PuzzleSolver = () => {
       setPuzzleStartTime(Date.now());
       setHintsUsed(0);
       setSolutionShown(false);
+      setIsFirstAttempt(true);
+      setHasFailedFirstAttempt(false);
     }
   }, [currentPuzzle]);
 
+  // Track puzzle completion state to prevent duplicate updates
+  const [lastCompletedPuzzleId, setLastCompletedPuzzleId] = useState<string | null>(null);
+  
+  // Track first attempt for ELO rating system
+  const [isFirstAttempt, setIsFirstAttempt] = useState<boolean>(true);
+  const [hasFailedFirstAttempt, setHasFailedFirstAttempt] = useState<boolean>(false);
+
   useEffect(() => {
     // Show notification when puzzle is completed and update backend stats
-    if (isCompleted && solvedMoves === totalMoves && currentPuzzle) {
+    // Use isCompleted as the primary indicator, and prevent duplicate updates
+    if (isCompleted && currentPuzzle && currentPuzzle.id !== lastCompletedPuzzleId) {
       const timeSpent = Math.floor((Date.now() - puzzleStartTime) / 1000);
+      
+      console.log('🎯 PUZZLE COMPLETED! Updating stats...');
+      console.log('- Puzzle ID:', currentPuzzle.id);
+      console.log('- User ID:', userId);
+      console.log('- Time spent:', timeSpent, 'seconds');
+      console.log('- Solved moves:', solvedMoves);
+      console.log('- Total moves:', totalMoves);
       
       setNotification({
         type: 'success',
-        message: `Excellent! Puzzle solved in ${solvedMoves} moves!`
+        message: `Excellent! Puzzle solved in ${timeSpent} seconds!`
       });
+      
+      // Mark this puzzle as completed to prevent duplicate updates
+      setLastCompletedPuzzleId(currentPuzzle.id);
       
       // Update backend stats
       if (userId && userId !== 'anonymous') {
+        console.log('📡 Sending stats update to backend...');
         puzzleService.updateUserStats(
           userId,
           currentPuzzle,
@@ -160,16 +182,17 @@ const PuzzleSolver = () => {
           hintsUsed,
           solutionShown
         ).then((updatedStats) => {
-          console.log('User stats updated successfully:', updatedStats);
+          console.log('✅ User stats updated successfully:', updatedStats);
           // Update local stats with real data from backend
           setPuzzleStats(prev => ({
             ...prev,
             solved: updatedStats.totalPuzzlesSolved || prev.solved + 1,
             accuracy: Math.round(updatedStats.averageAccuracy || prev.accuracy),
-            streak: updatedStats.currentStreak || prev.streak + 1
+            streak: updatedStats.currentStreak || prev.streak + 1,
+            rating: updatedStats.currentPuzzleRating || prev.rating
           }));
         }).catch((error) => {
-          console.error('Failed to update user stats:', error);
+          console.error('❌ Failed to update user stats:', error);
           setNotification({
             type: 'error',
             message: 'Failed to save progress. Please check your connection.'
@@ -182,7 +205,7 @@ const PuzzleSolver = () => {
           }));
         });
       } else {
-        console.warn('No authenticated user - stats not saved');
+        console.warn('⚠️ No authenticated user - stats not saved');
         // Update local stats only for anonymous users
         setPuzzleStats(prev => ({
           ...prev,
@@ -190,10 +213,8 @@ const PuzzleSolver = () => {
           streak: prev.streak + 1
         }));
       }
-      
-
     }
-  }, [isCompleted, solvedMoves, totalMoves, currentPuzzle, puzzleStartTime, userId, hintsUsed, solutionShown]);
+  }, [isCompleted, currentPuzzle, puzzleStartTime, userId, hintsUsed, solutionShown, lastCompletedPuzzleId, solvedMoves, totalMoves]);
 
   useEffect(() => {
     // Show notification for errors
@@ -274,6 +295,7 @@ const PuzzleSolver = () => {
     if (!currentPuzzle || isCompleted || solutionModeActive) return false;
     
     console.log('PuzzleSolver handleMove called with:', move);
+    console.log('First attempt status:', isFirstAttempt);
     
     // Use the puzzle hook's move validation with the move object
     const isCorrect = makeMove({
@@ -284,16 +306,80 @@ const PuzzleSolver = () => {
     
     console.log('Move result:', isCorrect);
     
+    // Handle incorrect moves with ELO rating system
     if (!isCorrect && error) {
-      setNotification({
-        type: 'error',
-        message: error
-      });
-      // Update stats for incorrect moves
-      setPuzzleStats(prev => ({
-        ...prev,
-        streak: 0
-      }));
+      // Track first attempt failure for ELO rating and streak reset
+      if (isFirstAttempt && !hasFailedFirstAttempt) {
+        console.log('💔 First attempt failed - will reset streak and apply ELO penalty');
+        setHasFailedFirstAttempt(true);
+        
+        // Update backend with incorrect first attempt
+        if (userId && userId !== 'anonymous') {
+          const timeSpent = Math.floor((Date.now() - puzzleStartTime) / 1000);
+          console.log('📡 Sending first attempt failure to backend...');
+          
+          puzzleService.updateUserStats(
+            userId,
+            currentPuzzle,
+            false, // isCorrect = false
+            timeSpent,
+            hintsUsed,
+            solutionShown
+          ).then((updatedStats) => {
+            console.log('✅ First attempt failure processed:', updatedStats);
+            // Update local stats to reflect streak reset and rating change
+            setPuzzleStats(prev => ({
+              ...prev,
+              streak: 0, // Reset streak on first attempt failure
+              accuracy: Math.round(updatedStats.averageAccuracy || prev.accuracy),
+              rating: updatedStats.currentPuzzleRating || prev.rating
+            }));
+            
+            // Show notification about rating change
+            if (updatedStats.ratingChange) {
+              setNotification({
+                type: 'error',
+                message: `${error} Rating: ${updatedStats.ratingChange > 0 ? '+' : ''}${updatedStats.ratingChange} (Streak reset)`
+              });
+            } else {
+              setNotification({
+                type: 'error',
+                message: `${error} (Streak reset)`
+              });
+            }
+          }).catch((backendError) => {
+            console.error('❌ Failed to update stats for first attempt failure:', backendError);
+            // Still show error and reset streak locally
+            setNotification({
+              type: 'error',
+              message: `${error} (Streak reset)`
+            });
+            setPuzzleStats(prev => ({
+              ...prev,
+              streak: 0
+            }));
+          });
+        } else {
+          // Anonymous user - just show error and reset streak locally
+          setNotification({
+            type: 'error',
+            message: `${error} (Streak reset)`
+          });
+          setPuzzleStats(prev => ({
+            ...prev,
+            streak: 0
+          }));
+        }
+      } else {
+        // Subsequent attempts - less severe penalty
+        setNotification({
+          type: 'error',
+          message: error
+        });
+      }
+      
+      // Mark that this is no longer the first attempt
+      setIsFirstAttempt(false);
     }
     
     // Return the result so ChessBoard knows whether to allow the move
@@ -516,13 +602,16 @@ const PuzzleSolver = () => {
             <p className="text-2xl font-bold text-orange-400">{puzzleStats.streak}</p>
           </div>
           <div className="bg-[#272e45] rounded-xl p-4 border border-[#374162]">
-            <p className="text-[#97a1c4] text-sm">Progress</p>
-            <p className="text-2xl font-bold text-blue-400">{Math.round(progressPercentage)}%</p>
+            <p className="text-[#97a1c4] text-sm">My Puzzle Rating</p>
+            <p className="text-2xl font-bold text-blue-400">{puzzleStats.rating || 1200}</p>
           </div>
-          <div className="bg-[#272e45] rounded-xl p-4 border border-[#374162]">
-            <p className="text-[#97a1c4] text-sm">Rating</p>
-            <p className="text-2xl font-bold text-purple-400">{currentPuzzle.rating}</p>
-          </div>
+          {/* Only show puzzle rating after it's solved */}
+          {isCompleted && (
+            <div className="bg-[#272e45] rounded-xl p-4 border border-[#374162]">
+              <p className="text-[#97a1c4] text-sm">Puzzle Rating</p>
+              <p className="text-2xl font-bold text-purple-400">{currentPuzzle.rating}</p>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -575,10 +664,13 @@ const PuzzleSolver = () => {
                   <span className="text-[#97a1c4]">ID:</span>
                   <span className="text-white text-sm font-mono">{currentPuzzle.id}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[#97a1c4]">Rating:</span>
-                  <span className="text-white font-bold">{currentPuzzle.rating}</span>
-                </div>
+                {/* Only show puzzle rating after it's solved */}
+                {isCompleted && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[#97a1c4]">Rating:</span>
+                    <span className="text-white font-bold">{currentPuzzle.rating}</span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
                   <span className="text-[#97a1c4]">Difficulty:</span>
                   <span className={`px-2 py-1 rounded text-xs font-medium ${getDifficultyColor(currentPuzzle.difficulty)}`}>

@@ -55,6 +55,11 @@ export interface UserPuzzleStats {
   lastActiveDate: string;
   createdAt: string;
   updatedAt: string;
+  // Enhanced ELO rating system properties
+  ratingChange?: number;
+  attemptId?: string;
+  wasFirstAttempt?: boolean;
+  streakReset?: boolean;
 }
 
 export interface DailyChallenge extends Puzzle {

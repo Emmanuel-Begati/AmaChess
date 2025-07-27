@@ -247,6 +247,10 @@ const Puzzles = () => {
     { name: "Double Attack", count: 478, difficulty: "★★☆", color: "bg-pink-600" },
     { name: "Zugzwang", count: 234, difficulty: "★★★★", color: "bg-gray-600" }
   ]);
+  
+  // State for showing more themes
+  const [showAllThemes, setShowAllThemes] = useState(false);
+  const [allThemes, setAllThemes] = useState([]);
 
   // Load actual themes from the database
   useEffect(() => {
@@ -271,6 +275,15 @@ const Puzzles = () => {
           "bg-cyan-600", "bg-yellow-600", "bg-rose-600", "bg-violet-600"
         ];
         
+        // Helper functions for theme UI
+        const getThemeColor = (index: number) => themeColors[index % themeColors.length];
+        const getThemeDifficulty = (count: number) => {
+          if (count > 1000) return "★☆☆";
+          if (count > 500) return "★★☆";
+          if (count > 200) return "★★★";
+          return "★★★★";
+        };
+        
         // For now, assign random counts since we don't have stats endpoint
         const themesWithData = themesData.data.map((theme: string, index: number) => {
           // Estimate count based on theme popularity (this would come from stats in real app)
@@ -279,18 +292,17 @@ const Puzzles = () => {
                        theme === 'fork' ? baseCount + 300 : 
                        theme === 'pin' ? baseCount + 250 : baseCount;
           
-          const difficulty = count > 1000 ? "★☆☆" : count > 500 ? "★★☆" : count > 200 ? "★★★" : "★★★★";
-          
           return {
             name: theme,
             count: count,
-            difficulty: difficulty,
-            color: themeColors[index % themeColors.length]
+            difficulty: getThemeDifficulty(count),
+            color: getThemeColor(index)
           };
-        }).sort((a: any, b: any) => b.count - a.count)
-          .slice(0, 12); // Show top 12 themes
+        }).sort((a: any, b: any) => b.count - a.count);
         
-        setPuzzleThemes(themesWithData);
+        // Store all themes and show top 10 by default
+        setAllThemes(themesWithData);
+        setPuzzleThemes(themesWithData.slice(0, 10));
       }
     } catch (error) {
       console.error('Failed to load puzzle themes:', error);
@@ -959,7 +971,7 @@ const Puzzles = () => {
             <div className="mb-6 sm:mb-8">
               <h2 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-white mb-4 sm:mb-6 lg:mb-8">Practice by Theme</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 xl:gap-8">
-                {puzzleThemes.map((theme, index) => (
+                {(showAllThemes ? allThemes : puzzleThemes).map((theme, index) => (
                   <Link 
                     key={index} 
                     to={`/puzzle-solver?theme=${theme.name}`}
@@ -985,6 +997,32 @@ const Puzzles = () => {
                   </Link>
                 ))}
               </div>
+              
+              {/* Show More/Show Less Button */}
+              {allThemes.length > 10 && (
+                <div className="flex justify-center mt-6 sm:mt-8">
+                  <button
+                    onClick={() => setShowAllThemes(!showAllThemes)}
+                    className="px-6 sm:px-8 py-3 sm:py-4 bg-[#374162] hover:bg-[#455173] text-white font-semibold rounded-lg transition-colors duration-300 flex items-center gap-2"
+                  >
+                    {showAllThemes ? (
+                      <>
+                        Show Less
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                        </svg>
+                      </>
+                    ) : (
+                      <>
+                        Show More ({allThemes.length - 10} more themes)
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Search and Filter Bar - Responsive */}

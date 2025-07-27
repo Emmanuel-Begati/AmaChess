@@ -28,65 +28,93 @@ class DatabasePuzzleService {
     try {
       console.log('🎲 Getting random puzzle with filters:', filters, 'for user:', userId);
       
-      // If userId provided, get user's rating for adaptive difficulty
+      // If userId provided, get user's rating for ELO-based puzzle selection
       if (userId && !filters.minRating && !filters.maxRating) {
         try {
           const userStats = await this.getUserStats(userId);
           const userRating = userStats.currentPuzzleRating;
-          const ratingRange = 200; // ±200 rating points
           
+          console.log(`👤 User ${userId} current rating: ${userRating}`);
+          
+          // Try ±200 rating points first (standard range)
+          let ratingRange = 200;
           filters.minRating = Math.max(600, userRating - ratingRange);
-          filters.maxRating = Math.min(3000, userRating + ratingRange);
+          filters.maxRating = userRating + ratingRange;
           
-          console.log(`🎯 Adaptive difficulty: User rating ${userRating}, puzzle range ${filters.minRating}-${filters.maxRating}`);
+          console.log(`🎯 Primary search range: ${filters.minRating}-${filters.maxRating}`);
+          
+          // Check if puzzles exist in this range
+          const where = this.buildWhereClause(filters);
+          const puzzleCount = await prisma.puzzle.count({ where });
+          
+          // If no puzzles in ±200 range, expand to ±300
+          if (puzzleCount === 0) {
+            console.log('⚠️ No puzzles in ±200 range, expanding to ±300');
+            ratingRange = 300;
+            filters.minRating = Math.max(600, userRating - ratingRange);
+            filters.maxRating = userRating + ratingRange;
+            
+            console.log(`🔍 Expanded search range: ${filters.minRating}-${filters.maxRating}`);
+          }
+          
+          console.log(`📊 Found ${puzzleCount} puzzles in rating range`);
         } catch (error) {
-          console.warn('⚠️ Could not get user stats for adaptive difficulty:', error.message);
-          // Continue without rating-based filtering
+          console.warn('Failed to get user stats for ELO-based selection:', error);
         }
       }
       
       // Build where clause based on filters
       const where = this.buildWhereClause(filters);
       
-      // Get total count of puzzles matching criteria
+      // Get total count of matching puzzles
       const totalCount = await prisma.puzzle.count({ where });
       
       if (totalCount === 0) {
-        const totalPuzzles = await prisma.puzzle.count();
-        if (totalPuzzles === 0) {
-          throw new Error('No puzzles found in database. Please seed the database with puzzles first.');
-        } else {
-          // If no puzzles in user's rating range, expand the range
-          if (userId && filters.minRating && filters.maxRating) {
-            console.log('🔄 No puzzles in rating range, expanding search...');
-            delete filters.minRating;
-            delete filters.maxRating;
-            return this.getRandomPuzzle(filters, null); // Retry without rating filter
-          }
-          throw new Error(`No puzzles found matching criteria. Total puzzles in database: ${totalPuzzles}`);
-        }
+        throw new Error('No puzzles found matching the specified criteria');
       }
       
-      console.log(`📊 Found ${totalCount} puzzles matching criteria`);
+      console.log(`📊 Total puzzles matching criteria: ${totalCount}`);
       
-      // Generate random offset
-      const randomOffset = Math.floor(Math.random() * totalCount);
-      
-      // Get random puzzle
-      const puzzle = await prisma.puzzle.findFirst({
-        where,
-        skip: randomOffset,
-        include: {
-          _count: {
-            select: {
-              attempts: true,
+      // For ELO-based selection, prefer puzzles closer to user's rating
+      let puzzle;
+      if (userId && filters.minRating && filters.maxRating) {
+        // Try to get puzzle closest to user's rating first
+        const userStats = await this.getUserStats(userId);
+        const userRating = userStats.currentPuzzleRating;
+        
+        // Order by proximity to user rating
+        puzzle = await prisma.puzzle.findFirst({
+          where,
+          orderBy: {
+            rating: userRating > 1500 ? 'desc' : 'asc' // Prefer higher ratings for higher-rated users
+          },
+          skip: Math.floor(Math.random() * Math.min(10, totalCount)), // Random from top 10 closest
+          include: {
+            _count: {
+              select: {
+                attempts: true,
+              }
             }
           }
-        }
-      });
+        });
+      } else {
+        // Standard random selection
+        const randomOffset = Math.floor(Math.random() * totalCount);
+        puzzle = await prisma.puzzle.findFirst({
+          where,
+          skip: randomOffset,
+          include: {
+            _count: {
+              select: {
+                attempts: true,
+              }
+            }
+          }
+        });
+      }
       
       if (!puzzle) {
-        throw new Error('Failed to retrieve random puzzle');
+        throw new Error('Failed to retrieve puzzle');
       }
       
       console.log(`🧩 Selected puzzle: ${puzzle.lichessId} (rating: ${puzzle.rating}, difficulty: ${puzzle.difficulty})`);
@@ -480,70 +508,119 @@ class DatabasePuzzleService {
     }
   }
 
-  // Calculate ELO rating change based on puzzle difficulty and result
-  calculateEloRatingChange(userRating, puzzleRating, solved, timeSpent = 0) {
-    const K = 32; // ELO K-factor (higher = more volatile rating changes)
+  // Calculate K-factor based on user experience and rating (Standard ELO System)
+  calculateKFactor(userStats) {
+    const totalPuzzles = userStats.totalPuzzlesSolved || 0;
+    const currentRating = userStats.currentPuzzleRating || 1200;
     
-    // Calculate expected score (probability of solving)
-    const expected = 1 / (1 + Math.pow(10, (puzzleRating - userRating) / 400));
-    
-    // Actual score (1 for solved, 0 for failed)
-    const actual = solved ? 1 : 0;
-    
-    // Basic ELO calculation
-    let ratingChange = K * (actual - expected);
-    
-    // Time bonus/penalty (optional enhancement)
-    if (solved && timeSpent > 0) {
-      // Bonus for solving quickly (under 30 seconds)
-      if (timeSpent < 30) {
-        ratingChange *= 1.1; // 10% bonus
-      }
-      // Penalty for taking too long (over 5 minutes)
-      else if (timeSpent > 300) {
-        ratingChange *= 0.9; // 10% penalty
-      }
+    // K = 40 for players with fewer than 30 puzzles completed OR rating below 2100
+    if (totalPuzzles < 30 || currentRating < 2100) {
+      return 40;
     }
+    // K = 20 for players with 30+ puzzles completed AND rating between 2100-2400
+    else if (currentRating >= 2100 && currentRating <= 2400) {
+      return 20;
+    }
+    // K = 10 for players with rating above 2400
+    else {
+      return 10;
+    }
+  }
+
+  // Calculate ELO rating change with comprehensive K-factor logic
+  calculateEloRatingChange(userRating, puzzleRating, isCorrect, userStats = null, isFirstAttempt = true) {
+    console.log(`🧮 ELO Calculation Input: userRating=${userRating}, puzzleRating=${puzzleRating}, correct=${isCorrect}, firstAttempt=${isFirstAttempt}`);
+    
+    // Determine K-factor based on user experience and rating
+    let K;
+    const puzzlesSolved = userStats ? userStats.totalPuzzlesSolved : 0;
+    
+    if (puzzlesSolved < 30 || userRating < 2100) {
+      K = 40; // New/developing players
+    } else if (userRating >= 2100 && userRating <= 2400) {
+      K = 20; // Intermediate players
+    } else {
+      K = 10; // Advanced players (>2400)
+    }
+    
+    console.log(`📈 K-factor determined: ${K} (puzzles solved: ${puzzlesSolved}, rating: ${userRating})`);
+    
+    // Expected score calculation using standard ELO formula
+    const expectedScore = 1 / (1 + Math.pow(10, (puzzleRating - userRating) / 400));
+    
+    // Actual score based on performance
+    let actualScore;
+    if (isCorrect) {
+      actualScore = 1; // Full points for correct solve
+    } else if (isFirstAttempt) {
+      // Deduct rating more severely for incorrect first attempts
+      actualScore = 0; // No points, full penalty
+      console.log(`❌ First attempt failed - applying full rating penalty`);
+    } else {
+      // Less severe penalty for subsequent attempts (user learning)
+      actualScore = 0.1; // Minimal points to reduce harsh penalty on retries
+      console.log(`🔄 Retry attempt failed - applying reduced penalty`);
+    }
+    
+    // Calculate base rating change
+    let ratingChange = K * (actualScore - expectedScore);
+    
+    // Additional penalty for incorrect first attempts (streak reset scenario)
+    if (!isCorrect && isFirstAttempt) {
+      // Apply additional penalty for breaking streak
+      const streakPenalty = Math.min(10, K * 0.25); // Up to 25% additional penalty, max 10 points
+      ratingChange -= streakPenalty;
+      console.log(`💔 Additional streak penalty applied: -${streakPenalty.toFixed(1)}`);
+    }
+    
+    // Ensure minimum rating loss cap (don't lose more than 50 points in one puzzle)
+    if (ratingChange < -50) {
+      console.log(`⚠️ Capping rating loss at -50 (was ${ratingChange.toFixed(1)})`);
+      ratingChange = -50;
+    }
+    
+    console.log(`🎯 ELO Result: K=${K}, Expected=${expectedScore.toFixed(3)}, Actual=${actualScore}, Change=${ratingChange.toFixed(1)}`);
     
     return Math.round(ratingChange);
   }
 
-  // Update user statistics after puzzle completion with ELO rating
-  async updateUserStatsAfterPuzzle(userId, puzzleData, isCorrect, timeSpent = 0, hintsUsed = 0, solutionShown = false) {
+  // Handle puzzle attempt with ELO rating system (supports both correct and incorrect attempts)
+  async updateUserStatsAfterPuzzleAttempt(userId, puzzleData, isCorrect, timeSpent = 0, hintsUsed = 0, solutionShown = false, isFirstAttempt = true) {
     await this.initialize();
     
     try {
-      console.log(`📊 Updating stats for user ${userId}: puzzle ${puzzleData.id}, correct: ${isCorrect}, time: ${timeSpent}s`);
+      console.log(`📊 Processing puzzle attempt for user ${userId}: puzzle ${puzzleData.id}, correct: ${isCorrect}, first attempt: ${isFirstAttempt}`);
       
       // Get current user stats
       const userStats = await this.getUserStats(userId);
       const puzzleRating = puzzleData.rating || 1500;
       
-      // Calculate ELO rating change
+      // Calculate ELO rating change using enhanced system
       const ratingChange = this.calculateEloRatingChange(
         userStats.currentPuzzleRating,
         puzzleRating,
         isCorrect,
-        timeSpent
+        userStats,
+        isFirstAttempt
       );
       
       const newRating = Math.max(600, userStats.currentPuzzleRating + ratingChange); // Minimum rating of 600
       
-      console.log(`🎯 Rating change: ${userStats.currentPuzzleRating} + ${ratingChange} = ${newRating}`);
+      console.log(`🎯 ELO Rating Update: ${userStats.currentPuzzleRating} + ${ratingChange} = ${newRating}`);
       
       // Save puzzle attempt to database
       const puzzleAttempt = await prisma.puzzleAttempt.create({
         data: {
           userId,
           puzzleId: puzzleData.id,
-          isCompleted: true,
+          isCompleted: isCorrect, // Only mark as completed if solved
           isSolved: isCorrect,
           movesPlayed: JSON.stringify([]), // Could be enhanced to track actual moves
           timeSpent: Math.round(timeSpent),
           hintsUsed: hintsUsed,
           solutionShown: solutionShown,
-          accuracy: isCorrect ? 100 : 0, // Could be more nuanced
-          completedAt: new Date()
+          accuracy: isCorrect ? 100 : 0,
+          completedAt: isCorrect ? new Date() : null // Only set completion time if solved
         }
       });
       
@@ -551,7 +628,21 @@ class DatabasePuzzleService {
       
       // Calculate updated statistics
       const newTotalSolved = userStats.totalPuzzlesSolved + (isCorrect ? 1 : 0);
-      const newCurrentStreak = isCorrect ? userStats.currentStreak + 1 : 0;
+      
+      // Streak logic: Reset to 0 on incorrect first attempt, increment on correct solve
+      let newCurrentStreak;
+      if (isCorrect) {
+        newCurrentStreak = userStats.currentStreak + 1;
+        console.log(`🔥 Streak continued: ${userStats.currentStreak} → ${newCurrentStreak}`);
+      } else if (isFirstAttempt) {
+        newCurrentStreak = 0;
+        console.log(`💔 Streak reset due to incorrect first attempt: ${userStats.currentStreak} → 0`);
+      } else {
+        // Keep current streak if it's not the first attempt (user can retry)
+        newCurrentStreak = userStats.currentStreak;
+        console.log(`🔄 Streak maintained on retry: ${newCurrentStreak}`);
+      }
+      
       const newBestStreak = Math.max(userStats.bestStreak, newCurrentStreak);
       const newTotalTime = userStats.totalTimeSpent + Math.round(timeSpent);
       
@@ -572,23 +663,30 @@ class DatabasePuzzleService {
           currentStreak: newCurrentStreak,
           bestStreak: newBestStreak,
           totalTimeSpent: newTotalTime,
-          averageAccuracy: Math.round(newAccuracy * 100) / 100, // Round to 2 decimal places
+          averageAccuracy: Math.round(newAccuracy * 100) / 100,
           averageTimePerPuzzle: Math.round((newTotalTime / Math.max(totalAttempts, 1)) * 100) / 100,
           lastActiveDate: new Date()
         }
       });
       
-      console.log(`✅ Updated user stats: solved ${newTotalSolved}, rating ${newRating}, accuracy ${newAccuracy.toFixed(1)}%`);
+      console.log(`✅ Updated user stats: solved ${newTotalSolved}, rating ${newRating}, streak ${newCurrentStreak}, accuracy ${newAccuracy.toFixed(1)}%`);
       
       return {
         ...updatedStats,
         ratingChange: ratingChange,
-        attemptId: puzzleAttempt.id
+        attemptId: puzzleAttempt.id,
+        wasFirstAttempt: isFirstAttempt,
+        streakReset: isFirstAttempt && !isCorrect
       };
     } catch (error) {
-      console.error('❌ Error updating user stats:', error);
+      console.error('❌ Error updating user stats after puzzle attempt:', error);
       throw error;
     }
+  }
+
+  // Legacy method for backward compatibility
+  async updateUserStatsAfterPuzzle(userId, puzzleData, isCorrect, timeSpent = 0, hintsUsed = 0, solutionShown = false) {
+    return this.updateUserStatsAfterPuzzleAttempt(userId, puzzleData, isCorrect, timeSpent, hintsUsed, solutionShown, true);
   }
 
   // Get puzzle rating leaderboard
