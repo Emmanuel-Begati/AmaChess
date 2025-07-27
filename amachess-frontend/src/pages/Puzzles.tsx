@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ChessGame from '../components/ChessGame';
@@ -9,9 +9,9 @@ import { Puzzle, UserPuzzleStats, DailyChallenge, DailyChallengeStats, puzzleSer
 
 const Puzzles = () => {
   const { user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('All');
   const [selectedDifficulty, setSelectedDifficulty] = useState('All');
-  const [dailyPuzzleCompleted, setDailyPuzzleCompleted] = useState(false);
   const [randomPuzzleMode, setRandomPuzzleMode] = useState(false);
   
   // New state for user statistics and daily challenge
@@ -250,7 +250,7 @@ const Puzzles = () => {
   
   // State for showing more themes
   const [showAllThemes, setShowAllThemes] = useState(false);
-  const [allThemes, setAllThemes] = useState([]);
+  const [allThemes, setAllThemes] = useState<Array<{name: string, count: number, difficulty: string, color: string}>>([]);
 
   // Load actual themes from the database
   useEffect(() => {
@@ -306,29 +306,19 @@ const Puzzles = () => {
       }
     } catch (error) {
       console.error('Failed to load puzzle themes:', error);
-      // Keep the default themes if API fails
+      // Use fallback themes if API fails
+      const fallbackThemes = [
+        { name: 'mate', count: 850, difficulty: '★★★', color: 'bg-blue-600' },
+        { name: 'fork', count: 720, difficulty: '★★☆', color: 'bg-green-600' },
+        { name: 'pin', count: 680, difficulty: '★★☆', color: 'bg-purple-600' },
+        { name: 'skewer', count: 450, difficulty: '★★★', color: 'bg-red-600' },
+        { name: 'deflection', count: 380, difficulty: '★★★★', color: 'bg-orange-600' }
+      ];
+      setAllThemes(fallbackThemes);
+      setPuzzleThemes(fallbackThemes);
     }
   };
 
-  const solveDailyPuzzle = () => {
-    setDailyPuzzleCompleted(true);
-  };
-
-  const handlePuzzleMove = (move, newFen) => {
-    // Handle puzzle move logic here
-    console.log('Puzzle move:', move, newFen);
-  };
-
-  const handleDailyPuzzleMove = (moveObj) => {
-    console.log('Daily puzzle move:', moveObj);
-    // Check if move is correct solution
-    // Note: You'd need to implement proper move validation here
-    if (moveObj.from === 'e2' && moveObj.to === 'e4') { // Example check
-      solveDailyPuzzle();
-    }
-  };
-
-  // Random puzzles database (in real app, this would come from your backend)
   const randomPuzzles = [
     {
       id: "rp_001",
@@ -434,7 +424,6 @@ const Puzzles = () => {
 
   const exitRandomPuzzleMode = () => {
     setRandomPuzzleMode(false);
-    setShowSolution(false);
     resetPuzzle();
   };
 
@@ -617,6 +606,24 @@ const Puzzles = () => {
               </div>
             </div>
 
+            {/* Prominent CTA Section */}
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 lg:p-8 mb-8 border border-blue-500/30 shadow-lg shadow-blue-500/20">
+              <div className="text-center">
+                <h2 className="text-2xl lg:text-3xl font-bold text-white mb-3">Ready to Solve Puzzles?</h2>
+                <p className="text-blue-100 text-lg mb-6">Jump into our interactive puzzle solver and start improving your chess skills!</p>
+                <Link 
+                  to="/puzzle-solver"
+                  className="inline-flex items-center gap-3 px-8 py-4 bg-white text-blue-600 font-bold text-lg rounded-xl hover:bg-blue-50 transition-all duration-300 hover:scale-105 shadow-lg"
+                >
+                  <span className="text-2xl">🧩</span>
+                  Start Solving Puzzles Now
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </Link>
+              </div>
+            </div>
+
             {/* User Statistics Cards - Responsive Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 xl:gap-8 mb-6 sm:mb-8 bg-[#121621]">
               <div className="bg-gradient-to-br from-[#1e293b] to-[#334155] rounded-lg xs:rounded-xl p-3 sm:p-4 lg:p-6 border border-[#475569]">
@@ -689,36 +696,43 @@ const Puzzles = () => {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
-                {/* Chess Board */}
+                {/* Chess Board Preview */}
                 <div className="bg-[#334155] rounded-lg xs:rounded-xl p-3 sm:p-4 lg:p-6 order-2 lg:order-1">
                   <div className="flex justify-center mb-3 sm:mb-4">
                     {dailyChallenge ? (
-                      <ChessGame
-                        isModalMode={true}
-                        position={dailyChallenge.fen}
-                        onMove={handleDailyPuzzleMove}
-                        interactive={!dailyPuzzleCompleted}
-                        showNotation={false}
-                        engineEnabled={false}
-                      />
+                      <div className="relative">
+                        <ChessGame
+                          isModalMode={true}
+                          position={dailyChallenge.fen}
+                          onMove={() => {}} // Disabled interaction
+                          interactive={false}
+                          showNotation={false}
+                          engineEnabled={false}
+                        />
+                        {/* Overlay to indicate it's a preview */}
+                        <div className="absolute inset-0 bg-black/20 rounded-lg flex items-center justify-center">
+                          <div className="bg-white/90 text-black px-3 py-1 rounded-lg text-sm font-semibold">
+                            Preview
+                          </div>
+                        </div>
+                      </div>
                     ) : (
                       <div className="w-64 h-64 bg-[#455173] rounded-lg flex items-center justify-center">
                         <p className="text-[#97a1c4]">Loading daily challenge...</p>
                       </div>
                     )}
                   </div>
-                  <div className="text-center">
+                  <div className="text-center space-y-3">
                     <p className="text-[#97a1c4] text-sm xs:text-base mb-3 xs:mb-4 leading-relaxed">{dailyChallenge?.description || 'Loading puzzle description...'}</p>
-                    {!dailyPuzzleCompleted ? (
-                      <p className="text-blue-400 text-sm xs:text-base font-medium">
-                        Make your move on the board above
-                      </p>
-                    ) : (
-                      <div className="bg-green-600 text-white p-3 xs:p-4 rounded-lg">
-                        <p className="font-semibold text-sm xs:text-base lg:text-lg">✓ Completed!</p>
-                        <p className="text-xs xs:text-sm opacity-90">+25 rating points earned</p>
-                      </div>
-                    )}
+                    <button 
+                      onClick={() => navigate(`/puzzle-solver?daily=${dailyChallenge?.id || 'daily-' + new Date().toISOString().split('T')[0]}&theme=${dailyChallenge?.themes?.[0]?.toLowerCase() || 'tactical'}&rating=${dailyChallenge?.rating || 1500}`)}
+                      className="w-full py-3 bg-gradient-to-r from-[#115fd4] to-[#4a90e2] text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-[#115fd4]/25 transition-all duration-300"
+                    >
+                      🎯 Take Daily Challenge
+                    </button>
+                    <p className="text-center text-gray-400 text-sm">
+                      Solve today's featured puzzle and continue with more!
+                    </p>
                   </div>
                 </div>
 
@@ -1025,54 +1039,6 @@ const Puzzles = () => {
               )}
             </div>
 
-            {/* Search and Filter Bar - Responsive */}
-            <div className="bg-[#272e45] rounded-xl lg:rounded-2xl p-4 sm:p-6 lg:p-8 border border-[#374162] mb-6">
-              <h3 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-semibold text-white mb-4 sm:mb-6 lg:mb-8">Find Specific Puzzles</h3>
-              {/* <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
-                <div>
-                  <label className="block text-[#97a1c4] text-sm sm:text-base lg:text-lg mb-2 sm:mb-3">Search puzzles</label>
-                  <input
-                    type="text"
-                    placeholder="Enter keywords..."
-                    className="w-full px-3 sm:px-4 lg:px-5 py-2.5 sm:py-3 lg:py-4 bg-[#374162] border border-[#455173] rounded-lg lg:rounded-xl text-white placeholder-[#97a1c4] focus:outline-none focus:border-blue-600 text-sm sm:text-base lg:text-lg"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[#97a1c4] text-sm sm:text-base lg:text-lg mb-2 sm:mb-3">Rating range</label>
-                  <select className="w-full px-3 sm:px-4 lg:px-5 py-2.5 sm:py-3 lg:py-4 bg-[#374162] border border-[#455173] rounded-lg lg:rounded-xl text-white focus:outline-none focus:border-blue-600 text-sm sm:text-base lg:text-lg">
-                    <option>All ratings</option>
-                    <option>1000-1400</option>
-                    <option>1400-1800</option>
-                    <option>1800+</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[#97a1c4] text-sm sm:text-base lg:text-lg mb-2 sm:mb-3">Theme</label>
-                  <select className="w-full px-3 sm:px-4 lg:px-5 py-2.5 sm:py-3 lg:py-4 bg-[#374162] border border-[#455173] rounded-lg lg:rounded-xl text-white focus:outline-none focus:border-blue-600 text-sm sm:text-base lg:text-lg">
-                    <option>All themes</option>
-                    <option>Pin</option>
-                    <option>Fork</option>
-                    <option>Skewer</option>
-                    <option>Back Rank</option>
-                    <option>Deflection</option>
-                  </select>
-                </div>
-              </div> */}
-              <div className="mt-4 sm:mt-6 lg:mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4 lg:gap-6">
-                <Link 
-                  to="/puzzle-solver"
-                  className="flex-1 px-6 sm:px-8 lg:px-10 py-3 sm:py-4 lg:py-5 bg-blue-800 hover:bg-blue-700 text-white font-semibold rounded-lg lg:rounded-xl transition-colors text-center text-sm sm:text-base lg:text-lg xl:text-xl"
-                >
-                  Start Solving Puzzles
-                </Link>
-                <Link
-                  to="/puzzle-training"
-                  className="flex-1 px-6 sm:px-8 lg:px-10 py-3 sm:py-4 lg:py-5 bg-green-700 hover:bg-green-800 text-white font-semibold rounded-lg lg:rounded-xl transition-colors text-center text-sm sm:text-base lg:text-lg xl:text-xl"
-                >
-                  Puzzle Training
-                </Link>
-              </div>
-            </div>
           </div>
         </div>
       </main>

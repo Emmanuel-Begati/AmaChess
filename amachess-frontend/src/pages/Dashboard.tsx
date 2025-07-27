@@ -8,7 +8,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { puzzleService } from '../services/puzzleService';
 
 const Dashboard = () => {
-  const [puzzleCompleted, setPuzzleCompleted] = useState(false);
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [lichessStats, setLichessStats] = useState<any>(null);
   const [puzzleStats, setPuzzleStats] = useState<any>(null);
@@ -192,6 +191,7 @@ const Dashboard = () => {
   ];
 
   const dailyPuzzle = {
+    id: 'daily-' + new Date().toISOString().split('T')[0], // Generate unique daily ID
     fen: 'r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 4 4',
     solution: 'Nxe5',
     theme: 'Fork',
@@ -446,7 +446,7 @@ const Dashboard = () => {
 
             {/* Daily Puzzle */}
             <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl p-8 border border-slate-700/50 backdrop-blur-sm">
-              <h3 className="text-2xl font-bold text-white mb-4">Daily Puzzle</h3>
+              <h3 className="text-2xl font-bold text-white mb-4">Daily Challenge</h3>
               <div className="bg-slate-700/50 rounded-xl p-4 mb-4">
                 <div className="aspect-square bg-gradient-to-br from-amber-100 to-amber-200 rounded-lg mb-4 flex items-center justify-center">
                   <span className="text-slate-800 text-4xl">♛</span>
@@ -457,19 +457,17 @@ const Dashboard = () => {
                   <p className="text-gray-400">Moves: <span className="text-white">{dailyPuzzle.moves}</span></p>
                 </div>
               </div>
-              {!puzzleCompleted ? (
+              <div className="space-y-3">
                 <button 
-                  onClick={() => setPuzzleCompleted(true)}
+                  onClick={() => navigate(`/puzzle-solver?daily=${dailyPuzzle.id}&theme=${dailyPuzzle.theme.toLowerCase()}&rating=${dailyPuzzle.rating}`)}
                   className="w-full py-3 bg-gradient-to-r from-[#115fd4] to-[#4a90e2] text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-[#115fd4]/25 transition-all duration-300"
                 >
-                  Solve Puzzle
+                  🎯 Take Daily Challenge
                 </button>
-              ) : (
-                <div className="text-center">
-                  <p className="text-green-400 font-semibold mb-2">✓ Completed!</p>
-                  <button className="text-[#115fd4] hover:text-[#4a90e2] font-medium">View Solution</button>
-                </div>
-              )}
+                <p className="text-center text-gray-400 text-sm">
+                  Solve today's featured puzzle and continue with more!
+                </p>
+              </div>
             </div>
           </div>
 
