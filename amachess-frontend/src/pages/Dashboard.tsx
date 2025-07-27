@@ -5,11 +5,15 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import LichessProgressStats from '../components/LichessProgressStats';
 import { useAuth } from '../contexts/AuthContext';
+import { puzzleService } from '../services/puzzleService';
 
 const Dashboard = () => {
   const [puzzleCompleted, setPuzzleCompleted] = useState(false);
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [lichessStats, setLichessStats] = useState<any>(null);
+  const [puzzleStats, setPuzzleStats] = useState<any>(null);
+  const [puzzleAnalytics, setPuzzleAnalytics] = useState<any>(null);
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
@@ -65,6 +69,35 @@ const Dashboard = () => {
 
     fetchDashboardData();
   }, []);
+
+  // Fetch puzzle analytics data
+  useEffect(() => {
+    const fetchPuzzleData = async () => {
+      if (!user?.id) return;
+      
+      try {
+        const userId = user.id;
+        
+        // Fetch user puzzle stats
+        const statsResponse = await puzzleService.getUserStats(userId);
+        setPuzzleStats(statsResponse);
+        
+        // Fetch user analytics (last 30 days)
+        const analyticsResponse = await puzzleService.getUserAnalytics(userId, 30);
+        setPuzzleAnalytics(analyticsResponse);
+        
+        // Fetch leaderboard
+        const leaderboardResponse = await puzzleService.getLeaderboard(10);
+        setLeaderboard(leaderboardResponse);
+        
+      } catch (err) {
+        console.error('Failed to fetch puzzle data:', err);
+        // Don't set error state for puzzle data - just log it
+      }
+    };
+
+    fetchPuzzleData();
+  }, [user]);
 
   // Remove the separate Lichess API call since it's now handled in the dashboard endpoint
   // This effect is now commented out since we get Lichess data from the dashboard
@@ -237,6 +270,49 @@ const Dashboard = () => {
             </div>
           </div>
 
+          {/* Puzzle Analytics */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-2xl text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-blue-100 text-sm font-medium">Puzzles Solved</p>
+                  <p className="text-2xl font-bold">{puzzleStats?.totalPuzzlesSolved || 0}</p>
+                </div>
+                <div className="text-3xl opacity-80">🧩</div>
+              </div>
+            </div>
+            
+            <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 rounded-2xl text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-green-100 text-sm font-medium">Puzzle Rating</p>
+                  <p className="text-2xl font-bold">{puzzleStats?.currentPuzzleRating || 1200}</p>
+                </div>
+                <div className="text-3xl opacity-80">⭐</div>
+              </div>
+            </div>
+            
+            <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-6 rounded-2xl text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-purple-100 text-sm font-medium">Current Streak</p>
+                  <p className="text-2xl font-bold">{puzzleStats?.currentStreak || 0}</p>
+                </div>
+                <div className="text-3xl opacity-80">🔥</div>
+              </div>
+            </div>
+            
+            <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-6 rounded-2xl text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-orange-100 text-sm font-medium">Accuracy</p>
+                  <p className="text-2xl font-bold">{puzzleStats?.averageAccuracy ? Math.round(puzzleStats.averageAccuracy) : 0}%</p>
+                </div>
+                <div className="text-3xl opacity-80">🎯</div>
+              </div>
+            </div>
+          </div>
+
           {/* Rating Overview Cards */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
             {/* Lichess Stats */}
@@ -392,6 +468,114 @@ const Dashboard = () => {
                 <div className="text-center">
                   <p className="text-green-400 font-semibold mb-2">✓ Completed!</p>
                   <button className="text-[#115fd4] hover:text-[#4a90e2] font-medium">View Solution</button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Puzzle Analytics & Leaderboard */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+            {/* Puzzle Analytics */}
+            <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl p-8 border border-slate-700/50 backdrop-blur-sm">
+              <h3 className="text-2xl font-bold text-white mb-6">Puzzle Analytics</h3>
+              {puzzleAnalytics ? (
+                <div className="space-y-6">
+                  {/* Weekly Progress */}
+                  {puzzleAnalytics.weeklyProgress && (
+                    <div>
+                      <h4 className="text-lg font-semibold text-white mb-3">Weekly Progress</h4>
+                      <div className="grid grid-cols-7 gap-2">
+                        {puzzleAnalytics.weeklyProgress.map((day: any, index: number) => (
+                          <div key={index} className="text-center">
+                            <div className="text-xs text-gray-400 mb-1">{day.day}</div>
+                            <div className={`h-8 rounded flex items-center justify-center text-xs font-bold ${
+                              day.solved > 0 ? 'bg-green-500 text-white' : 'bg-gray-700 text-gray-400'
+                            }`}>
+                              {day.solved}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Theme Performance */}
+                  {puzzleAnalytics.themePerformance && (
+                    <div>
+                      <h4 className="text-lg font-semibold text-white mb-3">Theme Performance</h4>
+                      <div className="space-y-2">
+                        {puzzleAnalytics.themePerformance.slice(0, 5).map((theme: any, index: number) => (
+                          <div key={index} className="flex justify-between items-center">
+                            <span className="text-gray-300 capitalize">{theme.theme}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-white font-semibold">{theme.accuracy}%</span>
+                              <div className="w-16 bg-gray-700 rounded-full h-2">
+                                <div 
+                                  className="bg-blue-500 h-2 rounded-full" 
+                                  style={{width: `${theme.accuracy}%`}}
+                                ></div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Summary Stats */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center p-3 bg-slate-700/50 rounded-lg">
+                      <div className="text-2xl font-bold text-white">{puzzleAnalytics.totalSolved || 0}</div>
+                      <div className="text-xs text-gray-400">Total Solved</div>
+                    </div>
+                    <div className="text-center p-3 bg-slate-700/50 rounded-lg">
+                      <div className="text-2xl font-bold text-white">{puzzleAnalytics.overallAccuracy || 0}%</div>
+                      <div className="text-xs text-gray-400">Accuracy</div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-400">Solve some puzzles to see your analytics!</p>
+                </div>
+              )}
+            </div>
+            
+            {/* Leaderboard */}
+            <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl p-8 border border-slate-700/50 backdrop-blur-sm">
+              <h3 className="text-2xl font-bold text-white mb-6">Puzzle Leaderboard</h3>
+              {leaderboard && leaderboard.length > 0 ? (
+                <div className="space-y-3">
+                  {leaderboard.map((player: any, index: number) => (
+                    <div key={index} className={`flex items-center justify-between p-3 rounded-lg ${
+                      player.userId === user?.id ? 'bg-blue-600/20 border border-blue-600/50' : 'bg-slate-700/50'
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                          index === 0 ? 'bg-yellow-500 text-black' :
+                          index === 1 ? 'bg-gray-400 text-black' :
+                          index === 2 ? 'bg-amber-600 text-white' :
+                          'bg-slate-600 text-white'
+                        }`}>
+                          {index + 1}
+                        </div>
+                        <div>
+                          <div className="text-white font-semibold">
+                            {player.userId === user?.id ? 'You' : `Player ${player.userId.slice(0, 8)}`}
+                          </div>
+                          <div className="text-xs text-gray-400">{player.totalPuzzlesSolved} solved</div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-white font-bold">{player.currentPuzzleRating}</div>
+                        <div className="text-xs text-gray-400">rating</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-400">No leaderboard data available</p>
                 </div>
               )}
             </div>

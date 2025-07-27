@@ -19,3 +19,4 @@ stockfish/
 .env
 
 utils/
+*__pycache__

@@ -905,7 +905,7 @@ const Puzzles = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {leaderboard.map((player, index) => (
+                      {realLeaderboard.map((player, index) => (
                         <tr key={index} className={`border-b border-[#374162] transition-colors duration-200 ${
                           player.highlight 
                             ? 'bg-blue-800/20 border-blue-600' 
@@ -913,36 +913,39 @@ const Puzzles = () => {
                         }`}>
                           <td className="px-3 sm:px-4 lg:px-6 xl:px-8 py-3 sm:py-4 lg:py-6">
                             <div className="flex items-center gap-1 sm:gap-2 lg:gap-3">
-                              {player.rank <= 3 && (
+                              {(player.rank || index + 1) <= 3 && (
                                 <span className="text-base sm:text-lg lg:text-xl">
-                                  {player.rank === 1 ? '🥇' : player.rank === 2 ? '🥈' : '🥉'}
+                                  {(player.rank || index + 1) === 1 ? '🥇' : (player.rank || index + 1) === 2 ? '🥈' : '🥉'}
                                 </span>
                               )}
-                              <span className={`font-bold text-sm sm:text-base lg:text-lg ${player.highlight ? 'text-blue-400' : 'text-white'}`}>
-                                #{player.rank}
+                              <span className="text-white text-sm sm:text-base lg:text-lg font-medium">
+                                #{player.rank || index + 1}
                               </span>
                             </div>
                           </td>
                           <td className="px-3 sm:px-4 lg:px-6 xl:px-8 py-3 sm:py-4 lg:py-6">
-                            <span className={`font-medium text-sm sm:text-base lg:text-lg ${player.highlight ? 'text-blue-400' : 'text-white'} truncate block max-w-[150px] lg:max-w-[200px]`}>
-                              {player.username}
-                            </span>
+                            <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+                              <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs sm:text-sm lg:text-base">
+                                {(player.name || player.username || 'U').charAt(0).toUpperCase()}
+                              </div>
+                              <span className="text-white text-sm sm:text-base lg:text-lg font-medium">{player.name || player.username || 'Unknown'}</span>
+                            </div>
                           </td>
                           <td className="px-3 sm:px-4 lg:px-6 xl:px-8 py-3 sm:py-4 lg:py-6">
-                            <span className={`font-bold text-sm sm:text-base lg:text-lg xl:text-xl ${
-                              player.rating >= 2500 ? 'text-yellow-400' :
-                              player.rating >= 2000 ? 'text-purple-400' :
-                              player.rating >= 1500 ? 'text-blue-400' :
+                            <span className={`text-sm sm:text-base lg:text-lg font-bold ${
+                              (player.rating || player.currentPuzzleRating || 1200) >= 2000 ? 'text-yellow-400' :
+                              (player.rating || player.currentPuzzleRating || 1200) >= 1800 ? 'text-orange-400' :
+                              (player.rating || player.currentPuzzleRating || 1200) >= 1500 ? 'text-blue-400' :
                               'text-green-400'
                             }`}>
-                              {player.rating}
+                              {player.rating || player.currentPuzzleRating || 1200}
                             </span>
                           </td>
                           <td className="px-3 sm:px-4 lg:px-6 xl:px-8 py-3 sm:py-4 lg:py-6 text-[#97a1c4] text-sm sm:text-base lg:text-lg">
-                            {player.solved.toLocaleString()}
+                            {(player.solved || player.totalPuzzlesSolved || 0).toLocaleString()}
                           </td>
                           <td className="px-3 sm:px-4 lg:px-6 xl:px-8 py-3 sm:py-4 lg:py-6">
-                            <span className="text-base sm:text-lg lg:text-xl xl:text-2xl">{player.country}</span>
+                            <span className="text-base sm:text-lg lg:text-xl xl:text-2xl">{player.country || '🌍'}</span>
                           </td>
                         </tr>
                       ))}

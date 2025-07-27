@@ -259,21 +259,43 @@ router.get('/user/:userId/stats', auth, async (req, res) => {
 router.post('/user/:userId/stats/update', auth, async (req, res) => {
   try {
     const { userId } = req.params;
-    const { puzzleData, isCorrect, timeSpent } = req.body;
+    const { puzzleData, isCorrect, timeSpent, hintsUsed, solutionShown } = req.body;
+    
+    console.log('🎯 PUZZLE STATS UPDATE REQUEST:');
+    console.log('- User ID:', userId);
+    console.log('- Puzzle ID:', puzzleData?.id);
+    console.log('- Is Correct:', isCorrect);
+    console.log('- Time Spent:', timeSpent);
+    console.log('- Hints Used:', hintsUsed);
+    console.log('- Solution Shown:', solutionShown);
+    console.log('- Auth User:', req.user?.id);
+    
+    // Verify user exists
+    const userExists = await activePuzzleService.getUserStats(userId);
+    console.log('- User exists in DB:', !!userExists);
     
     const updatedStats = await activePuzzleService.updateUserStatsAfterPuzzle(
       userId, 
       puzzleData, 
       isCorrect, 
-      timeSpent
+      timeSpent,
+      hintsUsed || 0,
+      solutionShown || false
     );
+    
+    console.log('✅ PUZZLE STATS UPDATED SUCCESSFULLY');
+    console.log('- New total solved:', updatedStats.totalPuzzlesSolved);
+    console.log('- New rating:', updatedStats.currentPuzzleRating);
+    console.log('- New streak:', updatedStats.currentStreak);
     
     res.json({
       success: true,
       data: updatedStats
     });
   } catch (error) {
-    console.error('Error updating user stats:', error);
+    console.error('❌ ERROR UPDATING USER STATS:', error);
+    console.error('- Error message:', error.message);
+    console.error('- Error stack:', error.stack);
     res.status(500).json({
       success: false,
       error: 'Failed to update user statistics',
@@ -338,6 +360,34 @@ router.get('/leaderboard', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to load leaderboard',
+      message: error.message
+    });
+  }
+});
+
+// Test endpoint for debugging API connectivity
+router.get('/user/:userId/test', auth, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    console.log('🧪 TEST ENDPOINT CALLED:');
+    console.log('- User ID from params:', userId);
+    console.log('- Auth User ID:', req.user?.id);
+    console.log('- Auth User Email:', req.user?.email);
+    
+    res.json({
+      success: true,
+      data: {
+        paramUserId: userId,
+        authUserId: req.user?.id,
+        authUserEmail: req.user?.email,
+        message: 'API connectivity test successful'
+      }
+    });
+  } catch (error) {
+    console.error('❌ TEST ENDPOINT ERROR:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Test endpoint failed',
       message: error.message
     });
   }

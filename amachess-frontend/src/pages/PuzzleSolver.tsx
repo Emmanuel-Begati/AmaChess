@@ -6,6 +6,8 @@ import ChessGame from '../components/ChessGame';
 import { usePuzzle } from '../hooks/usePuzzle';
 import { Chess } from 'chess.js';
 import { puzzleService } from '../services/puzzleService';
+import { useAuth } from '../contexts/AuthContext';
+import { testPuzzleAPI, testPuzzleCompletion } from '../utils/apiTest';
 
 interface PuzzleTheme {
   name: string;
@@ -32,7 +34,8 @@ const PuzzleSolver = () => {
     streak: 0,
     averageTime: 0
   });
-  const [userId] = useState('user123'); // TODO: Get from auth context
+  const { user } = useAuth();
+  const userId = user?.id || 'anonymous';
   const [puzzleStartTime, setPuzzleStartTime] = useState<number>(Date.now());
   const [hintsUsed, setHintsUsed] = useState(0);
   const [solutionShown, setSolutionShown] = useState(false);
@@ -70,6 +73,37 @@ const PuzzleSolver = () => {
     exitSolutionMode,
     boardKey
   } = usePuzzle();
+  
+  // Debug function for testing API connectivity
+  const debugAPI = async () => {
+    console.log('🔧 DEBUGGING PUZZLE API:');
+    console.log('- Current user:', user);
+    console.log('- User ID being used:', userId);
+    console.log('- Current puzzle:', currentPuzzle);
+    
+    if (userId === 'anonymous') {
+      console.warn('⚠️ User not authenticated - cannot test API');
+      return;
+    }
+    
+    try {
+      // Test API connectivity
+      await testPuzzleAPI(userId);
+      
+      // Test puzzle completion if we have a current puzzle
+      if (currentPuzzle) {
+        await testPuzzleCompletion(userId, currentPuzzle);
+      }
+    } catch (error) {
+      console.error('❌ Debug API test failed:', error);
+    }
+  };
+  
+  // Make debug function available globally for console testing
+  useEffect(() => {
+    (window as any).debugPuzzleAPI = debugAPI;
+    console.log('🔧 Debug function available: window.debugPuzzleAPI()');
+  }, [user, currentPuzzle, debugAPI]);
 
   // Determine board orientation and turn indicator
   const [activeColor, setActiveColor] = useState<'white' | 'black'>('white');
@@ -117,25 +151,47 @@ const PuzzleSolver = () => {
       });
       
       // Update backend stats
-      puzzleService.updateUserStats(
-        userId,
-        currentPuzzle,
-        true, // isCorrect
-        timeSpent,
-        hintsUsed,
-        solutionShown
-      ).then(() => {
-        console.log('User stats updated successfully');
-      }).catch((error) => {
-        console.error('Failed to update user stats:', error);
-      });
+      if (userId && userId !== 'anonymous') {
+        puzzleService.updateUserStats(
+          userId,
+          currentPuzzle,
+          true, // isCorrect
+          timeSpent,
+          hintsUsed,
+          solutionShown
+        ).then((updatedStats) => {
+          console.log('User stats updated successfully:', updatedStats);
+          // Update local stats with real data from backend
+          setPuzzleStats(prev => ({
+            ...prev,
+            solved: updatedStats.totalPuzzlesSolved || prev.solved + 1,
+            accuracy: Math.round(updatedStats.averageAccuracy || prev.accuracy),
+            streak: updatedStats.currentStreak || prev.streak + 1
+          }));
+        }).catch((error) => {
+          console.error('Failed to update user stats:', error);
+          setNotification({
+            type: 'error',
+            message: 'Failed to save progress. Please check your connection.'
+          });
+          // Still update local stats as fallback
+          setPuzzleStats(prev => ({
+            ...prev,
+            solved: prev.solved + 1,
+            streak: prev.streak + 1
+          }));
+        });
+      } else {
+        console.warn('No authenticated user - stats not saved');
+        // Update local stats only for anonymous users
+        setPuzzleStats(prev => ({
+          ...prev,
+          solved: prev.solved + 1,
+          streak: prev.streak + 1
+        }));
+      }
       
-      // Update local stats
-      setPuzzleStats(prev => ({
-        ...prev,
-        solved: prev.solved + 1,
-        streak: prev.streak + 1
-      }));
+
     }
   }, [isCompleted, solvedMoves, totalMoves, currentPuzzle, puzzleStartTime, userId, hintsUsed, solutionShown]);
 
