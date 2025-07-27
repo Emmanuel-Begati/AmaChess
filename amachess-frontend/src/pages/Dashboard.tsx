@@ -199,7 +199,10 @@ const Dashboard = () => {
     const loadDailyPuzzle = async () => {
       try {
         setDailyPuzzleLoading(true);
-        const puzzle = await dailyPuzzleService.getDailyPuzzle();
+        // Use a specific puzzle ID for the daily challenge
+        // You can modify this to use any puzzle ID you want
+        const puzzleId = 'lichess-01av5'; // Example puzzle ID - replace with desired puzzle
+        const puzzle = await dailyPuzzleService.getDailyPuzzle(puzzleId);
         setDailyPuzzle(puzzle);
       } catch (error) {
         console.error('Failed to load daily puzzle:', error);

@@ -246,9 +246,15 @@ class PuzzleService {
   }
 
   // Daily Challenge Methods
-  async getDailyChallenge(): Promise<DailyChallenge> {
+  async getDailyChallenge(puzzleId?: string): Promise<DailyChallenge> {
     try {
-      const response = await axios.get(`${API_BASE_URL}/puzzles/daily-challenge`);
+      const params = new URLSearchParams();
+      if (puzzleId) {
+        params.append('puzzleId', puzzleId);
+      }
+      
+      const url = `${API_BASE_URL}/puzzles/daily-challenge${params.toString() ? '?' + params.toString() : ''}`;
+      const response = await axios.get(url);
       
       if (!response.data.success) {
         throw new Error(response.data.error || 'Failed to load daily challenge');

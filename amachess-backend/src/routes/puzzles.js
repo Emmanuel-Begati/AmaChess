@@ -335,7 +335,8 @@ router.post('/user/:userId/stats/update', auth, async (req, res) => {
 // Get daily challenge puzzle
 router.get('/daily-challenge', async (req, res) => {
   try {
-    const dailyChallenge = await activePuzzleService.getDailyChallenge();
+    const { puzzleId } = req.query;
+    const dailyChallenge = await activePuzzleService.getDailyChallenge(puzzleId);
     
     res.json({
       success: true,

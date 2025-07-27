@@ -4,25 +4,27 @@ class DailyPuzzleService {
   private dailyPuzzle: DailyChallenge | null = null;
   private loading: boolean = false;
   private error: string | null = null;
-  private lastFetchDate: string | null = null;
-
-  // Get today's date string for caching
-  private getTodayString(): string {
-    return new Date().toISOString().split('T')[0] || '';
-  }
+  private lastFetchedPuzzleId: string | null = null;
 
   // Check if we need to fetch new daily puzzle
-  private shouldFetch(): boolean {
-    const today = this.getTodayString();
-    return !this.dailyPuzzle || this.lastFetchDate !== today || !!this.error;
+  private shouldFetch(puzzleId?: string): boolean {
+    if (!this.dailyPuzzle || !!this.error) {
+      return true;
+    }
+    
+    // If puzzle ID is provided, check if it's different from cached one
+    if (puzzleId) {
+      return this.lastFetchedPuzzleId !== puzzleId;
+    }
+    
+    // If no puzzle ID provided, always fetch (fallback behavior)
+    return true;
   }
 
   // Fetch daily puzzle from backend
-  async getDailyPuzzle(): Promise<DailyChallenge> {
-    const today = this.getTodayString();
-
-    // Return cached puzzle if it's still valid for today
-    if (!this.shouldFetch() && this.dailyPuzzle) {
+  async getDailyPuzzle(puzzleId?: string): Promise<DailyChallenge> {
+    // Return cached puzzle if it's still valid for the requested puzzle ID
+    if (!this.shouldFetch(puzzleId) && this.dailyPuzzle) {
       return this.dailyPuzzle;
     }
 
@@ -32,7 +34,7 @@ class DailyPuzzleService {
       while (this.loading) {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
-      if (this.dailyPuzzle && this.lastFetchDate === today) {
+      if (this.dailyPuzzle && this.lastFetchedPuzzleId === puzzleId) {
         return this.dailyPuzzle;
       }
     }
@@ -41,8 +43,8 @@ class DailyPuzzleService {
     this.error = null;
 
     try {
-      console.log('Fetching daily puzzle from backend...');
-      const puzzle = await puzzleService.getDailyChallenge();
+      console.log('Fetching daily puzzle from backend...', puzzleId ? `with ID: ${puzzleId}` : 'without specific ID');
+      const puzzle = await puzzleService.getDailyChallenge(puzzleId);
       
       // Ensure the puzzle has all required fields
       if (!puzzle.fen) {
@@ -51,13 +53,11 @@ class DailyPuzzleService {
 
       this.dailyPuzzle = {
         ...puzzle,
-        id: puzzle.id || `daily-${today}`,
-        // Ensure we have a proper daily puzzle ID format
         isDailyChallenge: true,
-        challengeDate: today
+        challengeDate: new Date().toISOString().split('T')[0]
       };
       
-      this.lastFetchDate = today;
+      this.lastFetchedPuzzleId = puzzleId || puzzle.id || null;
       console.log('Daily puzzle fetched successfully:', this.dailyPuzzle);
       
       return this.dailyPuzzle;
@@ -66,8 +66,9 @@ class DailyPuzzleService {
       this.error = error instanceof Error ? error.message : 'Failed to load daily puzzle';
       
       // Return fallback puzzle if backend fails
+      const today = new Date().toISOString().split('T')[0];
       const fallbackPuzzle: DailyChallenge = {
-        id: `daily-${today}`,
+        id: puzzleId || `daily-${today}`,
         fen: 'r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 4 4',
         moves: ['Nxe5'],
         solution: ['Nxe5'],
@@ -84,7 +85,7 @@ class DailyPuzzleService {
       };
       
       this.dailyPuzzle = fallbackPuzzle;
-      this.lastFetchDate = today;
+      this.lastFetchedPuzzleId = puzzleId || fallbackPuzzle.id || '';
       
       console.log('Using fallback daily puzzle:', this.dailyPuzzle);
       return this.dailyPuzzle;
@@ -95,11 +96,7 @@ class DailyPuzzleService {
 
   // Get current daily puzzle without fetching (returns null if not loaded)
   getCurrentDailyPuzzle(): DailyChallenge | null {
-    const today = this.getTodayString();
-    if (this.dailyPuzzle && this.lastFetchDate === today) {
-      return this.dailyPuzzle;
-    }
-    return null;
+    return this.dailyPuzzle;
   }
 
   // Check if daily puzzle is currently loading
@@ -113,18 +110,18 @@ class DailyPuzzleService {
   }
 
   // Force refresh daily puzzle
-  async refresh(): Promise<DailyChallenge> {
+  async refresh(puzzleId?: string): Promise<DailyChallenge> {
     this.dailyPuzzle = null;
-    this.lastFetchDate = null;
+    this.lastFetchedPuzzleId = null;
     this.error = null;
-    return this.getDailyPuzzle();
+    return this.getDailyPuzzle(puzzleId);
   }
 
   // Generate navigation URL for puzzle solver
   getPuzzleSolverUrl(puzzle?: DailyChallenge): string {
     const dailyPuzzle = puzzle || this.dailyPuzzle;
     if (!dailyPuzzle) {
-      const today = this.getTodayString();
+      const today = new Date().toISOString().split('T')[0];
       return `/puzzle-solver?id=daily-${today}`;
     }
 

@@ -50,9 +50,12 @@ const Puzzles = () => {
         setStatsLoading(true);
         setStatsError(null);
         
-        // Load daily challenge using unified service
+        // Load daily challenge using unified service with specific puzzle ID
         try {
-          const challenge = await dailyPuzzleService.getDailyPuzzle();
+          // Use a specific puzzle ID for the daily challenge
+          // You can modify this to use any puzzle ID you want
+          const puzzleId = 'lichess-01av5'; // Example puzzle ID - replace with desired puzzle
+          const challenge = await dailyPuzzleService.getDailyPuzzle(puzzleId);
           setDailyChallenge(challenge);
           
           // Load daily challenge statistics

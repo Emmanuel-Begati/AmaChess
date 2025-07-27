@@ -877,45 +877,63 @@ class DatabasePuzzleService {
     }
   }
 
-  // Get daily challenge puzzle (same for all users)
-  async getDailyChallenge() {
+  // Get daily challenge puzzle by puzzle ID
+  async getDailyChallenge(puzzleId = null) {
     await this.initialize();
     
     try {
-      // Generate a consistent seed based on current date
-      const today = new Date();
-      const dateString = today.toISOString().split('T')[0]; // YYYY-MM-DD
-      const seed = dateString.split('-').reduce((acc, val) => acc + parseInt(val), 0);
+      let puzzle;
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
       
-      // Get total puzzle count
-      const totalCount = await prisma.puzzle.count();
-      
-      if (totalCount === 0) {
-        throw new Error('No puzzles available for daily challenge');
-      }
-      
-      // Use seed to get consistent puzzle index for the day
-      const puzzleIndex = seed % totalCount;
-      
-      const puzzle = await prisma.puzzle.findFirst({
-        skip: puzzleIndex,
-        include: {
-          _count: {
-            select: {
-              attempts: true,
+      if (puzzleId) {
+        // Get specific puzzle by ID
+        puzzle = await prisma.puzzle.findFirst({
+          where: {
+            lichessId: puzzleId
+          },
+          include: {
+            _count: {
+              select: {
+                attempts: true,
+              }
             }
           }
+        });
+        
+        if (!puzzle) {
+          throw new Error(`Puzzle with ID ${puzzleId} not found`);
         }
-      });
-      
-      if (!puzzle) {
-        throw new Error('Failed to retrieve daily challenge puzzle');
+      } else {
+        // Fallback to date-based selection if no puzzle ID provided
+        const seed = today.split('-').reduce((acc, val) => acc + parseInt(val), 0);
+        const totalCount = await prisma.puzzle.count();
+        
+        if (totalCount === 0) {
+          throw new Error('No puzzles available for daily challenge');
+        }
+        
+        const puzzleIndex = seed % totalCount;
+        
+        puzzle = await prisma.puzzle.findFirst({
+          skip: puzzleIndex,
+          include: {
+            _count: {
+              select: {
+                attempts: true,
+              }
+            }
+          }
+        });
+        
+        if (!puzzle) {
+          throw new Error('Failed to retrieve daily challenge puzzle');
+        }
       }
       
       return {
         ...this.formatPuzzleForFrontend(puzzle),
         isDailyChallenge: true,
-        challengeDate: dateString
+        challengeDate: today
       };
     } catch (error) {
       console.error('Error getting daily challenge:', error);
