@@ -47,6 +47,7 @@ const PuzzleSolver = () => {
     isLoading,
     error,
     isCompleted,
+    isFailed,
     makeMove,
     loadRandomPuzzle,
     showHintAction,
@@ -112,7 +113,41 @@ const PuzzleSolver = () => {
   useEffect(() => {
     // Load available themes from the backend
     loadAvailableThemes();
+    
+    // Load user stats on component mount
+    loadUserStats();
   }, []);
+  
+  // Load user stats from backend
+  const loadUserStats = async () => {
+    if (userId && userId !== 'anonymous') {
+      try {
+        console.log('📊 Loading user stats for:', userId);
+        const response = await fetch(`http://localhost:3001/api/users/${userId}/stats`, {
+          headers: {
+            'Authorization': `Bearer ${(user as any)?.token}`
+          }
+        });
+        
+        if (response.ok) {
+          const userStats = await response.json();
+          console.log('✅ User stats loaded:', userStats);
+          
+          setPuzzleStats({
+            solved: userStats.totalPuzzlesSolved || 0,
+            accuracy: Math.round(userStats.averageAccuracy || 0),
+            streak: userStats.currentStreak || 0,
+            averageTime: Math.round(userStats.averageTimePerPuzzle || 0),
+            rating: userStats.currentPuzzleRating || 1200
+          });
+        } else {
+          console.warn('⚠️ Failed to load user stats:', response.status);
+        }
+      } catch (error) {
+        console.error('❌ Error loading user stats:', error);
+      }
+    }
+  };
 
   useEffect(() => {
     // Load initial puzzle with filters
@@ -140,15 +175,71 @@ const PuzzleSolver = () => {
       setSolutionShown(false);
       setIsFirstAttempt(true);
       setHasFailedFirstAttempt(false);
+      // Reset puzzle completion/failure tracking for new puzzle
+      setLastCompletedPuzzleId(null);
+      setLastFailedPuzzleId(null);
     }
   }, [currentPuzzle]);
 
   // Track puzzle completion state to prevent duplicate updates
   const [lastCompletedPuzzleId, setLastCompletedPuzzleId] = useState<string | null>(null);
+  const [lastFailedPuzzleId, setLastFailedPuzzleId] = useState<string | null>(null);
   
   // Track first attempt for ELO rating system
   const [isFirstAttempt, setIsFirstAttempt] = useState<boolean>(true);
   const [hasFailedFirstAttempt, setHasFailedFirstAttempt] = useState<boolean>(false);
+
+  useEffect(() => {
+    // Handle puzzle failure after 1 incorrect attempt
+    if (isFailed && currentPuzzle && currentPuzzle.id !== lastFailedPuzzleId) {
+      const timeSpent = Math.floor((Date.now() - puzzleStartTime) / 1000);
+      
+      console.log('💔 PUZZLE FAILED! Recording failure...');
+      console.log('- Puzzle ID:', currentPuzzle.id);
+      console.log('- User ID:', userId);
+      console.log('- Time spent:', timeSpent, 'seconds');
+      
+      // Mark this puzzle as failed to prevent duplicate updates
+      setLastFailedPuzzleId(currentPuzzle.id);
+      
+      // Update backend stats for failed puzzle
+      if (userId && userId !== 'anonymous') {
+        console.log('📡 Sending failure stats to backend...');
+        puzzleService.updateUserStats(
+          userId,
+          currentPuzzle,
+          false, // isCorrect = false (failed)
+          timeSpent,
+          hintsUsed,
+          solutionShown
+        ).then((updatedStats) => {
+          console.log('✅ Failure stats updated successfully:', updatedStats);
+          // Update local stats with real data from backend
+          setPuzzleStats(prev => ({
+            ...prev,
+            accuracy: Math.round(updatedStats.averageAccuracy || prev.accuracy),
+            streak: updatedStats.currentStreak || 0, // Should be 0 after failure
+            rating: updatedStats.currentPuzzleRating || prev.rating
+          }));
+          
+          // Show notification about the failure and rating change
+          if (updatedStats.ratingChange) {
+            setNotification({
+              type: 'error',
+              message: `Puzzle failed! Rating: ${updatedStats.ratingChange > 0 ? '+' : ''}${updatedStats.ratingChange} (Streak reset)`
+            });
+          } else {
+            setNotification({
+              type: 'error',
+              message: 'Puzzle failed! (Streak reset)'
+            });
+          }
+        }).catch((error) => {
+          console.error('❌ Failed to update failure stats:', error);
+        });
+      }
+    }
+  }, [isFailed, currentPuzzle, lastFailedPuzzleId, puzzleStartTime, userId, hintsUsed, solutionShown]);
 
   useEffect(() => {
     // Show notification when puzzle is completed and update backend stats

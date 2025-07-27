@@ -7,6 +7,7 @@ interface PuzzleState {
   isLoading: boolean;
   error: string | null;
   isCompleted: boolean;
+  isFailed: boolean; // Whether the puzzle has been failed (after 1 incorrect attempt)
   currentMoveIndex: number;
   userMoves: string[];
   showHint: boolean;
@@ -32,6 +33,7 @@ export const usePuzzle = () => {
     isLoading: false,
     error: null,
     isCompleted: false,
+    isFailed: false,
     currentMoveIndex: 0,
     userMoves: [],
     showHint: false,
@@ -116,13 +118,11 @@ export const usePuzzle = () => {
       }
       
       setState(prev => ({
-        ...prev,
-        currentPuzzle: {
-          ...puzzle,
-          userSide: userSide // Add which side the user is playing
-        },
+        currentPuzzle: puzzle,
         isLoading: false,
+        error: null,
         isCompleted: false,
+        isFailed: false,
         currentMoveIndex: currentMoveIndex,
         userMoves: [],
         showHint: false,
@@ -130,9 +130,14 @@ export const usePuzzle = () => {
         gamePosition: currentChess.fen(),
         chess: currentChess,
         solvedMoves: 0,
-        totalMoves: puzzle.moves?.length || 0,
+        totalMoves: puzzle.moves.length,
         gameContext: null,
-        analysisMode: false
+        analysisMode: false,
+        userAttempts: [],
+        solutionMoves: [],
+        solutionModeActive: false,
+        solutionIndex: 0,
+        boardKey: Date.now() // Unique key to force board re-render
       }));
     } catch (error) {
       setState(prev => ({
@@ -218,12 +223,12 @@ export const usePuzzle = () => {
       console.log('Move is correct:', isCorrect);
 
       if (!isCorrect) {
-        // Don't reveal the answer, just say it's wrong
-        // Keep the current position unchanged so user can try again
-        console.log('INCORRECT MOVE - Position should remain unchanged');
+        // Mark puzzle as failed after first incorrect attempt
+        console.log('INCORRECT MOVE - Marking puzzle as failed');
         setState(prev => ({
           ...prev,
           error: 'Wrong move, try again!',
+          isFailed: true, // Mark as failed after 1 incorrect attempt
           userAttempts: [...prev.userAttempts, userUCI + ' (incorrect)'],
           boardKey: prev.boardKey + 1 // Force board re-render to ensure clean state
         }));
@@ -517,6 +522,7 @@ export const usePuzzle = () => {
     setState(prev => ({
       ...prev,
       isCompleted: false,
+      isFailed: false,
       currentMoveIndex: 0,
       userMoves: [],
       showHint: false,
@@ -551,6 +557,7 @@ export const usePuzzle = () => {
     isLoading: state.isLoading,
     error: state.error,
     isCompleted: state.isCompleted,
+    isFailed: state.isFailed,
     currentMoveIndex: state.currentMoveIndex,
     userMoves: state.userMoves,
     showHint: state.showHint,
