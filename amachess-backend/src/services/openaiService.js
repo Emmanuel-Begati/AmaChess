@@ -177,6 +177,65 @@ ${pgn ? `Game context: ${pgn.slice(-300)}` : ''}`;
   }
 
   /**
+   * Generate chess coaching response for moves and positions
+   */
+  async generateChessCoaching(position, playerMove, gameContext = {}) {
+    if (!this.isConfigured()) {
+      console.warn('OpenAI API key not configured, using fallback coaching');
+      return this.getFallbackCoaching(playerMove);
+    }
+
+    try {
+      const chess = new Chess(position);
+      const positionInfo = this.analyzePosition(chess);
+      const difficulty = gameContext.difficulty || 'intermediate';
+      const moveHistory = gameContext.moveHistory || [];
+
+      const systemPrompt = `You are Coach B, an expert chess coach. Provide helpful coaching based on the current position and player's move.
+
+Your coaching style:
+- Supportive and educational
+- Focus on learning opportunities
+- Provide specific, actionable advice
+- Appropriate for ${difficulty} level
+- Keep responses concise (1-2 sentences)
+- Encourage improvement without being critical
+
+Position analysis:
+- Game phase: ${positionInfo.phase}
+- Key features: ${positionInfo.keyFeatures.join(', ') || 'Balanced position'}
+- Material balance: ${positionInfo.materialBalance === 0 ? 'Equal' : positionInfo.materialBalance > 0 ? 'White ahead' : 'Black ahead'}
+
+${moveHistory.length > 0 ? `Recent moves: ${moveHistory.slice(-4).join(' ')}` : ''}`;
+
+      const userPrompt = playerMove 
+        ? `The player just played ${playerMove} in this position: ${position}. Provide coaching feedback.`
+        : `Provide coaching guidance for this position: ${position}`;
+
+      const response = await this.client.chat.completions.create({
+        model: this.model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        max_tokens: 120,
+        temperature: 0.7
+      });
+
+      return {
+        message: response.choices[0].message.content.trim(),
+        coach: 'Coach B',
+        timestamp: new Date().toISOString(),
+        positionAnalysis: positionInfo
+      };
+
+    } catch (error) {
+      console.error('OpenAI API error for coaching:', error);
+      return this.getFallbackCoaching(playerMove);
+    }
+  }
+
+  /**
    * Generate welcome coaching message for new training sessions
    */
   async generateWelcomeMessage(difficulty = 'intermediate', gameContext = {}) {

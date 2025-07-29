@@ -29,6 +29,21 @@ const ChessGame: React.FC<ChessGameProps> = ({
   const chessBoardRef = useRef<ChessBoardRef>(null);
   const [evaluation, setEvaluation] = useState<{ value: number; type: 'centipawns' | 'mate' } | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const lastAnalyzedPosition = useRef<string>('');
+  const analysisTimeout = useRef<NodeJS.Timeout | null>(null);
+  const analysisRequestId = useRef<number>(0);
+  const lastAnalysisTime = useRef<number>(0);
+  const MIN_ANALYSIS_INTERVAL = 1000; // Minimum 1 second between analysis requests
+  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (analysisTimeout.current) {
+        clearTimeout(analysisTimeout.current);
+        analysisTimeout.current = null;
+      }
+    };
+  }, []);
   
   const {
     gameState,
@@ -45,31 +60,66 @@ const ChessGame: React.FC<ChessGameProps> = ({
 
   // Get position evaluation from Stockfish
   useEffect(() => {
-    if (!engineEnabled) return;
+    if (!engineEnabled || gameState.isGameOver || isThinking) return;
+    
+    // Prevent repeated analysis of the same position
+    if (lastAnalyzedPosition.current === currentPosition) return;
+    
+    // Prevent analysis if already analyzing
+    if (isAnalyzing) return;
+    
+    // Rate limiting - prevent too frequent requests
+    const now = Date.now();
+    const timeSinceLastAnalysis = now - lastAnalysisTime.current;
+    if (timeSinceLastAnalysis < MIN_ANALYSIS_INTERVAL) {
+      return;
+    }
+    
+    // Clear any existing timeout
+    if (analysisTimeout.current) {
+      clearTimeout(analysisTimeout.current);
+      analysisTimeout.current = null;
+    }
     
     const getEvaluation = async () => {
-      if (gameState.isGameOver || isThinking || isAnalyzing) return;
-      
+      const requestId = ++analysisRequestId.current;
       setIsAnalyzing(true);
+      lastAnalyzedPosition.current = currentPosition;
+      lastAnalysisTime.current = Date.now();
+      
       try {
         const result = await stockfishAPI.evaluatePosition(currentPosition, 12);
-        if (result.evaluation) {
+        
+        // Check if this is still the latest request
+        if (requestId === analysisRequestId.current && result.evaluation) {
           setEvaluation({
             value: result.evaluation.value,
             type: result.evaluation.type === 'mate' ? 'mate' : 'centipawns'
           });
         }
       } catch (error) {
-        console.log('Could not get evaluation:', error);
+        // Only log error if this is still the latest request
+        if (requestId === analysisRequestId.current) {
+          console.log('Could not get evaluation:', error);
+        }
       } finally {
-        setIsAnalyzing(false);
+        // Only update analyzing state if this is still the latest request
+        if (requestId === analysisRequestId.current) {
+          setIsAnalyzing(false);
+        }
       }
     };
 
-    // Debounce evaluation requests
-    const timeoutId = setTimeout(getEvaluation, 1000);
-    return () => clearTimeout(timeoutId);
-  }, [currentPosition, gameState.isGameOver, isThinking, isAnalyzing, engineEnabled]);
+    // Debounce evaluation requests with 1.5 second delay
+    analysisTimeout.current = setTimeout(getEvaluation, 1500);
+    
+    return () => {
+      if (analysisTimeout.current) {
+        clearTimeout(analysisTimeout.current);
+        analysisTimeout.current = null;
+      }
+    };
+  }, [currentPosition, gameState.isGameOver, isThinking, engineEnabled, isAnalyzing]); // Added isAnalyzing back to dependencies
 
   const handleMove = ({ sourceSquare, targetSquare }: { sourceSquare: string; targetSquare: string; piece: string }) => {
     // If external move handler is provided, use it

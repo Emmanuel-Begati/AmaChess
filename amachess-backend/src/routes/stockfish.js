@@ -4,6 +4,50 @@ const StockfishService = require('../services/stockfishService');
 
 const stockfishService = new StockfishService();
 
+// Request throttling for analysis
+const analysisRequestMap = new Map(); // ip -> { lastRequest: timestamp, pendingRequest: boolean }
+const ANALYSIS_THROTTLE_MS = parseInt(process.env.ANALYSIS_THROTTLE) || 1000;
+
+// Throttling middleware for analysis endpoints
+const throttleAnalysis = (req, res, next) => {
+  const clientIp = req.ip || req.connection.remoteAddress;
+  const now = Date.now();
+  const clientData = analysisRequestMap.get(clientIp) || { lastRequest: 0, pendingRequest: false };
+  
+  // Check if there's already a pending request
+  if (clientData.pendingRequest) {
+    return res.status(429).json({ 
+      error: 'Analysis already in progress. Please wait.',
+      retryAfter: 1000
+    });
+  }
+  
+  // Check throttle timing
+  const timeSinceLastRequest = now - clientData.lastRequest;
+  if (timeSinceLastRequest < ANALYSIS_THROTTLE_MS) {
+    return res.status(429).json({ 
+      error: 'Too many requests. Please wait before making another analysis request.',
+      retryAfter: ANALYSIS_THROTTLE_MS - timeSinceLastRequest
+    });
+  }
+  
+  // Mark as pending and update timestamp
+  analysisRequestMap.set(clientIp, { lastRequest: now, pendingRequest: true });
+  
+  // Clear pending flag when response finishes
+  const originalSend = res.send;
+  res.send = function(data) {
+    const clientData = analysisRequestMap.get(clientIp);
+    if (clientData) {
+      clientData.pendingRequest = false;
+      analysisRequestMap.set(clientIp, clientData);
+    }
+    return originalSend.call(this, data);
+  };
+  
+  next();
+};
+
 // Play against Stockfish with configurable difficulty - IMPROVED VERSION
 router.post('/play/move-difficulty', async (req, res) => {
   try {
@@ -76,7 +120,7 @@ router.post('/play/move-difficulty', async (req, res) => {
 });
 
 // Analyze position endpoint
-router.post('/analyze', async (req, res) => {
+router.post('/analyze', throttleAnalysis, async (req, res) => {
   try {
     const { fen, depth = 15, time = 2000 } = req.body;
     
@@ -612,7 +656,7 @@ router.post('/play/new', async (req, res) => {
 });
 
 // Get position evaluation for current game
-router.post('/play/evaluate', async (req, res) => {
+router.post('/play/evaluate', throttleAnalysis, async (req, res) => {
   try {
     const { fen, depth = 15 } = req.body;
     

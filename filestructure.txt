@@ -164,7 +164,6 @@
             |-- ucioption.cpp
             |-- ucioption.h
         |-- stockfish.exe
-        |-- stockfish.zip
         |-- Top CPU Contributors.txt
         |-- wiki
             |-- Advanced-topics.md

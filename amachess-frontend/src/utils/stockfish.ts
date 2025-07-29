@@ -480,6 +480,39 @@ class StockfishAPI {
         }),
       });
 
+      if (response.status === 429) {
+        // Handle throttling gracefully
+        const errorData = await response.json();
+        console.log('Analysis throttled, retrying after delay...');
+        
+        // Wait for the suggested retry time, then try again
+        const retryAfter = errorData.retryAfter || 1000;
+        await new Promise(resolve => setTimeout(resolve, retryAfter));
+        
+        // Retry once
+        const retryResponse = await fetch(`${this.baseUrl}/play/evaluate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            fen,
+            depth
+          }),
+        });
+        
+        if (!retryResponse.ok) {
+          throw new Error(`HTTP error after retry! status: ${retryResponse.status}`);
+        }
+        
+        const retryData = await retryResponse.json();
+        if (!retryData.success) {
+          throw new Error(retryData.error || 'Failed to evaluate position after retry');
+        }
+        
+        return retryData.evaluation;
+      }
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }

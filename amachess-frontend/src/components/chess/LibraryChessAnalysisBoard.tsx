@@ -38,13 +38,17 @@ const LibraryChessAnalysisBoard: React.FC<LibraryChessAnalysisBoardProps> = ({
   const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
   const [error, setError] = useState<string | null>(null);
   const [isEngineEnabled, setIsEngineEnabled] = useState(true);
+  const lastAnalyzedPosition = useRef<string>('');
+  const analysisTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // Analyze position with Stockfish
   const analyzePosition = async (fen: string) => {
-    if (isAnalyzing || !isEngineEnabled) return;
+    // Prevent repeated analysis of the same position
+    if (isAnalyzing || !isEngineEnabled || lastAnalyzedPosition.current === fen) return;
     
     setIsAnalyzing(true);
     setError(null);
+    lastAnalyzedPosition.current = fen;
     
     try {
       const result = await stockfishAPI.evaluatePosition(fen, 15);
@@ -106,9 +110,14 @@ const LibraryChessAnalysisBoard: React.FC<LibraryChessAnalysisBoardProps> = ({
           onPositionChange(newPosition);
         }
         
-        // Analyze the new position
+        // Analyze the new position with throttling
         if (isEngineEnabled) {
-          analyzePosition(newPosition);
+          if (analysisTimeout.current) {
+            clearTimeout(analysisTimeout.current);
+          }
+          analysisTimeout.current = setTimeout(() => {
+            analyzePosition(newPosition);
+          }, 1000);
         }
         
         return true;
@@ -169,9 +178,14 @@ const LibraryChessAnalysisBoard: React.FC<LibraryChessAnalysisBoardProps> = ({
       onPositionChange(newPosition);
     }
     
-    // Analyze the position
+    // Analyze the position with throttling
     if (isEngineEnabled) {
-      analyzePosition(newPosition);
+      if (analysisTimeout.current) {
+        clearTimeout(analysisTimeout.current);
+      }
+      analysisTimeout.current = setTimeout(() => {
+        analyzePosition(newPosition);
+      }, 1000);
     }
   };
 

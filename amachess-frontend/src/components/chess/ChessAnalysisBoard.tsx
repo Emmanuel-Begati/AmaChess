@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Chess } from 'chess.js';
 import ChessBoard, { ChessBoardRef } from './ChessBoard';
-import { stockfishAPI } from '../utils/stockfish';
+import { stockfishAPI } from '../../utils/stockfish';
 
 interface ChessAnalysisBoardProps {
   className?: string;
@@ -31,13 +31,26 @@ const ChessAnalysisBoard: React.FC<ChessAnalysisBoardProps> = ({ className = '' 
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
   const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
   const [error, setError] = useState<string | null>(null);
+  const lastAnalyzedPosition = useRef<string>('');
+  const analysisTimeout = useRef<NodeJS.Timeout | null>(null);
+  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (analysisTimeout.current) {
+        clearTimeout(analysisTimeout.current);
+      }
+    };
+  }, []);
 
   // Analyze position with Stockfish
   const analyzePosition = async (fen: string) => {
-    if (isAnalyzing) return;
+    // Prevent repeated analysis of the same position
+    if (isAnalyzing || lastAnalyzedPosition.current === fen) return;
     
     setIsAnalyzing(true);
     setError(null);
+    lastAnalyzedPosition.current = fen;
     
     try {
       const result = await stockfishAPI.evaluatePosition(fen, 15);
@@ -72,8 +85,13 @@ const ChessAnalysisBoard: React.FC<ChessAnalysisBoardProps> = ({ className = '' 
         setMoveHistory(newMoveHistory);
         setCurrentMoveIndex(newMoveHistory.length - 1);
         
-        // Analyze the new position
-        analyzePosition(newPosition);
+        // Analyze the new position with throttling
+        if (analysisTimeout.current) {
+          clearTimeout(analysisTimeout.current);
+        }
+        analysisTimeout.current = setTimeout(() => {
+          analyzePosition(newPosition);
+        }, 1000);
         
         return true;
       }
@@ -107,7 +125,10 @@ const ChessAnalysisBoard: React.FC<ChessAnalysisBoardProps> = ({ className = '' 
     for (let i = 0; i <= moveIndex; i++) {
       if (i < moveHistory.length && moveHistory[i]) {
         try {
-          newGame.move(moveHistory[i]);
+          const move = moveHistory[i];
+          if (move) {
+            newGame.move(move);
+          }
         } catch (error) {
           console.error('Error replaying move:', error);
           return;
