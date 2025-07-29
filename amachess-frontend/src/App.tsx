@@ -11,10 +11,10 @@ import PuzzleSolver from './pages/PuzzleSolver';
 import Library from './pages/Library';
 import BookReader from './pages/BookReader';
 import Settings from './pages/Settings';
-import ChessGame from './components/ChessGame.tsx'
+import ChessGame from './components/chess/ChessGame.tsx'
 import Login from './pages/Login';
 import Register from './pages/Register';
-import ProtectedRoute from './components/ProtectedRoute';
+import ProtectedRoute from './components/ui/ProtectedRoute';
 import { ChessMove } from './types';
 import './App.css';
 

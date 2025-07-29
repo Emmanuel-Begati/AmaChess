@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
-import ChessGame from '../components/ChessGame';
+import Header from '../components/ui/Header';
+import Footer from '../components/ui/Footer';
+import ChessGame from '../components/chess/ChessGame';
 import { usePuzzle } from '../hooks/usePuzzle';
 import { useAuth } from '../contexts/AuthContext';
 import { Puzzle, UserPuzzleStats, DailyChallenge, DailyChallengeStats, puzzleService } from '../services/puzzleService';

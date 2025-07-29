@@ -65,34 +65,6 @@ router.get('/theme/:theme', async (req, res) => {
   }
 });
 
-// Get puzzle by ID
-router.get('/:puzzleId', async (req, res) => {
-  try {
-    const { puzzleId } = req.params;
-    
-    const puzzle = await activePuzzleService.getPuzzleById(puzzleId);
-    
-    if (!puzzle) {
-      return res.status(404).json({
-        success: false,
-        error: 'Puzzle not found'
-      });
-    }
-    
-    res.json({
-      success: true,
-      data: puzzle
-    });
-  } catch (error) {
-    console.error('Error getting puzzle by ID:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to load puzzle',
-      message: error.message
-    });
-  }
-});
-
 // Get available themes
 router.get('/themes', async (req, res) => {
   try {
@@ -439,6 +411,202 @@ router.get('/user/:userId/analytics', auth, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to load user analytics',
+      message: error.message
+    });
+  }
+});
+
+// Get puzzle rating leaderboard
+router.get('/leaderboard', async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+    
+    const leaderboard = await activePuzzleService.getLeaderboard(parseInt(limit));
+    
+    res.json({
+      success: true,
+      data: leaderboard
+    });
+  } catch (error) {
+    console.error('Error getting leaderboard:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load leaderboard',
+      message: error.message
+    });
+  }
+});
+
+// Get daily challenge puzzle
+router.get('/daily-challenge', async (req, res) => {
+  try {
+    const { puzzleId } = req.query;
+    
+    const dailyChallenge = await activePuzzleService.getDailyChallenge(puzzleId);
+    
+    res.json({
+      success: true,
+      data: dailyChallenge
+    });
+  } catch (error) {
+    console.error('Error getting daily challenge:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load daily challenge',
+      message: error.message
+    });
+  }
+});
+
+// Get specific daily challenge by puzzle ID
+router.get('/daily-challenge/:puzzleId', async (req, res) => {
+  try {
+    const { puzzleId } = req.params;
+    
+    const dailyChallenge = await activePuzzleService.getDailyChallenge(puzzleId);
+    
+    res.json({
+      success: true,
+      data: dailyChallenge
+    });
+  } catch (error) {
+    console.error('Error getting daily challenge by ID:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load daily challenge',
+      message: error.message
+    });
+  }
+});
+
+// Get daily challenge statistics
+router.get('/daily-challenge-stats', async (req, res) => {
+  try {
+    const { challengeDate } = req.query;
+    
+    const stats = await activePuzzleService.getDailyChallengeStats(challengeDate);
+    
+    res.json({
+      success: true,
+      data: stats
+    });
+  } catch (error) {
+    console.error('Error getting daily challenge stats:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load daily challenge stats',
+      message: error.message
+    });
+  }
+});
+
+// Get puzzle rating leaderboard
+router.get('/leaderboard', async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+    
+    const leaderboard = await activePuzzleService.getLeaderboard(parseInt(limit));
+    
+    res.json({
+      success: true,
+      data: leaderboard
+    });
+  } catch (error) {
+    console.error('Error getting leaderboard:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load leaderboard',
+      message: error.message
+    });
+  }
+});
+
+// Get daily challenge puzzle
+router.get('/daily-challenge', async (req, res) => {
+  try {
+    const { puzzleId } = req.query;
+    
+    const dailyChallenge = await activePuzzleService.getDailyChallenge(puzzleId);
+    
+    res.json({
+      success: true,
+      data: dailyChallenge
+    });
+  } catch (error) {
+    console.error('Error getting daily challenge:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load daily challenge',
+      message: error.message
+    });
+  }
+});
+
+// Get specific daily challenge by puzzle ID
+router.get('/daily-challenge/:puzzleId', async (req, res) => {
+  try {
+    const { puzzleId } = req.params;
+    
+    const dailyChallenge = await activePuzzleService.getDailyChallenge(puzzleId);
+    
+    res.json({
+      success: true,
+      data: dailyChallenge
+    });
+  } catch (error) {
+    console.error('Error getting daily challenge by ID:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load daily challenge',
+      message: error.message
+    });
+  }
+});
+
+// Get daily challenge statistics
+router.get('/daily-challenge-stats', async (req, res) => {
+  try {
+    const { challengeDate } = req.query;
+    
+    const stats = await activePuzzleService.getDailyChallengeStats(challengeDate);
+    
+    res.json({
+      success: true,
+      data: stats
+    });
+  } catch (error) {
+    console.error('Error getting daily challenge stats:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load daily challenge stats',
+      message: error.message
+    });
+  }
+});
+
+// Get puzzle by ID (catch-all route - must be last)
+router.get('/:puzzleId', async (req, res) => {
+  try {
+    const { puzzleId } = req.params;
+    
+    const puzzle = await activePuzzleService.getPuzzleById(puzzleId);
+    
+    if (!puzzle) {
+      return res.status(404).json({
+        success: false,
+        error: 'Puzzle not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: puzzle
+    });
+  } catch (error) {
+    console.error('Error getting puzzle by ID:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load puzzle',
       message: error.message
     });
   }

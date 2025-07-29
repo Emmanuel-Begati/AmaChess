@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import Header from '../components/Header';
-import ChessPDFViewer from '../components/ChessPDFViewer';
-import LibraryChessAnalysisBoard from '../components/LibraryChessAnalysisBoard';
-import BookPositionsPanel from '../components/BookPositionsPanel';
+import Header from '../components/ui/Header';
+import ChessPDFViewer from '../components/books/ChessPDFViewer';
+import LibraryChessAnalysisBoard from '../components/chess/LibraryChessAnalysisBoard';
+import BookPositionsPanel from '../components/books/BookPositionsPanel';
 import { booksApiService } from '../services/booksApi';
 import type { ChessBoundingBox } from '../services/chessVisionService';
 

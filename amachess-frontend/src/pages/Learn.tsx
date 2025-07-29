@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
-import GameAnalysisModal from '../components/GameAnalysisModal';
-import AICoachModal from '../components/AICoachModal';
-import GameChatModal from '../components/GameChatModal';
+import Header from '../components/ui/Header';
+import Footer from '../components/ui/Footer';
+import GameAnalysisModal from '../components/analysis/GameAnalysisModal';
+import AICoachModal from '../components/ai/AICoachModal';
+import GameChatModal from '../components/analysis/GameChatModal';
 
 const Learn = () => {
   const navigate = useNavigate();

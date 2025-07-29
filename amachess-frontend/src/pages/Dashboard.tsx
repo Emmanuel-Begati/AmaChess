@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
-import ChessGame from '../components/ChessGame';
-import LichessProgressStats from '../components/LichessProgressStats';
+import Header from '../components/ui/Header';
+import Footer from '../components/ui/Footer';
+import ChessGame from '../components/chess/ChessGame';
+import LichessProgressStats from '../components/common/LichessProgressStats';
 import { useAuth } from '../contexts/AuthContext';
 import { puzzleService, DailyChallenge } from '../services/puzzleService';
 import { dailyPuzzleService } from '../services/dailyPuzzleService';

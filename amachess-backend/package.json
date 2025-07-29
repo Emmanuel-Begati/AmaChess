@@ -40,7 +40,8 @@
     "node-fetch": "^2.7.0",
     "openai": "^5.10.2",
     "pdf-parse": "^1.1.1",
-    "pg": "^8.11.3"
+    "pg": "^8.11.3",
+    "winston": "^3.17.0"
   },
   "devDependencies": {
     "@types/pg": "^8.10.9",

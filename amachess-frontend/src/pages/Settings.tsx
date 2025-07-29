@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
+import Header from '../components/ui/Header';
+import Footer from '../components/ui/Footer';
 import { useAuth } from '../contexts/AuthContext';
 import { usePreferences } from '../contexts/PreferencesContext';
 import { User } from '../types';

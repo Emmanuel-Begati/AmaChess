@@ -1,8 +1,8 @@
 import React from 'react';
-import Header from '../components/Header';
-import HeroSection from '../components/HeroSection';
-import FeatureCard from '../components/FeatureCard';
-import Footer from '../components/Footer';
+import Header from '../components/ui/Header';
+import HeroSection from '../components/ui/HeroSection';
+import FeatureCard from '../components/ui/FeatureCard';
+import Footer from '../components/ui/Footer';
 
 const HomePage = () => {
   const features = [

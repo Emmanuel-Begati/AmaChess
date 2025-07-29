@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
+const logger = require('./config/logger');
 
 // Import database config to initialize connection
 const { initializeDatabase } = require('./config/database');
@@ -92,7 +93,7 @@ app.get('/api/health', async (req, res) => {
 // Initialize database and start server
 async function startServer() {
   try {
-    console.log('🚀 Starting AmaChess Backend...');
+    logger.info('Starting AmaChess Backend...');
     
     // Check OpenAI Configuration
     checkOpenAIConfiguration();
@@ -101,19 +102,19 @@ async function startServer() {
     await initializeDatabase();
     
     app.listen(PORT, () => {
-      console.log(`✅ AmaChess Backend server running on port ${PORT}`);
-      console.log(`📋 Health check: http://localhost:${PORT}/api/health`);
-      console.log(`🔐 Auth endpoints: http://localhost:${PORT}/api/auth`);
-      console.log(`👤 Protected routes: http://localhost:${PORT}/api/user`);
-      console.log(`🧩 Puzzle routes: http://localhost:${PORT}/api/puzzles`);
-      console.log(`📊 User puzzles: http://localhost:${PORT}/api/user/puzzles`);
-      console.log(`📚 Books: http://localhost:${PORT}/api/books`);
-      console.log(`🔍 Analysis: http://localhost:${PORT}/api/analyze`);
-      console.log(`♟️  Stockfish: http://localhost:${PORT}/api/stockfish`);
-      console.log(`🤖 AI Coach: http://localhost:${PORT}/api/coach`);
+      logger.info(`AmaChess Backend server running on port ${PORT}`);
+      logger.info(`Health check: http://localhost:${PORT}/api/health`);
+      logger.info(`Auth endpoints: http://localhost:${PORT}/api/auth`);
+      logger.info(`Protected routes: http://localhost:${PORT}/api/user`);
+      logger.info(`Puzzle routes: http://localhost:${PORT}/api/puzzles`);
+      logger.info(`User puzzles: http://localhost:${PORT}/api/user/puzzles`);
+      logger.info(`Books: http://localhost:${PORT}/api/books`);
+      logger.info(`Analysis: http://localhost:${PORT}/api/analyze`);
+      logger.info(`Stockfish: http://localhost:${PORT}/api/stockfish`);
+      logger.info(`AI Coach: http://localhost:${PORT}/api/coach`);
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    logger.error('Failed to start server:', error);
     process.exit(1);
   }
 }

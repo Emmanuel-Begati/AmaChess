@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
-import ChessGame from '../components/ChessGame';
+import Header from '../components/ui/Header';
+import Footer from '../components/ui/Footer';
+import ChessGame from '../components/chess/ChessGame';
 import { usePuzzle } from '../hooks/usePuzzle';
 import { Chess } from 'chess.js';
 import { puzzleService } from '../services/puzzleService';
 import { useAuth } from '../contexts/AuthContext';
-import { testPuzzleAPI, testPuzzleCompletion } from '../utils/apiTest';
 
 interface PuzzleTheme {
   name: string;
@@ -89,17 +88,20 @@ const PuzzleSolver = () => {
       return;
     }
     
-    try {
-      // Test API connectivity
-      await testPuzzleAPI(userId);
+    // Note: Commented out the test functions as they seem to be causing issues
+    // If you need to re-enable them, make sure they're properly imported
+    
+    // try {
+    //   // Test API connectivity
+    //   await testPuzzleAPI(userId);
       
-      // Test puzzle completion if we have a current puzzle
-      if (currentPuzzle) {
-        await testPuzzleCompletion(userId, currentPuzzle);
-      }
-    } catch (error) {
-      console.error('❌ Debug API test failed:', error);
-    }
+    //   // Test puzzle completion if we have a current puzzle
+    //   if (currentPuzzle) {
+    //     await testPuzzleCompletion(userId, currentPuzzle);
+    //   }
+    // } catch (error) {
+    //   console.error('❌ Debug API test failed:', error);
+    // }
   };
   
   // Make debug function available globally for console testing

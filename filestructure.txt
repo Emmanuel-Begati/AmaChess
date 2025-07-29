@@ -8,10 +8,6 @@
     |-- check-db.js
     |-- chess_vision_service
         |-- app.py
-        |-- app_chesscog_fixed.py
-        |-- app_with_cache.py
-        |-- app_with_chesscog.py
-        |-- app_with_mock.py
         |-- chessboard2fen
         |-- chesscog_repo
         |-- CHESSCOG_SETUP.md
@@ -19,7 +15,6 @@
         |-- Dockerfile
         |-- IMPLEMENTATION_SUMMARY.md
         |-- mock_chesscog.py
-        |-- pdf_cache
         |-- QUICKSTART.md
         |-- README.md
         |-- requirements.txt
@@ -29,14 +24,9 @@
         |-- setup_chesscog.py
         |-- start.bat
         |-- start.sh
-        |-- temp_uploads
-            |-- 1752799954237_1752576994909_DVORESTKYS_ENDGAME_MANUAL.pdf
         |-- test_service.py
         |-- test_simple.py
         |-- [32
-        |-- __pycache__
-            |-- mock_chesscog.cpython-312.pyc
-            |-- mock_chesscog.cpython-313.pyc
     |-- config
     |-- nodemon.json
     |-- nul
@@ -70,6 +60,7 @@
         |-- config
             |-- database.js
             |-- databasePostgreSQL.js
+            |-- logger.js
             |-- openai.js
         |-- controllers
             |-- authController.js
@@ -226,36 +217,41 @@
         |-- assets
             |-- react.svg
         |-- components
-            |-- AICoachModal.tsx
-            |-- BookChatModal.tsx
-            |-- BookPositionsPanel.tsx
-            |-- ChessAnalysisBoard.tsx
-            |-- ChessBoard.tsx
-            |-- ChessBoardCore.tsx
-            |-- ChessBookAnalyzer.tsx
-            |-- ChessBookReader.tsx
-            |-- ChessGame.css
-            |-- ChessGame.tsx
-            |-- ChessPDFViewer.tsx
-            |-- ChessVisionExample.tsx
-            |-- FeatureCard.tsx
-            |-- Footer.tsx
-            |-- GameAnalysisModal.tsx
-            |-- GameChatModal.tsx
-            |-- Header.tsx
-            |-- HeroSection.tsx
-            |-- LibraryChessAnalysisBoard.tsx
-            |-- LichessProgressStats.tsx
-            |-- LichessStatsPreview.tsx
+            |-- ai
+                |-- AICoachModal.tsx
+            |-- analysis
+                |-- GameAnalysisModal.tsx
+                |-- GameChatModal.tsx
+            |-- books
+                |-- BookChatModal.tsx
+                |-- BookPositionsPanel.tsx
+                |-- ChessBookAnalyzer.tsx
+                |-- ChessBookReader.tsx
+                |-- ChessPDFViewer.tsx
+                |-- PDFChessViewer.tsx
+                |-- PDFViewer.tsx
+                |-- SimplePDFViewer.tsx
+            |-- chess
+                |-- ChessAnalysisBoard.tsx
+                |-- ChessBoard.tsx
+                |-- ChessBoardCore.tsx
+                |-- ChessGame.css
+                |-- ChessGame.tsx
+                |-- LibraryChessAnalysisBoard.tsx
+                |-- StockfishChessGame.tsx
+            |-- common
+                |-- LichessProgressStats.tsx
+                |-- LichessStatsPreview.tsx
             |-- NotificationSystem
                 |-- NotificationManager.tsx
-            |-- PDFChessViewer.tsx
-            |-- PDFViewer.tsx
-            |-- ProtectedRoute.tsx
-            |-- SimplePDFViewer.tsx
-            |-- StockfishChessGame.tsx
-            |-- StockfishTest.tsx
-            |-- Testimonial.tsx
+            |-- puzzles
+            |-- ui
+                |-- FeatureCard.tsx
+                |-- Footer.tsx
+                |-- Header.tsx
+                |-- HeroSection.tsx
+                |-- ProtectedRoute.tsx
+                |-- Testimonial.tsx
         |-- contexts
             |-- AuthContext.tsx
             |-- PreferencesContext.tsx
@@ -279,7 +275,6 @@
             |-- Register.tsx
             |-- Settings.tsx
             |-- SimpleBookReader.tsx
-            |-- TestPage.tsx
         |-- services
             |-- authApi.ts
             |-- booksApi.ts
@@ -287,18 +282,20 @@
             |-- dailyPuzzleService.ts
             |-- enhancedPuzzleService.ts
             |-- pdfViewer.ts
-            |-- platformStatsService.js
             |-- platformStatsService.ts
             |-- puzzleService.ts
         |-- test
+            |-- apiTest.ts
             |-- ChessBoardTest.tsx
+            |-- ChessVisionExample.tsx
             |-- MinimalChessTest.tsx
             |-- SimpleDropTest.tsx
+            |-- StockfishTest.tsx
+            |-- TestPage.tsx
         |-- types
             |-- chess.ts
             |-- index.ts
         |-- utils
-            |-- apiTest.ts
             |-- stockfish.ts
     |-- tailwind.config.ts
     |-- tsconfig.json
