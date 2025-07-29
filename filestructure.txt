@@ -1,130 +1,45 @@
 |-- .gitattributes
 |-- .gitignore
 |-- AI_COACH_SETUP.md
-|-- Puzzle_Classifier
-    |-- README.md
-    |-- chess_puzzle_classifier.py
-    |-- data_inspector.py
-    |-- inference.py
-    |-- requirements.txt
-    |-- requirements_simple.txt
-    |-- setup.sh
-    |-- updated_data.csv
 |-- amachess-backend
     |-- .env
+    |-- .env.example
     |-- .gitignore
     |-- check-db.js
     |-- chess_vision_service
-        |-- CHESSCOG_SETUP.md
-        |-- Dockerfile
-        |-- IMPLEMENTATION_SUMMARY.md
-        |-- QUICKSTART.md
-        |-- README.md
-        |-- See
-        |-- [32
-        |-- __pycache__
-            |-- app.cpython-312.pyc
-            |-- chessboard_detection.cpython-312.pyc
-            |-- fen_extraction.cpython-312.pyc
-            |-- main.cpython-312.pyc
-            |-- mock_chesscog.cpython-312.pyc
-            |-- mock_chesscog.cpython-313.pyc
         |-- app.py
         |-- app_chesscog_fixed.py
         |-- app_with_cache.py
         |-- app_with_chesscog.py
         |-- app_with_mock.py
-        |-- chess_vision.log
         |-- chessboard2fen
-            |-- .gitignore
-            |-- LICENSE
-            |-- README.md
-            |-- boardDetection.py
-            |-- chessboard.py
-            |-- detectionScript.py
-            |-- docs
-                |-- board.png
-                |-- boardDigital.png
-                |-- cellImg1.png
-                |-- cellImg2.png
-                |-- cellImg3.png
-                |-- cellImg4.png
-                |-- inputImg.jpg
-                |-- process.png
-                |-- video.gif
-            |-- engine
-                |-- stockfish
-            |-- input_imgs
-                |-- inputImg01.jpg
-                |-- inputImg02.jpg
-                |-- inputImg03.jpg
-                |-- inputImg04.jpg
-                |-- inputImg05.jpg
-                |-- inputImg06.jpg
-                |-- inputImg07.jpg
-                |-- inputImg08.jpg
-                |-- inputImg09.jpg
-                |-- inputImg10.jpg
-                |-- inputImg11.jpg
-                |-- inputImg12.jpg
-                |-- inputImg13.jpg
-                |-- inputImg14.jpg
-                |-- inputImg15.jpg
-                |-- inputImg16.jpg
-                |-- inputImg17.jpg
-                |-- inputImg18.jpg
-                |-- inputImg19.jpg
-                |-- inputImg20.jpg
-                |-- inputImg21.jpg
-                |-- inputImg22.jpg
-                |-- inputImg23.jpg
-                |-- inputImg24.jpg
-                |-- inputImg25.jpg
-                |-- inputImg26.jpg
-                |-- inputImg27.jpg
-                |-- inputImg28.jpg
-                |-- inputImg29.jpg
-                |-- inputImg30.jpg
-                |-- inputImg31.jpg
-                |-- inputImg32.jpg
-                |-- inputImg33.jpg
-                |-- inputImg34.jpg
-                |-- inputImg35.jpg
-                |-- inputImg36.jpg
-                |-- inputImg37.jpg
-                |-- inputImg38.jpg
-                |-- inputImg39.jpg
-                |-- inputImg40.jpg
-                |-- inputImg41.jpg
-                |-- inputImg42.jpg
-                |-- inputImg43.jpg
-            |-- models
-                |-- classification.h5
-                |-- detection
-                    |-- saved_model.pb
-                    |-- variables
-                        |-- variables.data-00000-of-00002
-                        |-- variables.data-00001-of-00002
-                        |-- variables.index
-            |-- requirements.txt
         |-- chesscog_repo
+        |-- CHESSCOG_SETUP.md
         |-- docker-compose.yml
-        |-- fen_cache
+        |-- Dockerfile
+        |-- IMPLEMENTATION_SUMMARY.md
         |-- mock_chesscog.py
         |-- pdf_cache
+        |-- QUICKSTART.md
+        |-- README.md
         |-- requirements.txt
         |-- requirements_chesscog.txt
+        |-- See
         |-- setup.py
         |-- setup_chesscog.py
         |-- start.bat
         |-- start.sh
-        |-- temp_images
         |-- temp_uploads
             |-- 1752799954237_1752576994909_DVORESTKYS_ENDGAME_MANUAL.pdf
         |-- test_service.py
         |-- test_simple.py
-    |-- docker-compose.yml
+        |-- [32
+        |-- __pycache__
+            |-- mock_chesscog.cpython-312.pyc
+            |-- mock_chesscog.cpython-313.pyc
+    |-- config
     |-- nodemon.json
+    |-- nul
     |-- package-lock.json
     |-- package.json
     |-- prisma
@@ -134,18 +49,22 @@
                 |-- migration.sql
             |-- 20250722151147_remove_chess_com_username
                 |-- migration.sql
+            |-- 20250729041839_add_daily_puzzle_attempts_table
             |-- migration_lock.toml
         |-- prisma
             |-- dev.db
         |-- schema.prisma
+    |-- routes
     |-- scripts
+        |-- check-and-seed-puzzles.js
+        |-- create-test-user.js
         |-- init-db.sql
         |-- install-stockfish.js
+        |-- load-puzzles-from-csv.js
         |-- seed-puzzles.js
         |-- setup-postgresql.bat
         |-- setup-postgresql.sh
-        |-- test-chess-vision-endpoints.js
-        |-- test-lichess-integration.js
+    |-- services
     |-- setup-wsl.sh
     |-- src
         |-- config
@@ -154,32 +73,6 @@
             |-- openai.js
         |-- controllers
             |-- authController.js
-        |-- generated
-            |-- prisma
-                |-- client.d.ts
-                |-- client.js
-                |-- default.d.ts
-                |-- default.js
-                |-- edge.d.ts
-                |-- edge.js
-                |-- index-browser.js
-                |-- index.d.ts
-                |-- index.js
-                |-- libquery_engine-debian-openssl-3.0.x.so.node
-                |-- package.json
-                |-- runtime
-                    |-- edge-esm.js
-                    |-- edge.js
-                    |-- index-browser.d.ts
-                    |-- index-browser.js
-                    |-- library.d.ts
-                    |-- library.js
-                    |-- react-native.js
-                    |-- wasm-compiler-edge.js
-                    |-- wasm-engine-edge.js
-                |-- schema.prisma
-                |-- wasm.d.ts
-                |-- wasm.js
         |-- middleware
             |-- auth.js
         |-- routes
@@ -202,105 +95,107 @@
             |-- openaiService.js
             |-- pdfParsingService.js
             |-- pgnAnalysisService.js
-            |-- puzzleService.js
             |-- stockfishService.js
     |-- stockfish
-        |-- stockfish
-            |-- AUTHORS
-            |-- CITATION.cff
-            |-- Copying.txt
-            |-- README.md
-            |-- Top CPU Contributors.txt
-            |-- src
-                |-- Makefile
-                |-- benchmark.cpp
-                |-- benchmark.h
-                |-- bitbase.cpp
-                |-- bitboard.cpp
-                |-- bitboard.h
-                |-- endgame.cpp
-                |-- endgame.h
-                |-- evaluate.cpp
-                |-- evaluate.h
-                |-- incbin
-                    |-- UNLICENCE
-                    |-- incbin.h
-                |-- main.cpp
-                |-- material.cpp
-                |-- material.h
-                |-- misc.cpp
-                |-- misc.h
-                |-- movegen.cpp
-                |-- movegen.h
-                |-- movepick.cpp
-                |-- movepick.h
-                |-- nnue
-                    |-- evaluate_nnue.cpp
-                    |-- evaluate_nnue.h
-                    |-- features
-                        |-- half_ka_v2_hm.cpp
-                        |-- half_ka_v2_hm.h
-                    |-- layers
-                        |-- affine_transform.h
-                        |-- affine_transform_sparse_input.h
-                        |-- clipped_relu.h
-                        |-- simd.h
-                        |-- sqr_clipped_relu.h
-                    |-- nnue_accumulator.h
-                    |-- nnue_architecture.h
-                    |-- nnue_common.h
-                    |-- nnue_feature_transformer.h
-                |-- pawns.cpp
-                |-- pawns.h
-                |-- position.cpp
-                |-- position.h
-                |-- psqt.cpp
-                |-- psqt.h
-                |-- search.cpp
-                |-- search.h
-                |-- syzygy
-                    |-- tbprobe.cpp
-                    |-- tbprobe.h
-                |-- thread.cpp
-                |-- thread.h
-                |-- thread_win32_osx.h
-                |-- timeman.cpp
-                |-- timeman.h
-                |-- tt.cpp
-                |-- tt.h
-                |-- tune.cpp
-                |-- tune.h
-                |-- types.h
-                |-- uci.cpp
-                |-- uci.h
-                |-- ucioption.cpp
-            |-- stockfish-ubuntu-x86-64-avx2
-            |-- wiki
-                |-- Advanced-topics.md
-                |-- Commands.md
-                |-- Compiling-from-source.md
-                |-- Developers.md
-                |-- Download-and-usage.md
-                |-- Governance-and-responsibilities.md
-                |-- Home.md
-                |-- Regression-Tests.md
-                |-- Stockfish-FAQ.md
-                |-- Terminology.md
-                |-- Useful-data.md
-                |-- _Footer.md
-    |-- test-dashboard.js
-    |-- test-openai-integration.js
-    |-- test-progress-calc.js
-    |-- test-user-auth.js
-    |-- test-user-dashboard.js
+        |-- AUTHORS
+        |-- CITATION.cff
+        |-- CONTRIBUTING.md
+        |-- Copying.txt
+        |-- README.md
+        |-- scripts
+            |-- get_native_properties.sh
+            |-- net.sh
+        |-- src
+            |-- benchmark.cpp
+            |-- benchmark.h
+            |-- bitboard.cpp
+            |-- bitboard.h
+            |-- engine.cpp
+            |-- engine.h
+            |-- evaluate.cpp
+            |-- evaluate.h
+            |-- history.h
+            |-- incbin
+                |-- incbin.h
+                |-- UNLICENCE
+            |-- main.cpp
+            |-- Makefile
+            |-- memory.cpp
+            |-- memory.h
+            |-- misc.cpp
+            |-- misc.h
+            |-- movegen.cpp
+            |-- movegen.h
+            |-- movepick.cpp
+            |-- movepick.h
+            |-- nnue
+                |-- features
+                    |-- half_ka_v2_hm.cpp
+                    |-- half_ka_v2_hm.h
+                |-- layers
+                    |-- affine_transform.h
+                    |-- affine_transform_sparse_input.h
+                    |-- clipped_relu.h
+                    |-- simd.h
+                    |-- sqr_clipped_relu.h
+                |-- network.cpp
+                |-- network.h
+                |-- nnue_accumulator.cpp
+                |-- nnue_accumulator.h
+                |-- nnue_architecture.h
+                |-- nnue_common.h
+                |-- nnue_feature_transformer.h
+                |-- nnue_misc.cpp
+                |-- nnue_misc.h
+            |-- numa.h
+            |-- perft.h
+            |-- position.cpp
+            |-- position.h
+            |-- score.cpp
+            |-- score.h
+            |-- search.cpp
+            |-- search.h
+            |-- syzygy
+                |-- tbprobe.cpp
+                |-- tbprobe.h
+            |-- thread.cpp
+            |-- thread.h
+            |-- thread_win32_osx.h
+            |-- timeman.cpp
+            |-- timeman.h
+            |-- tt.cpp
+            |-- tt.h
+            |-- tune.cpp
+            |-- tune.h
+            |-- types.h
+            |-- uci.cpp
+            |-- uci.h
+            |-- ucioption.cpp
+            |-- ucioption.h
+        |-- stockfish.exe
+        |-- stockfish.zip
+        |-- Top CPU Contributors.txt
+        |-- wiki
+            |-- Advanced-topics.md
+            |-- Compiling-from-source.md
+            |-- Developers.md
+            |-- Download-and-usage.md
+            |-- Governance-and-responsibilities.md
+            |-- Home.md
+            |-- Regression-Tests.md
+            |-- Stockfish-FAQ.md
+            |-- Terminology.md
+            |-- UCI-&-Commands.md
+            |-- Useful-data.md
+            |-- _Footer.md
     |-- uploads
         |-- 1752972668022_My System by Aron Nimsowitsch.pdf
         |-- 1753213207844_I Play Against Pieces.pdf
     |-- utils
+        |-- lichess_db_puzzle.csv
 |-- amachess-frontend
     |-- .env
     |-- .gitignore
-    |-- README.md
     |-- eslint.config.js
     |-- index.html
     |-- package-lock.json
@@ -311,6 +206,20 @@
         |-- move-sound.mp3
         |-- pdf.worker.min.js
         |-- vite.svg
+    |-- README.md
+    |-- screenshots
+        |-- 01-dashboard-home.png
+        |-- 02-chess-gameplay.png
+        |-- 03-puzzle-training.png
+        |-- 04-puzzle-interface.png
+        |-- 05-game-analysis.png
+        |-- 06-learning-interface.png
+        |-- 07-chess-library.png
+        |-- 08-book-reader.png
+        |-- 09-settings.png
+        |-- 10-daily-challenges.png
+        |-- 11-statistics.png
+        |-- 12-progress-tracking.png
     |-- src
         |-- App.css
         |-- App.tsx
@@ -358,8 +267,6 @@
         |-- main.tsx
         |-- pages
             |-- BookReader.tsx
-            |-- BookReaderNew.tsx
-            |-- BookReaderOld.tsx
             |-- ChessBookExample.tsx
             |-- ContactUs.tsx
             |-- Dashboard.tsx
@@ -367,22 +274,17 @@
             |-- Learn.tsx
             |-- Library.tsx
             |-- Login.tsx
-            |-- PuzzleSolver.tsx
-            |-- PuzzleSolverNew.tsx
-            |-- PuzzleSolverOld.tsx
-            |-- PuzzleTraining.tsx
-            |-- PuzzleTraining2.tsx
-            |-- PuzzleTrainingNew.tsx
             |-- Puzzles.tsx
+            |-- PuzzleSolver.tsx
             |-- Register.tsx
             |-- Settings.tsx
-            |-- Settings.tsx.backup
             |-- SimpleBookReader.tsx
             |-- TestPage.tsx
         |-- services
             |-- authApi.ts
             |-- booksApi.ts
             |-- chessVisionService.ts
+            |-- dailyPuzzleService.ts
             |-- enhancedPuzzleService.ts
             |-- pdfViewer.ts
             |-- platformStatsService.js
@@ -396,8 +298,10 @@
             |-- chess.ts
             |-- index.ts
         |-- utils
+            |-- apiTest.ts
             |-- stockfish.ts
     |-- tailwind.config.ts
     |-- tsconfig.json
     |-- tsconfig.node.json
     |-- vite.config.ts
+|-- README.md

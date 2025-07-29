@@ -9,25 +9,36 @@ class StockfishService {
   }
 
   getStockfishPath() {
-    // Try multiple common Stockfish locations, prioritizing Linux binaries
-    const possiblePaths = [
-      path.join(__dirname, '../../stockfish/stockfish/stockfish-ubuntu-x86-64-avx2'), // Precompiled Linux binary (preferred)
+    // Try multiple common Stockfish locations, prioritizing Windows on Windows systems
+    const isWindows = process.platform === 'win32';
+    
+    const possiblePaths = isWindows ? [
+      path.join(__dirname, '../../stockfish/stockfish.exe'), // Windows executable (preferred on Windows)
+      path.join(__dirname, '../../stockfish/src/stockfish.exe'), // Built from source Windows
+      'stockfish.exe', // If in PATH on Windows
+      'stockfish' // Fallback to Linux-style name
+    ] : [
+      path.join(__dirname, '../../stockfish/stockfish/stockfish-ubuntu-x86-64-avx2'), // Precompiled Linux binary
       'stockfish', // Linux system installation
       path.join(__dirname, '../../stockfish/stockfish'), // Unix executable
       path.join(__dirname, '../../stockfish/src/stockfish'), // Built from source Unix
-      path.join(__dirname, '../../stockfish/stockfish.exe'), // Windows executable (fallback)
-      path.join(__dirname, '../../stockfish/src/stockfish.exe'), // Built from source Windows
-      'stockfish.exe' // If in PATH on Windows (fallback)
+      path.join(__dirname, '../../stockfish/stockfish.exe'), // Windows executable as fallback
     ];
 
     for (const stockfishPath of possiblePaths) {
       try {
         if (fs.existsSync(stockfishPath)) {
           console.log(`Found Stockfish at: ${stockfishPath}`);
-          // Test if the executable is actually working
-          const testSpawn = spawn(stockfishPath, [], { stdio: 'pipe' });
-          testSpawn.kill();
-          return stockfishPath;
+          // Test if the executable is actually working with better error handling
+          try {
+            const testSpawn = spawn(stockfishPath, [], { stdio: 'pipe' });
+            testSpawn.kill('SIGTERM');
+            console.log(`✅ Stockfish executable test passed: ${stockfishPath}`);
+            return stockfishPath;
+          } catch (spawnError) {
+            console.log(`❌ Stockfish spawn test failed for ${stockfishPath}:`, spawnError.message);
+            continue;
+          }
         }
       } catch (error) {
         console.log(`Could not access ${stockfishPath}:`, error.message);
@@ -35,8 +46,8 @@ class StockfishService {
       }
     }
 
-    console.log('Using Stockfish from PATH');
-    return 'stockfish'; // Fallback to PATH
+    console.log('⚠️  No working Stockfish executable found, using PATH fallback');
+    return isWindows ? 'stockfish.exe' : 'stockfish';
   }
 
   // Create a new Stockfish engine instance with improved error handling
