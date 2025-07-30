@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const openaiService = require('../services/openaiService');
-const OpenAIService = require('../services/openaiService').constructor;
+const GroqService = require('../services/openaiService').constructor;
 const stockfishService = require('../services/stockfishService');
 const { Chess } = require('chess.js');
 
@@ -16,7 +16,7 @@ router.post('/welcome', async (req, res) => {
       gameContext = {} 
     } = req.body;
 
-    // Get welcome message from OpenAI GPT-4o
+    // Get welcome message from Groq LLaMA
     const welcome = await openaiService.generateWelcomeMessage(difficulty, gameContext);
 
     res.json({
@@ -66,7 +66,7 @@ router.post('/chat', async (req, res) => {
       ...gameContext
     };
 
-    // Get coaching response from OpenAI
+    // Get coaching response from Groq
     const coaching = await openaiService.generateChessCoaching(position, playerMove, context);
 
     // Also get basic analysis from Stockfish if available
@@ -535,15 +535,15 @@ router.post('/evaluation-monitor', async (req, res) => {
  * Check if the coaching service is available
  */
 router.get('/health', (req, res) => {
-  const openaiAvailable = openaiService.isConfigured();
+  const groqAvailable = openaiService.isConfigured();
   
   res.json({
     success: true,
     services: {
-      openai: {
-        available: openaiAvailable,
-        model: 'gpt-4o',
-        status: openaiAvailable ? 'ready' : 'not configured'
+      groq: {
+        available: groqAvailable,
+        model: 'llama-3.3-70b-versatile',
+        status: groqAvailable ? 'ready' : 'not configured'
       },
       stockfish: {
         available: !!stockfishService,

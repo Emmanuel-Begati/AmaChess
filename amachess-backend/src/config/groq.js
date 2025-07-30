@@ -1,30 +1,30 @@
 /**
- * OpenAI Configuration Helper
- * Provides clear instructions and validation for OpenAI API setup
+ * Groq Configuration Helper
+ * Provides clear instructions and validation for Groq API setup
  */
 
-const checkOpenAIConfiguration = () => {
-  const apiKey = process.env.OPENAI_API_KEY;
+const checkGroqConfiguration = () => {
+  const apiKey = process.env.GROQ_API_KEY;
   
   if (!apiKey) {
     console.error(`
-❌ OpenAI API Key Missing!
+❌ Groq API Key Missing!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-To enable the AI Chess Coach with GPT-4o, please follow these steps:
+To enable the AI Chess Coach with Groq, please follow these steps:
 
-1. 🔑 Get your OpenAI API key:
-   → Visit: https://platform.openai.com/account/api-keys
+1. 🔑 Get your Groq API key:
+   → Visit: https://console.groq.com/keys
    → Create a new API key
-   → Copy the key (starts with sk-...)
+   → Copy the key (starts with gsk_...)
 
 2. ⚙️ Add it to your .env file:
    → Open: amachess-backend/.env  
-   → Replace: OPENAI_API_KEY=your-openai-api-key-here
-   → With: OPENAI_API_KEY=sk-your-actual-key-here
+   → Replace: GROQ_API_KEY=your-groq-api-key-here
+   → With: GROQ_API_KEY=gsk-your-actual-key-here
 
 3. 💰 Ensure you have API credits:
-   → Check: https://platform.openai.com/account/usage
+   → Check: https://console.groq.com/settings/billing
    → Add billing if needed
 
 4. 🔄 Restart the server:
@@ -36,18 +36,18 @@ The AI Coach will use fallback responses until configured.
     return false;
   }
   
-  if (apiKey === 'your-openai-api-key-here') {
+  if (apiKey === 'your-groq-api-key-here') {
     console.warn(`
-⚠️ OpenAI API Key Not Configured!
+⚠️ Groq API Key Not Configured!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Please replace the placeholder with your actual OpenAI API key:
+Please replace the placeholder with your actual Groq API key:
 
 📝 Edit file: amachess-backend/.env
-🔄 Change: OPENAI_API_KEY=your-openai-api-key-here  
-✅ To: OPENAI_API_KEY=sk-your-actual-key-here
+🔄 Change: GROQ_API_KEY=your-groq-api-key-here  
+✅ To: GROQ_API_KEY=gsk-your-actual-key-here
 
-Get your API key: https://platform.openai.com/account/api-keys
+Get your API key: https://console.groq.com/keys
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 The AI Coach will use fallback responses until configured.
@@ -55,19 +55,19 @@ The AI Coach will use fallback responses until configured.
     return false;
   }
   
-  if (!apiKey.startsWith('sk-') || apiKey.length < 20) {
+  if (!apiKey.startsWith('gsk_') || apiKey.length < 20) {
     console.error(`
-❌ Invalid OpenAI API Key Format!
+❌ Invalid Groq API Key Format!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 The API key should:
-✅ Start with 'sk-'
+✅ Start with 'gsk_'
 ✅ Be much longer (50+ characters)
 
 Current key: ${apiKey.substring(0, 10)}...
 
 Please double-check your API key from:
-https://platform.openai.com/account/api-keys
+https://console.groq.com/keys
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `);
@@ -75,10 +75,10 @@ https://platform.openai.com/account/api-keys
   }
   
   console.log(`
-✅ OpenAI Configuration Ready!
+✅ Groq Configuration Ready!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🤖 AI Chess Coach: GPT-4o Enabled
+🤖 AI Chess Coach: Groq LLaMA 3.3 Enabled
 🎯 Features Available:
    • Real-time move analysis
    • Personalized coaching tips  
@@ -90,34 +90,34 @@ https://platform.openai.com/account/api-keys
   return true;
 };
 
-const getOpenAIStatus = () => {
-  const apiKey = process.env.OPENAI_API_KEY;
+const getGroqStatus = () => {
+  const apiKey = process.env.GROQ_API_KEY;
   
-  if (!apiKey || apiKey === 'your-openai-api-key-here') {
+  if (!apiKey || apiKey === 'your-groq-api-key-here') {
     return {
       configured: false,
       status: 'not_configured',
-      message: 'OpenAI API key not set. AI Coach will use fallback responses.'
+      message: 'Groq API key not set. AI Coach will use fallback responses.'
     };
   }
   
-  if (!apiKey.startsWith('sk-') || apiKey.length < 20) {
+  if (!apiKey.startsWith('gsk_') || apiKey.length < 20) {
     return {
       configured: false,
       status: 'invalid_key',
-      message: 'Invalid OpenAI API key format. Please check your configuration.'
+      message: 'Invalid Groq API key format. Please check your configuration.'
     };
   }
   
   return {
     configured: true,
     status: 'ready',
-    message: 'GPT-4o AI Chess Coach ready!',
-    model: 'gpt-4o'
+    message: 'Groq LLaMA AI Chess Coach ready!',
+    model: 'llama-3.3-70b-versatile'
   };
 };
 
 module.exports = {
-  checkOpenAIConfiguration,
-  getOpenAIStatus
+  checkGroqConfiguration,
+  getGroqStatus
 };

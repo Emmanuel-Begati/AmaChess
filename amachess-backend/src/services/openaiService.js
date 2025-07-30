@@ -1,25 +1,25 @@
-const OpenAI = require('openai');
+const Groq = require('groq-sdk');
 const { Chess } = require('chess.js');
 
-class OpenAIService {
+class GroqService {
   constructor() {
-    if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'your-openai-api-key-here') {
-      this.client = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY
+    if (process.env.GROQ_API_KEY && process.env.GROQ_API_KEY !== 'your-groq-api-key-here') {
+      this.client = new Groq({
+        apiKey: process.env.GROQ_API_KEY
       });
-      // Use GPT-4o for enhanced chess understanding and coaching
-      this.model = 'gpt-4o';
+      // Use LLaMA 3.3 70B for enhanced chess understanding and coaching
+      this.model = 'llama-3.3-70b-versatile';
     } else {
       this.client = null;
       this.model = null;
-      console.warn('⚠️  OpenAI API key not configured. AI coaching features will be disabled.');
+      console.warn('⚠️  Groq API key not configured. AI coaching features will be disabled.');
     }
   }
 
   isConfigured() {
     return this.client && 
            this.client.apiKey && 
-           this.client.apiKey !== 'your-openai-api-key-here' &&
+           this.client.apiKey !== 'your-groq-api-key-here' &&
            this.client.apiKey.length > 20;
   }
 
@@ -28,7 +28,7 @@ class OpenAIService {
    */
   async generateHint(position, gameContext = {}) {
     if (!this.isConfigured()) {
-      console.warn('OpenAI API key not configured, using fallback hint');
+      console.warn('Groq API key not configured, using fallback hint');
       return this.getFallbackHint();
     }
 
@@ -81,7 +81,7 @@ ${moveHistory.length > 0 ? `Recent moves: ${moveHistory.slice(-6).join(' ')}` : 
       };
 
     } catch (error) {
-      console.error('OpenAI API error for hint:', error);
+      console.error('Groq API error for hint:', error);
       return this.getFallbackHint();
     }
   }
@@ -91,7 +91,7 @@ ${moveHistory.length > 0 ? `Recent moves: ${moveHistory.slice(-6).join(' ')}` : 
    */
   async analyzeBlunder(position, playerMove, evaluationChange, gameContext = {}) {
     if (!this.isConfigured()) {
-      console.warn('OpenAI API key not configured, using fallback blunder analysis');
+      console.warn('Groq API key not configured, using fallback blunder analysis');
       return this.getFallbackBlunderAnalysis(evaluationChange, gameContext.isUserBlunder);
     }
 
@@ -171,7 +171,7 @@ ${pgn ? `Game context: ${pgn.slice(-300)}` : ''}`;
       };
 
     } catch (error) {
-      console.error('OpenAI API error for blunder analysis:', error);
+      console.error('Groq API error for blunder analysis:', error);
       return this.getFallbackBlunderAnalysis(evaluationChange, gameContext.isUserBlunder);
     }
   }
@@ -181,7 +181,7 @@ ${pgn ? `Game context: ${pgn.slice(-300)}` : ''}`;
    */
   async generateChessCoaching(position, playerMove, gameContext = {}) {
     if (!this.isConfigured()) {
-      console.warn('OpenAI API key not configured, using fallback coaching');
+      console.warn('Groq API key not configured, using fallback coaching');
       return this.getFallbackCoaching(playerMove);
     }
 
@@ -230,7 +230,7 @@ ${moveHistory.length > 0 ? `Recent moves: ${moveHistory.slice(-4).join(' ')}` : 
       };
 
     } catch (error) {
-      console.error('OpenAI API error for coaching:', error);
+      console.error('Groq API error for coaching:', error);
       return this.getFallbackCoaching(playerMove);
     }
   }
@@ -240,7 +240,7 @@ ${moveHistory.length > 0 ? `Recent moves: ${moveHistory.slice(-4).join(' ')}` : 
    */
   async generateWelcomeMessage(difficulty = 'intermediate', gameContext = {}) {
     if (!this.isConfigured()) {
-      console.warn('OpenAI API key not configured, using fallback welcome');
+      console.warn('Groq API key not configured, using fallback welcome');
       return this.getFallbackWelcomeMessage(difficulty);
     }
 
@@ -274,7 +274,7 @@ Your welcome style:
       };
 
     } catch (error) {
-      console.error('OpenAI API error for welcome message:', error);
+      console.error('Groq API error for welcome message:', error);
       return this.getFallbackWelcomeMessage(difficulty);
     }
   }
@@ -299,7 +299,7 @@ Your welcome style:
    */
   async analyzeBlunder(position, playerMove, evaluationChange, gameContext = {}) {
     if (!this.isConfigured()) {
-      console.warn('OpenAI API key not configured, using fallback blunder analysis');
+      console.warn('Groq API key not configured, using fallback blunder analysis');
       return this.getFallbackBlunderAnalysis(evaluationChange);
     }
 
@@ -375,7 +375,7 @@ Position context:
       };
 
     } catch (error) {
-      console.error('OpenAI API error for blunder analysis:', error);
+      console.error('Groq API error for blunder analysis:', error);
       return this.getFallbackBlunderAnalysis(evaluationChange, isUserBlunder);
     }
   }
@@ -385,7 +385,7 @@ Position context:
    */
   async generateContextualHint(position, gameContext = {}) {
     if (!this.isConfigured()) {
-      console.warn('OpenAI API key not configured, using fallback hint');
+      console.warn('Groq API key not configured, using fallback hint');
       return this.getFallbackHint();
     }
 
@@ -435,7 +435,7 @@ Game context:
       };
 
     } catch (error) {
-      console.error('OpenAI API error for contextual hint:', error);
+      console.error('Groq API error for contextual hint:', error);
       return this.getFallbackHint();
     }
   }
@@ -582,7 +582,7 @@ Game context:
    */
   async generateWelcomeMessage(difficulty = 'intermediate', gameContext = {}) {
     if (!this.isConfigured()) {
-      console.warn('OpenAI API key not configured, using fallback welcome');
+      console.warn('Groq API key not configured, using fallback welcome');
       return this.getFallbackWelcomeMessage(difficulty);
     }
 
@@ -617,7 +617,7 @@ Your welcome style:
       };
 
     } catch (error) {
-      console.error('OpenAI API error for welcome message:', error);
+      console.error('Groq API error for welcome message:', error);
       return this.getFallbackWelcomeMessage(difficulty);
     }
   }
@@ -768,10 +768,10 @@ Your welcome style:
   }
 }
 
-const openaiServiceInstance = new OpenAIService();
+const groqServiceInstance = new GroqService();
 
 // Make static methods accessible on the instance for route access
-openaiServiceInstance.isBlunder = OpenAIService.isBlunder;
-openaiServiceInstance.isSignificantChange = OpenAIService.isSignificantChange;
+groqServiceInstance.isBlunder = GroqService.isBlunder;
+groqServiceInstance.isSignificantChange = GroqService.isSignificantChange;
 
-module.exports = openaiServiceInstance;
+module.exports = groqServiceInstance;

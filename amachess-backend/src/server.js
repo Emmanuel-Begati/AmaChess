@@ -5,7 +5,7 @@ const logger = require('./config/logger');
 
 // Import database config to initialize connection
 const { initializeDatabase } = require('./config/database');
-const { checkOpenAIConfiguration } = require('./config/openai');
+const { checkGroqConfiguration } = require('./config/groq');
 
 const stockfishRoutes = require('./routes/stockfish');
 const importRoutes = require('./routes/import');
@@ -53,9 +53,9 @@ app.use('/api/coach', coachRoutes); // AI Chess Coach endpoints
 app.get('/api/health', async (req, res) => {
   try {
     const { healthCheck } = require('./config/database');
-    const { getOpenAIStatus } = require('./config/openai');
+    const { getGroqStatus } = require('./config/groq');
     const dbHealth = await healthCheck();
-    const openaiStatus = getOpenAIStatus();
+    const groqStatus = getGroqStatus();
     
     res.json({ 
       status: 'OK', 
@@ -64,7 +64,7 @@ app.get('/api/health', async (req, res) => {
       version: '1.0.0',
       database: dbHealth,
       ai: {
-        openai: openaiStatus,
+        groq: groqStatus,
         stockfish: true
       },
       features: {
@@ -76,7 +76,7 @@ app.get('/api/health', async (req, res) => {
         books: true,
         puzzles: true,
         userProgress: true,
-        aiCoach: openaiStatus.configured,
+        aiCoach: groqStatus.configured,
         postgresql: process.env.DATABASE_URL?.includes('postgresql') || false
       }
     });
@@ -95,8 +95,8 @@ async function startServer() {
   try {
     logger.info('Starting AmaChess Backend...');
     
-    // Check OpenAI Configuration
-    checkOpenAIConfiguration();
+    // Check Groq Configuration
+    checkGroqConfiguration();
     
     // Initialize database connection
     await initializeDatabase();
