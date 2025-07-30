@@ -19,6 +19,8 @@ const puzzleRoutes = require('./routes/puzzles');
 const userPuzzleRoutes = require('./routes/userPuzzles'); // New user puzzle routes
 const chessVisionRoutes = require('./routes/chessVision'); // Chess vision/PDF detection routes
 const coachRoutes = require('./routes/coach'); // AI chess coach routes
+const gamesRoutes = require('./routes/games'); // Game storage routes
+const chatRoutes = require('./routes/chat'); // AI chat routes
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -41,13 +43,15 @@ app.use('/api/user/puzzles', userPuzzleRoutes); // New user puzzle management ro
 app.use('/api/stockfish', stockfishRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/test', testRoutes);
-app.use('/api/games', lichessRoutes);
-app.use('/api/lichess', lichessRoutes); // Add dedicated lichess endpoint
+app.use('/api/lichess', lichessRoutes); // Lichess API endpoints
+app.use('/api/games', lichessRoutes); // Games API endpoints (alias for lichess routes)
 app.use('/api/analyze', analyzeRoutes);
 app.use('/api/books', booksRoutes);
 app.use('/api/puzzles', puzzleRoutes);
 app.use('/api', chessVisionRoutes); // Chess vision endpoints (detect-chess, get-fen, etc.)
 app.use('/api/coach', coachRoutes); // AI Chess Coach endpoints
+app.use('/api/user-games', gamesRoutes); // User game storage endpoints
+app.use('/api/chat', chatRoutes); // AI chat endpoints
 
 // Enhanced health check with database status
 app.get('/api/health', async (req, res) => {

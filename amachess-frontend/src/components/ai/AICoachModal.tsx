@@ -400,6 +400,70 @@ const AICoachModal: React.FC<AICoachModalProps> = ({ onClose, evaluation = null 
     return true; // Return true to indicate the move was accepted
   };
 
+  const saveGame = async () => {
+    try {
+      // Create a Chess instance to generate PGN from current position and history
+      const gameForPgn = new Chess();
+      
+      // We'll create a simple PGN from the AI move history
+      let pgnMoves = '';
+      if (aiMoveHistory.length > 0) {
+        pgnMoves = aiMoveHistory.map((move, index) => {
+          const moveNumber = Math.floor(index / 2) + 1;
+          if (index % 2 === 0) {
+            return `${moveNumber}. ${move.playerMove} ${move.aiMove}`;
+          } else {
+            return `${moveNumber}... ${move.playerMove} ${move.aiMove}`;
+          }
+        }).join(' ');
+      }
+
+      const pgn = `[Event "AI Coach Training"]
+[Site "AmaChess"]
+[Date "${new Date().toISOString().split('T')[0]}"]
+[Round "1"]
+[White "Player"]
+[Black "Coach AI"]
+[Result "*"]
+
+${pgnMoves} *`;
+
+      const gameData = {
+        pgn: pgn,
+        result: '*', // In progress
+        playerColor: 'white',
+        opponentType: 'ai',
+        timeControl: 'training',
+        source: 'ai_coach',
+        metadata: {
+          difficulty: difficulty,
+          coachMode: true,
+          moveCount: aiMoveHistory.length
+        }
+      };
+
+      const response = await fetch(`${API_BASE_URL}/user-games/save`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        },
+        body: JSON.stringify(gameData),
+      });
+
+      if (response.ok) {
+        setCoachMessage("Game progress saved successfully! You can review this game later in the AI Chat.");
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Save game failed:', response.status, errorData);
+        setCoachMessage(`Failed to save game progress: ${errorData.message || response.statusText}. Please try again.`);
+      }
+    } catch (error) {
+      console.error('Failed to save game:', error);
+      setCoachMessage("Error saving game progress. Please try again.");
+    }
+  };
+
   const resetGame = () => {
     const newGame = new Chess();
     setCurrentPosition(newGame.fen());
@@ -421,7 +485,7 @@ const AICoachModal: React.FC<AICoachModalProps> = ({ onClose, evaluation = null 
               </svg>
             </div>
             <div>
-              <h2 className="text-lg sm:text-xl font-bold text-white">AI Chess Coach</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-white">Coach B • Groq LLaMA</h2>
               <p className="text-[#97a1c4] text-xs sm:text-sm">Instructive Training Game</p>
             </div>
           </div>
@@ -659,7 +723,10 @@ const AICoachModal: React.FC<AICoachModalProps> = ({ onClose, evaluation = null 
         {/* Footer */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0 p-3 sm:p-6 border-t border-[#374162]">
           <div className="flex gap-2 sm:gap-3 w-full sm:w-auto">
-            <button className="bg-green-800 hover:bg-green-700 text-white px-3 sm:px-4 py-2 rounded-lg transition-colors text-xs sm:text-sm flex-1 sm:flex-none">
+            <button 
+              onClick={saveGame}
+              className="bg-green-800 hover:bg-green-700 text-white px-3 sm:px-4 py-2 rounded-lg transition-colors text-xs sm:text-sm flex-1 sm:flex-none"
+            >
               Save Progress
             </button>
             <button 

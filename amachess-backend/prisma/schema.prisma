@@ -23,6 +23,8 @@ model User {
   puzzleAttempts  PuzzleAttempt[]
   puzzleSessions  PuzzleSession[]
   userStats       UserStats?
+  games           Game[]
+  chatSessions    ChatSession[]
 
   @@map("users")
 }
@@ -156,4 +158,75 @@ model UserStats {
   user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_stats")
+}
+
+model Game {
+  id                String   @id @default(cuid())
+  userId            String
+  gameType          String   // 'training', 'puzzle', 'imported', 'analysis'
+  pgn               String   // Full PGN of the game
+  fen               String?  // Final position FEN
+  result            String?  // '1-0', '0-1', '1/2-1/2', '*'
+  playerColor       String   // 'white' or 'black'
+  opponent          String?  // Opponent name or 'AI Coach'
+  timeControl       String?  // Time control used
+  opening           String?  // Opening name
+  analysis          String?  // JSON string containing analysis data
+  metadata          String?  // JSON string containing additional metadata
+  source            String?  // 'lichess', 'ai_coach', 'imported', etc.
+  sourceId          String?  // External ID if imported
+  difficulty        Int?     // AI difficulty level if applicable
+  moveCount         Int      @default(0)
+  duration          Int?     // Game duration in seconds
+  accuracy          Float?   // Player accuracy percentage
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relationships
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chatSessions      ChatSession[]
+
+  @@map("games")
+  @@index([userId])
+  @@index([gameType])
+  @@index([createdAt])
+  @@index([source])
+}
+
+model ChatSession {
+  id                String   @id @default(cuid())
+  userId            String
+  gameId            String?  // Optional - can chat without specific game
+  sessionType       String   // 'game_analysis', 'general_improvement', 'opening_study', etc.
+  title             String?  // Optional session title
+  summary           String?  // AI-generated session summary
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relationships
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  game              Game?    @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  messages          ChatMessage[]
+
+  @@map("chat_sessions")
+  @@index([userId])
+  @@index([gameId])
+  @@index([createdAt])
+}
+
+model ChatMessage {
+  id                String      @id @default(cuid())
+  sessionId         String
+  sender            String      // 'user' or 'ai'
+  message           String      // The actual message content
+  messageType       String      @default("text") // 'text', 'analysis', 'suggestion', 'position'
+  metadata          String?     // JSON string for additional data (positions, moves, etc.)
+  createdAt         DateTime    @default(now())
+
+  // Relationships
+  session           ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
+  @@index([sessionId])
+  @@index([createdAt])
 }

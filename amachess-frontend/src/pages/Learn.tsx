@@ -70,20 +70,25 @@ const Learn = () => {
     setLoading(true);
     
     try {
-      console.log('Fetching games for:', username);
-      const response = await fetch(`http://localhost:3001/api/games/${username}/analyze?max=20`, {
-        method: 'GET',
+      console.log('Importing games and analysis for:', username);
+      const response = await fetch(`http://localhost:3001/api/import/lichess/${username}`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        }
+        },
+        body: JSON.stringify({ maxGames: 20 })
       });
       
       if (response.ok) {
         const data = await response.json();
         console.log('Imported games and analysis:', data);
         
-        setUserGames(data.games || []);
-        setGameAnalysis(data.analysis);
+        if (data.success) {
+          setUserGames(data.games || []);
+          setGameAnalysis(data.analysis);
+        } else {
+          setError(data.error || 'Failed to import games');
+        }
         
         // Store lichess username for future use
         const userData = JSON.parse(localStorage.getItem('userData') || '{}');

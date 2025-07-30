@@ -325,3 +325,58 @@ export interface CoachingRequest {
   playerMove?: string;
   difficulty?: string;
 }
+
+// Stored Game types
+export interface StoredGame {
+  id: string;
+  userId: string;
+  gameType: 'training' | 'puzzle' | 'imported' | 'analysis';
+  pgn: string;
+  fen?: string;
+  result?: string;
+  playerColor: 'white' | 'black';
+  opponent?: string;
+  timeControl?: string;
+  opening?: string;
+  analysis?: any;
+  metadata?: any;
+  source?: string;
+  sourceId?: string;
+  difficulty?: number;
+  moveCount: number;
+  duration?: number;
+  accuracy?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Chat types
+export interface ChatSession {
+  id: string;
+  userId: string;
+  gameId?: string;
+  sessionType: string;
+  title?: string;
+  summary?: string;
+  createdAt: string;
+  updatedAt: string;
+  messages: ChatMessage[];
+  game?: StoredGame;
+}
+
+export interface ChatMessage {
+  id: string;
+  sessionId: string;
+  sender: 'user' | 'ai';
+  message: string;
+  messageType: 'text' | 'analysis' | 'suggestion' | 'position';
+  metadata?: any;
+  createdAt: string;
+}
+
+export interface ChatRequest {
+  message: string;
+  sessionId?: string;
+  gameId?: string;
+  sessionType?: string;
+}

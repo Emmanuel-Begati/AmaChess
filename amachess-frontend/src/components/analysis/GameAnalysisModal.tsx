@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
-const GameAnalysisModal = ({ isOpen, onClose, gameData, analysis, isBulkAnalysis }) => {
+const GameAnalysisModal = ({ isOpen, onClose, gameData, analysis, isBulkAnalysis }: any) => {
   const [activeTab, setActiveTab] = useState('overview');
 
   if (!isOpen) return null;
 
   // Function to format backend analysis data to match frontend expectations
-  const formatAnalysisData = (backendAnalysis) => {
+  const formatAnalysisData = (backendAnalysis: any) => {
     if (!backendAnalysis) return null;
     
     return {
@@ -46,7 +46,7 @@ const GameAnalysisModal = ({ isOpen, onClose, gameData, analysis, isBulkAnalysis
       } : null,
       
       // Key moments
-      keyMoments: backendAnalysis.keyMoments?.map(moment => ({
+      keyMoments: backendAnalysis.keyMoments?.map((moment: any) => ({
         move: moment.moveNumber || 0,
         notation: moment.move || "N/A",
         type: moment.type || "unknown",
@@ -245,9 +245,8 @@ const GameAnalysisModal = ({ isOpen, onClose, gameData, analysis, isBulkAnalysis
 
   // Use the appropriate data based on analysis type
   const analysisData = isBulkAnalysis ? 
-    bulkAnalysisData : 
+    (analysis || bulkAnalysisData) : 
     (formatAnalysisData(analysis) || defaultSingleAnalysis);
-  const formattedAnalysisData = formatAnalysisData(analysisData);
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -298,7 +297,7 @@ const GameAnalysisModal = ({ isOpen, onClose, gameData, analysis, isBulkAnalysis
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <p className="text-[#97a1c4] text-sm mb-3">Most Played Openings</p>
-                      {analysisData.openingPerformance.mostPlayed.map((opening, index) => (
+                      {analysisData.openingPerformance.mostPlayed.map((opening: any, index: number) => (
                         <div key={index} className="flex items-center justify-between p-3 bg-[#374162] rounded-lg mb-2">
                           <div>
                             <p className="text-white font-medium">{opening.name}</p>
@@ -317,17 +316,112 @@ const GameAnalysisModal = ({ isOpen, onClose, gameData, analysis, isBulkAnalysis
                         <div key={timeControl} className="flex items-center justify-between p-3 bg-[#374162] rounded-lg mb-2">
                           <div>
                             <p className="text-white font-medium capitalize">{timeControl}</p>
-                            <p className="text-[#97a1c4] text-sm">{data.games} games</p>
+                            <p className="text-[#97a1c4] text-sm">{(data as any).games} games</p>
                           </div>
                           <div className="text-right">
-                            <p className="text-white font-bold">{(data.winRate * 100).toFixed(0)}%</p>
-                            <p className="text-[#97a1c4] text-sm">{data.avgAccuracy}% acc</p>
+                            <p className="text-white font-bold">{((data as any).winRate * 100).toFixed(0)}%</p>
+                            <p className="text-[#97a1c4] text-sm">{(data as any).avgAccuracy}% acc</p>
                           </div>
                         </div>
                       ))}
                     </div>
                   </div>
                 </div>
+
+                {/* Time Management Analysis */}
+                {analysisData.timeManagement && (
+                  <div className="bg-[#272e45] rounded-xl p-6 border border-[#374162]">
+                    <h3 className="text-xl font-bold text-white mb-4">Time Management</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-[#374162] rounded-lg p-4">
+                        <p className="text-[#97a1c4] text-sm mb-2">Average Time/Move</p>
+                        <p className="text-xl font-bold text-white">{analysisData.timeManagement.averageTimePerMove}s</p>
+                      </div>
+                      <div className="bg-[#374162] rounded-lg p-4">
+                        <p className="text-[#97a1c4] text-sm mb-2">Time Pressure Games</p>
+                        <p className="text-xl font-bold text-orange-400">{analysisData.timeManagement.timePressureGames}</p>
+                      </div>
+                      <div className="bg-[#374162] rounded-lg p-4">
+                        <p className="text-[#97a1c4] text-sm mb-2">Win Rate Under Pressure</p>
+                        <p className="text-xl font-bold text-red-400">{Math.round((analysisData.timeManagement.timePressureWinRate || 0) * 100)}%</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 p-3 bg-blue-900/20 border border-blue-600/30 rounded">
+                      <p className="text-blue-400 text-sm">💡 {analysisData.timeManagement.recommendation}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Opponent Analysis */}
+                {analysisData.opponentAnalysis && (
+                  <div className="bg-[#272e45] rounded-xl p-6 border border-[#374162]">
+                    <h3 className="text-xl font-bold text-white mb-4">Performance vs Opponent Strength</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-[#374162] rounded-lg p-4">
+                        <p className="text-[#97a1c4] text-sm mb-2">vs Higher Rated</p>
+                        <p className="text-xl font-bold text-red-400">
+                          {Math.round((analysisData.opponentAnalysis.vsHigherRated?.winRate || 0) * 100)}%
+                        </p>
+                        <p className="text-sm text-[#97a1c4]">
+                          {analysisData.opponentAnalysis.vsHigherRated?.games || 0} games
+                        </p>
+                      </div>
+                      <div className="bg-[#374162] rounded-lg p-4">
+                        <p className="text-[#97a1c4] text-sm mb-2">vs Similar Rated</p>
+                        <p className="text-xl font-bold text-yellow-400">
+                          {Math.round((analysisData.opponentAnalysis.vsSimilarRated?.winRate || 0) * 100)}%
+                        </p>
+                        <p className="text-sm text-[#97a1c4]">
+                          {analysisData.opponentAnalysis.vsSimilarRated?.games || 0} games
+                        </p>
+                      </div>
+                      <div className="bg-[#374162] rounded-lg p-4">
+                        <p className="text-[#97a1c4] text-sm mb-2">vs Lower Rated</p>
+                        <p className="text-xl font-bold text-green-400">
+                          {Math.round((analysisData.opponentAnalysis.vsLowerRated?.winRate || 0) * 100)}%
+                        </p>
+                        <p className="text-sm text-[#97a1c4]">
+                          {analysisData.opponentAnalysis.vsLowerRated?.games || 0} games
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Key Games for Review */}
+                {analysisData.keyGamesForReview && (
+                  <div className="bg-[#272e45] rounded-xl p-6 border border-[#374162]">
+                    <h3 className="text-xl font-bold text-white mb-4">Key Games for Review</h3>
+                    {analysisData.keyGamesForReview.map((game: any, index: number) => (
+                      <div key={index} className="bg-[#374162] rounded-xl p-4 mb-4 last:mb-0">
+                        <div className="flex items-start gap-4">
+                          <div className={`w-3 h-3 rounded-full mt-2 ${
+                            game.result === 'Win' ? 'bg-green-500' :
+                            game.result === 'Loss' ? 'bg-red-500' :
+                            'bg-yellow-500'
+                          }`}></div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <p className="text-white font-bold">vs {game.opponent}</p>
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                game.result === 'Win' ? 'bg-green-600 text-white' :
+                                game.result === 'Loss' ? 'bg-red-600 text-white' :
+                                'bg-yellow-600 text-white'
+                              }`}>
+                                {game.result}
+                              </span>
+                              <span className="text-[#97a1c4] text-sm">{game.date}</span>
+                            </div>
+                            <p className="text-[#97a1c4] mb-2">{game.reason}</p>
+                            <div className="flex items-center gap-2">
+                              <span className="text-blue-400 text-sm font-medium">Lesson: {game.lessonType}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </>
             ) : (
               <>
@@ -367,13 +461,58 @@ const GameAnalysisModal = ({ isOpen, onClose, gameData, analysis, isBulkAnalysis
                   </div>
                 </div>
 
+                {/* Game Details */}
+                {gameData && (
+                  <div className="bg-[#272e45] rounded-xl p-6 border border-[#374162]">
+                    <h3 className="text-xl font-bold text-white mb-4">Game Details</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      <div>
+                        <p className="text-[#97a1c4] text-sm mb-2">Game Information</p>
+                        <p className="text-white font-medium">vs {gameData.opponent}</p>
+                        <p className="text-[#97a1c4] text-sm">
+                          Your Rating: {gameData.rating} ({gameData.ratingChange > 0 ? '+' : ''}{gameData.ratingChange})
+                        </p>
+                        <p className="text-[#97a1c4] text-sm">
+                          Opponent Rating: {gameData.opponentRating}
+                        </p>
+                        <p className="text-[#97a1c4] text-sm">Date: {gameData.date}</p>
+                      </div>
+                      <div>
+                        <p className="text-[#97a1c4] text-sm mb-2">Game Settings</p>
+                        <p className="text-white font-medium">Result: {gameData.result}</p>
+                        <p className="text-[#97a1c4] text-sm">Time Control: {gameData.timeControl}</p>
+                        <p className="text-[#97a1c4] text-sm">Platform: {gameData.platform}</p>
+                        {gameData.accuracy && (
+                          <p className="text-green-400 text-sm">Your Accuracy: {Math.round(gameData.accuracy)}%</p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-[#97a1c4] text-sm mb-2">Opening</p>
+                        <p className="text-white font-medium">{gameData.opening || analysisData.openingName}</p>
+                        <p className="text-green-400 text-sm">Evaluation: {analysisData.openingEval}</p>
+                        <a 
+                          href={gameData.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 text-sm mt-2 transition-colors"
+                        >
+                          View on Lichess
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Opening Information */}
                 <div className="bg-[#272e45] rounded-xl p-6 border border-[#374162]">
                   <h3 className="text-xl font-bold text-white mb-4">Opening Analysis</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <p className="text-[#97a1c4] text-sm mb-2">Opening Played</p>
-                      <p className="text-lg font-semibold text-white mb-1">{analysisData.openingName}</p>
+                      <p className="text-lg font-semibold text-white mb-1">{gameData?.opening || analysisData.openingName}</p>
                       <p className="text-green-400 text-sm">Evaluation: {analysisData.openingEval}</p>
                     </div>
                     <div>
@@ -420,7 +559,7 @@ const GameAnalysisModal = ({ isOpen, onClose, gameData, analysis, isBulkAnalysis
                 <div className="bg-[#272e45] rounded-xl p-6 border border-[#374162]">
                   <h3 className="text-xl font-bold text-white mb-6">Monthly Progress</h3>
                   <div className="space-y-4">
-                    {analysisData.trends.monthlyProgress.map((month, index) => (
+                    {analysisData.trends.monthlyProgress.map((month: any, index: number) => (
                       <div key={index} className="flex items-center justify-between p-4 bg-[#374162] rounded-lg">
                         <div>
                           <span className="text-white font-medium">{month.month} 2024</span>
@@ -450,10 +589,10 @@ const GameAnalysisModal = ({ isOpen, onClose, gameData, analysis, isBulkAnalysis
                           {category.replace('vs', 'vs ').replace(/([A-Z])/g, ' $1').trim()}
                         </h4>
                         <div className="space-y-2">
-                          <p className="text-[#97a1c4] text-sm">{data.games} games</p>
-                          <p className="text-lg font-bold text-white">{(data.winRate * 100).toFixed(0)}% win rate</p>
+                          <p className="text-[#97a1c4] text-sm">{(data as any).games} games</p>
+                          <p className="text-lg font-bold text-white">{((data as any).winRate * 100).toFixed(0)}% win rate</p>
                           <p className="text-[#97a1c4] text-xs">
-                            {data.avgRatingDiff > 0 ? '+' : ''}{data.avgRatingDiff} avg rating diff
+                            {(data as any).avgRatingDiff > 0 ? '+' : ''}{(data as any).avgRatingDiff} avg rating diff
                           </p>
                         </div>
                       </div>
@@ -480,8 +619,8 @@ const GameAnalysisModal = ({ isOpen, onClose, gameData, analysis, isBulkAnalysis
                           <span className="text-white font-medium capitalize">{category.replace('inaccuracies', 'Inaccuracies')}</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-white font-bold">{data?.count || 0}</span>
-                          <span className="text-[#97a1c4] ml-2">({data?.percentage || 0}%)</span>
+                          <span className="text-white font-bold">{(data as any)?.count || 0}</span>
+                          <span className="text-[#97a1c4] ml-2">({(data as any)?.percentage || 0}%)</span>
                         </div>
                       </div>
                     ))}
@@ -542,19 +681,19 @@ const GameAnalysisModal = ({ isOpen, onClose, gameData, analysis, isBulkAnalysis
                     <div className="space-y-4">
                       <div>
                         <p className="text-[#97a1c4] text-sm">Average Accuracy</p>
-                        <p className="text-2xl font-bold text-blue-400">{data?.avgAccuracy || 0}%</p>
+                        <p className="text-2xl font-bold text-blue-400">{(data as any)?.avgAccuracy || 0}%</p>
                       </div>
                       <div>
                         <p className="text-[#97a1c4] text-sm mb-2">Common Mistakes</p>
                         <ul className="space-y-1">
-                          {(data?.commonMistakes || []).map((mistake, index) => (
+                          {((data as any)?.commonMistakes || []).map((mistake: any, index: number) => (
                             <li key={index} className="text-[#97a1c4] text-sm">• {mistake}</li>
                           ))}
                         </ul>
                       </div>
                       <div>
                         <p className="text-[#97a1c4] text-sm mb-1">Improvement Focus</p>
-                        <p className="text-white text-sm">{data?.improvement || 'No specific recommendations'}</p>
+                        <p className="text-white text-sm">{(data as any)?.improvement || 'No specific recommendations'}</p>
                       </div>
                     </div>
                   </div>
@@ -596,7 +735,7 @@ const GameAnalysisModal = ({ isOpen, onClose, gameData, analysis, isBulkAnalysis
               <div className="bg-[#272e45] rounded-xl p-6 border border-[#374162]">
                 <h3 className="text-xl font-bold text-white mb-4">Tactical Theme Performance</h3>
                 <div className="space-y-4">
-                  {(analysisData.tacticalThemes || []).map((theme, index) => (
+                  {(analysisData.tacticalThemes || []).map((theme: any, index: number) => (
                     <div key={index} className="flex items-center justify-between p-4 bg-[#374162] rounded-lg">
                       <div>
                         <p className="text-white font-medium">{theme.theme}</p>
@@ -604,11 +743,11 @@ const GameAnalysisModal = ({ isOpen, onClose, gameData, analysis, isBulkAnalysis
                       </div>
                       <div className="text-right">
                         <p className={`font-bold text-lg ${
-                          theme.successRate >= 0.7 ? 'text-green-400' :
-                          theme.successRate >= 0.6 ? 'text-yellow-400' :
+                          (theme.successRate || 0) >= 0.7 ? 'text-green-400' :
+                          (theme.successRate || 0) >= 0.6 ? 'text-yellow-400' :
                           'text-red-400'
                         }`}>
-                          {(theme.successRate * 100).toFixed(0)}%
+                          {Math.round((theme.successRate || 0) * 100)}%
                         </p>
                         <p className="text-[#97a1c4] text-xs">success rate</p>
                       </div>
@@ -622,9 +761,9 @@ const GameAnalysisModal = ({ isOpen, onClose, gameData, analysis, isBulkAnalysis
                 <div className="bg-[#272e45] rounded-xl p-6 border border-[#374162]">
                   <h3 className="text-xl font-bold text-white mb-4">Tactical Themes Found</h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {(analysisData.tacticalThemes || []).map((theme, index) => (
+                    {(analysisData.tacticalThemes || []).map((theme: any, index: number) => (
                       <div key={index} className="bg-[#374162] rounded-lg p-4 text-center">
-                        <p className="text-white font-medium">{theme}</p>
+                        <p className="text-white font-medium">{typeof theme === 'string' ? theme : theme.theme}</p>
                         <p className="text-blue-400 text-sm mt-2">Practice more →</p>
                       </div>
                     ))}
@@ -635,7 +774,7 @@ const GameAnalysisModal = ({ isOpen, onClose, gameData, analysis, isBulkAnalysis
                 <div className="bg-[#272e45] rounded-xl p-6 border border-[#374162]">
                   <h3 className="text-xl font-bold text-white mb-4">Tactical Performance</h3>
                   <div className="space-y-4">
-                    {(analysisData.tacticalAnalysis?.themes || []).map((theme, index) => (
+                    {(analysisData.tacticalAnalysis?.themes || []).map((theme: any, index: number) => (
                       <div key={index} className="flex items-center justify-between p-4 bg-[#374162] rounded-lg">
                         <div>
                           <p className="text-white font-medium">{theme.theme}</p>
@@ -763,7 +902,7 @@ const GameAnalysisModal = ({ isOpen, onClose, gameData, analysis, isBulkAnalysis
               <div className="bg-[#272e45] rounded-xl p-6 border border-[#374162]">
                 <h3 className="text-xl font-bold text-white mb-4">Priority Improvement Areas</h3>
                 <div className="space-y-4">
-                  {(analysisData.improvementAreas || []).map((area, index) => (
+                  {(analysisData.improvementAreas || []).map((area: any, index: number) => (
                     <div key={index} className="p-4 bg-[#374162] rounded-lg">
                       <div className="flex items-start justify-between mb-2">
                         <div>

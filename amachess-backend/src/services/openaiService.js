@@ -869,6 +869,153 @@ Your welcome style:
   }
 
   /**
+   * Generate AI chat response for general chess discussions
+   */
+  async generateChatResponse(message, context = {}) {
+    if (!this.isConfigured()) {
+      console.warn('Groq API key not configured, using fallback chat response');
+      return this.getFallbackChatResponse();
+    }
+
+    try {
+      const {
+        user = {},
+        session = {},
+        userGames = [],
+        gameContext = ''
+      } = context;
+
+      // Build comprehensive context for the AI
+      const gamesHistoryContext = userGames.length > 0 ? `
+
+USER'S GAME HISTORY (${userGames.length} games):
+${userGames.slice(0, 10).map(game => 
+  `- ${game.gameType} vs ${game.opponent || 'AI'}: ${game.result || 'Ongoing'} (${game.accuracy ? game.accuracy + '% accuracy' : 'No accuracy data'})`
+).join('\n')}
+
+RECENT PATTERNS:
+- Total Games: ${userGames.length}
+- Average Accuracy: ${this.calculateAverageAccuracy(userGames)}%
+- Main Game Types: ${this.getMainGameTypes(userGames)}
+- Common Openings: ${this.getCommonOpenings(userGames)}` : '';
+
+      const systemPrompt = `You are Coach B, an expert chess coach and analyst powered by Groq LLaMA. You have access to the user's complete game history and can provide detailed insights.
+
+USER PROFILE:
+- Name: ${user.name || 'Player'}
+- Email: ${user.email || 'Not provided'}
+- Lichess Username: ${user.lichessUsername || 'Not connected'}
+
+SESSION TYPE: ${session.sessionType || 'general'}
+${gameContext}${gamesHistoryContext}
+
+Your coaching style as Coach B:
+- Analyze patterns across the user's games to provide personalized insights
+- Provide specific, actionable advice based on their playing history
+- Reference actual games and positions when relevant
+- Be encouraging but honest about areas for improvement
+- Use the user's game history to personalize recommendations
+- When discussing specific games, cite the PGN or moves
+- Focus on long-term improvement and understanding
+- Draw connections between games to identify patterns
+- Provide tactical and strategic guidance
+- Help with opening preparation, middlegame planning, and endgame technique
+
+Keep responses conversational, insightful, and educational. You are powered by Groq's advanced LLaMA model for superior chess understanding.`;
+
+      const response = await this.client.chat.completions.create({
+        model: this.model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: message }
+        ],
+        max_tokens: 600,
+        temperature: 0.7,
+        top_p: 0.9
+      });
+
+      return {
+        message: response.choices[0].message.content.trim(),
+        messageType: 'text',
+        metadata: {
+          gamesAnalyzed: userGames.length,
+          hasGameContext: !!gameContext,
+          sessionType: session.sessionType || 'general',
+          model: this.model,
+          service: 'groq'
+        }
+      };
+
+    } catch (error) {
+      console.error('Groq API error for chat:', error);
+      return this.getFallbackChatResponse();
+    }
+  }
+
+  /**
+   * Fallback response for chat when Groq is not available
+   */
+  getFallbackChatResponse() {
+    const fallbackResponses = [
+      "I'm Coach B, here to help analyze your chess games and provide improvement suggestions. What specific aspect would you like to work on?",
+      "Based on your games, I can help identify patterns and areas for improvement. What would you like to explore?",
+      "I'm having trouble connecting to my AI service right now, but I'm ready to help with your chess analysis. Could you try rephrasing your question?",
+      "Let me help you improve your chess! I can analyze your games, identify patterns, and suggest specific areas to focus on.",
+      "I'm Coach B, powered by advanced AI. I'm here to help you become a stronger chess player through personalized analysis."
+    ];
+
+    return {
+      message: fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)],
+      messageType: 'text',
+      metadata: { 
+        fallback: true,
+        service: 'groq-fallback' 
+      }
+    };
+  }
+
+  /**
+   * Helper functions for game analysis
+   */
+  calculateAverageAccuracy(games) {
+    const gamesWithAccuracy = games.filter(game => game.accuracy !== null && game.accuracy !== undefined);
+    if (gamesWithAccuracy.length === 0) return 0;
+    
+    const sum = gamesWithAccuracy.reduce((acc, game) => acc + game.accuracy, 0);
+    return Math.round(sum / gamesWithAccuracy.length);
+  }
+
+  getMainGameTypes(games) {
+    const typeCounts = {};
+    games.forEach(game => {
+      const type = game.gameType || 'Unknown';
+      typeCounts[type] = (typeCounts[type] || 0) + 1;
+    });
+    
+    return Object.entries(typeCounts)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 3)
+      .map(([type, count]) => `${type} (${count})`)
+      .join(', ') || 'Various game types';
+  }
+
+  getCommonOpenings(games) {
+    const openingCounts = {};
+    games.forEach(game => {
+      const opening = game.opening || 'Unknown';
+      if (opening !== 'Unknown') {
+        openingCounts[opening] = (openingCounts[opening] || 0) + 1;
+      }
+    });
+    
+    return Object.entries(openingCounts)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 3)
+      .map(([opening, count]) => `${opening} (${count})`)
+      .join(', ') || 'Various openings';
+  }
+
+  /**
    * Determine game phase based on move count
    */
   determineGamePhase(moveCount) {

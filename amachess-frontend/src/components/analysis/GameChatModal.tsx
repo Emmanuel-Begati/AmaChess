@@ -1,6 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
-const GameChatModal = ({ isOpen, onClose, game }) => {
+interface GameChatModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  game?: any;
+}
+
+const GameChatModal = ({ isOpen, onClose, game }: GameChatModalProps) => {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([
     {
@@ -10,7 +16,10 @@ const GameChatModal = ({ isOpen, onClose, game }) => {
       timestamp: new Date().toLocaleTimeString()
     }
   ]);
-  const messagesEndRef = useRef(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const API_BASE_URL = 'http://localhost:3001/api';
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -22,8 +31,8 @@ const GameChatModal = ({ isOpen, onClose, game }) => {
 
   if (!isOpen) return null;
 
-  const sendMessage = () => {
-    if (!message.trim()) return;
+  const sendMessage = async () => {
+    if (!message.trim() || isLoading) return;
 
     const newMessage = {
       id: messages.length + 1,
@@ -34,20 +43,57 @@ const GameChatModal = ({ isOpen, onClose, game }) => {
 
     setMessages([...messages, newMessage]);
     setMessage('');
+    setIsLoading(true);
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      // Use the existing coach/game-chat endpoint with Groq
+      const response = await fetch(`${API_BASE_URL}/coach/game-chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          gameData: game,
+          userMessage: message,
+          conversationHistory: messages.slice(1) // Exclude the initial AI message
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const aiResponse = {
+          id: messages.length + 2,
+          sender: 'ai',
+          text: data.response.text,
+          timestamp: new Date().toLocaleTimeString()
+        };
+        setMessages(prev => [...prev, aiResponse]);
+      } else {
+        // Fallback response
+        const aiResponse = {
+          id: messages.length + 2,
+          sender: 'ai',
+          text: "I'm having trouble connecting right now, but I'd love to help analyze your game. Could you try rephrasing your question?",
+          timestamp: new Date().toLocaleTimeString()
+        };
+        setMessages(prev => [...prev, aiResponse]);
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      // Fallback response
       const aiResponse = {
         id: messages.length + 2,
         sender: 'ai',
-        text: "That's a great question! Let me analyze that position for you...",
+        text: "I'm experiencing some connection issues. Let me try to help anyway - what specific aspect of your game would you like to discuss?",
         timestamp: new Date().toLocaleTimeString()
       };
       setMessages(prev => [...prev, aiResponse]);
-    }, 1000);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleKeyPress = (e) => {
+  const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
@@ -66,9 +112,9 @@ const GameChatModal = ({ isOpen, onClose, game }) => {
               </svg>
             </div>
             <div className="min-w-0">
-              <h2 className="text-lg sm:text-xl font-bold text-white truncate">Game Discussion</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-white truncate">Game Discussion • Groq LLaMA</h2>
               <p className="text-xs sm:text-sm text-[#97a1c4] truncate">
-                {game ? `${game.result} vs ${game.opponent}` : 'Chat with AI about your game'}
+                {game ? `${game.result} vs ${game.opponent}` : 'Chat with Magnus about your game'}
               </p>
             </div>
           </div>
@@ -124,6 +170,23 @@ const GameChatModal = ({ isOpen, onClose, game }) => {
               </div>
             </div>
           ))}
+          
+          {/* Typing Indicator */}
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="bg-[#374162] text-white rounded-lg p-3 sm:p-4 max-w-[85%] sm:max-w-[80%]">
+                <div className="flex items-center space-x-2">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-[#97a1c4] rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-[#97a1c4] rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                    <div className="w-2 h-2 bg-[#97a1c4] rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                  </div>
+                  <p className="text-[#97a1c4] text-sm">Magnus is analyzing...</p>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <div ref={messagesEndRef} />
         </div>
 
@@ -137,17 +200,21 @@ const GameChatModal = ({ isOpen, onClose, game }) => {
                 onKeyPress={handleKeyPress}
                 placeholder="Ask about this game..."
                 className="w-full bg-[#374162] text-white rounded-lg px-3 sm:px-4 py-2 sm:py-3 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base placeholder-[#97a1c4]"
-                rows="2"
+                rows={2}
               />
             </div>
             <button
               onClick={sendMessage}
-              disabled={!message.trim()}
+              disabled={!message.trim() || isLoading}
               className="px-3 sm:px-4 py-2 sm:py-3 bg-blue-800 hover:bg-blue-700 disabled:bg-[#374162] disabled:text-[#97a1c4] text-white rounded-lg transition-colors flex items-center justify-center flex-shrink-0"
             >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
+              {isLoading ? (
+                <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white"></div>
+              ) : (
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+              )}
             </button>
           </div>
           
@@ -156,8 +223,68 @@ const GameChatModal = ({ isOpen, onClose, game }) => {
             {['Analyze opening', 'Find my mistakes', 'Suggest improvements', 'Explain this position'].map((suggestion) => (
               <button
                 key={suggestion}
-                onClick={() => setMessage(suggestion)}
-                className="text-xs sm:text-sm bg-[#374162] hover:bg-[#455173] text-[#97a1c4] hover:text-white px-2 sm:px-3 py-1 sm:py-2 rounded-full transition-colors"
+                onClick={async () => {
+                  if (isLoading) return;
+                  setMessage(suggestion);
+                  
+                  // Auto-send the suggestion
+                  const userMessage = {
+                    id: messages.length + 1,
+                    sender: 'user',
+                    text: suggestion,
+                    timestamp: new Date().toLocaleTimeString()
+                  };
+
+                  setMessages(prev => [...prev, userMessage]);
+                  setMessage('');
+                  setIsLoading(true);
+
+                  try {
+                    const response = await fetch(`${API_BASE_URL}/coach/game-chat`, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        gameData: game,
+                        userMessage: suggestion,
+                        conversationHistory: messages.slice(1)
+                      }),
+                    });
+
+                    if (response.ok) {
+                      const data = await response.json();
+                      const aiResponse = {
+                        id: messages.length + 2,
+                        sender: 'ai',
+                        text: data.response.text,
+                        timestamp: new Date().toLocaleTimeString()
+                      };
+                      setMessages(prev => [...prev, aiResponse]);
+                    } else {
+                      const aiResponse = {
+                        id: messages.length + 2,
+                        sender: 'ai',
+                        text: "I'm having trouble connecting right now, but I'd love to help analyze your game. Could you try rephrasing your question?",
+                        timestamp: new Date().toLocaleTimeString()
+                      };
+                      setMessages(prev => [...prev, aiResponse]);
+                    }
+                  } catch (error) {
+                    console.error('Error sending quick suggestion:', error);
+                    const aiResponse = {
+                      id: messages.length + 2,
+                      sender: 'ai',
+                      text: "I'm experiencing some connection issues. Let me try to help anyway - what specific aspect of your game would you like to discuss?",
+                      timestamp: new Date().toLocaleTimeString()
+                    };
+                    setMessages(prev => [...prev, aiResponse]);
+                  } finally {
+                    setIsLoading(false);
+                  }
+                }}
+                disabled={isLoading}
+                className="text-xs sm:text-sm bg-[#374162] hover:bg-[#455173] disabled:opacity-50 text-[#97a1c4] hover:text-white px-2 sm:px-3 py-1 sm:py-2 rounded-full transition-colors"
               >
                 {suggestion}
               </button>

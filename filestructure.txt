@@ -39,7 +39,8 @@
                 |-- migration.sql
             |-- 20250722151147_remove_chess_com_username
                 |-- migration.sql
-            |-- 20250729041839_add_daily_puzzle_attempts_table
+            |-- 20250730021523_add_games_and_chat
+                |-- migration.sql
             |-- migration_lock.toml
         |-- prisma
             |-- dev.db
@@ -69,8 +70,10 @@
             |-- analyze.js
             |-- auth.js
             |-- books.js
+            |-- chat.js
             |-- chessVision.js
             |-- coach.js
+            |-- games.js
             |-- import.js
             |-- lichess.js
             |-- protected.js
@@ -218,6 +221,7 @@
             |-- ai
                 |-- AICoachModal.tsx
             |-- analysis
+                |-- AIChatModal.tsx
                 |-- GameAnalysisModal.tsx
                 |-- GameChatModal.tsx
             |-- books
@@ -299,4 +303,10 @@
     |-- tsconfig.json
     |-- tsconfig.node.json
     |-- vite.config.ts
+|-- nul
+|-- package-lock.json
+|-- package.json
 |-- README.md
+|-- test-api.html
+|-- test-auth.js
+|-- test-import-debug.html
