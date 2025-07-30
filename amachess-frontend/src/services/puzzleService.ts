@@ -78,6 +78,80 @@ export interface DailyChallengeStats {
   };
 }
 
+export interface PuzzleGameState {
+  pgn: string;
+  moveHistory: string[];
+  currentFEN: string;
+  gamePhase: 'opening' | 'middlegame' | 'endgame';
+  playerColor: 'white' | 'black';
+}
+
+export class PuzzleGameTracker {
+  private gameState: PuzzleGameState;
+  
+  constructor(initialFEN: string, playerColor: 'white' | 'black') {
+    this.gameState = {
+      pgn: this.initializePGN(playerColor),
+      moveHistory: [],
+      currentFEN: initialFEN,
+      gamePhase: 'opening',
+      playerColor
+    };
+  }
+  
+  private initializePGN(playerColor: 'white' | 'black'): string {
+    const date = new Date().toISOString().split('T')[0];
+    return `[Event "AmaChess Training"]
+[Site "AmaChess"]
+[Date "${date}"]
+[Round "1"]
+[White "${playerColor === 'white' ? 'Player' : 'Coach'}"]
+[Black "${playerColor === 'black' ? 'Player' : 'Coach'}"]
+[Result "*"]
+
+`;
+  }
+  
+  addMove(move: string, moveNumber: number, isWhiteMove: boolean): void {
+    this.gameState.moveHistory.push(move);
+    
+    // Update PGN with proper formatting
+    if (isWhiteMove) {
+      this.gameState.pgn += `${moveNumber}. ${move} `;
+    } else {
+      this.gameState.pgn += `${move} `;
+    }
+    
+    // Update game phase based on move count
+    this.updateGamePhase();
+  }
+  
+  private updateGamePhase(): void {
+    const moveCount = this.gameState.moveHistory.length;
+    if (moveCount < 20) {
+      this.gameState.gamePhase = 'opening';
+    } else if (moveCount < 40) {
+      this.gameState.gamePhase = 'middlegame';
+    } else {
+      this.gameState.gamePhase = 'endgame';
+    }
+  }
+  
+  getGameContext(): GameContext {
+    return {
+      pgn: this.gameState.pgn.trim(),
+      moveHistory: [...this.gameState.moveHistory],
+      currentFEN: this.gameState.currentFEN,
+      gamePhase: this.gameState.gamePhase,
+      playerColor: this.gameState.playerColor
+    };
+  }
+  
+  updatePosition(fen: string): void {
+    this.gameState.currentFEN = fen;
+  }
+}
+
 class PuzzleService {
   async getPuzzleById(puzzleId: string): Promise<Puzzle> {
     try {

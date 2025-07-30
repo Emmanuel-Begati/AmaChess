@@ -54,14 +54,13 @@
         |-- seed-puzzles.js
         |-- setup-postgresql.bat
         |-- setup-postgresql.sh
-    |-- services
     |-- setup-wsl.sh
     |-- src
         |-- config
             |-- database.js
             |-- databasePostgreSQL.js
+            |-- groq.js
             |-- logger.js
-            |-- openai.js
         |-- controllers
             |-- authController.js
         |-- middleware

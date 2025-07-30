@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import ChessGame from '../chess/ChessGame';
 import { Chess } from 'chess.js';
+import { GameContext, CoachingRequest } from '../../types';
 
 interface AICoachModalProps {
   onClose: () => void;
@@ -23,12 +24,18 @@ const AICoachModal: React.FC<AICoachModalProps> = ({ onClose, evaluation = null 
   const [showEvaluation, setShowEvaluation] = useState(true);
   const [previousEvaluation, setPreviousEvaluation] = useState<number | null>(null);
   const [gamePhase, setGamePhase] = useState<'opening' | 'middlegame' | 'endgame'>('opening');
+  const [coachModeEnabled, setCoachModeEnabled] = useState(true); // New state for coach mode toggle
 
   const API_BASE_URL = 'http://localhost:3001/api';
 
   // Load welcome message when modal opens
   React.useEffect(() => {
     const loadWelcomeMessage = async () => {
+      if (!coachModeEnabled) {
+        setCoachMessage("Coach mode disabled. Toggle 'Coach Mode' to enable coaching.");
+        return;
+      }
+      
       setIsAnalyzing(true);
       try {
         const difficultyLevel = difficulty <= 3 ? 'beginner' : difficulty <= 6 ? 'intermediate' : 'advanced';
@@ -61,38 +68,43 @@ const AICoachModal: React.FC<AICoachModalProps> = ({ onClose, evaluation = null 
     };
 
     loadWelcomeMessage();
-  }, [API_BASE_URL, difficulty]);
+  }, [API_BASE_URL, difficulty, coachModeEnabled]);
 
   const handleStartGame = async () => {
     setGameStarted(true);
     setIsAnalyzing(true);
     
     try {
-      // Get initial coaching advice from GPT-4o
-      const response = await fetch(`${API_BASE_URL}/coach/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          position: currentPosition,
-          difficulty: difficulty <= 3 ? 'beginner' : difficulty <= 6 ? 'intermediate' : 'advanced',
-          gameContext: {
-            gameStart: true,
-            selectedDifficulty: difficulty
-          }
-        })
-      });
+      // Only get initial coaching advice if coach mode is enabled
+      if (coachModeEnabled) {
+        // Get initial coaching advice from GPT-4o
+        const response = await fetch(`${API_BASE_URL}/coach/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            position: currentPosition,
+            difficulty: difficulty <= 3 ? 'beginner' : difficulty <= 6 ? 'intermediate' : 'advanced',
+            gameContext: {
+              gameStart: true,
+              selectedDifficulty: difficulty
+            }
+          })
+        });
 
-      if (response.ok) {
-        const data = await response.json();
-        setCoachMessage(data.coaching.message);
-      } else {
-        setCoachMessage("Welcome! Let's begin this training game. Start by controlling the center with moves like e4 or d4.");
+        if (response.ok) {
+          const data = await response.json();
+          setCoachMessage(data.coaching.message);
+        } else {
+          setCoachMessage("Welcome! Let's begin this training game. Start by controlling the center with moves like e4 or d4.");
+        }
       }
     } catch (error) {
       console.error('Failed to get initial coaching:', error);
-      setCoachMessage("Welcome! Let's begin this training game. Start by controlling the center with moves like e4 or d4.");
+      if (coachModeEnabled) {
+        setCoachMessage("Welcome! Let's begin this training game. Start by controlling the center with moves like e4 or d4.");
+      }
     } finally {
       setIsAnalyzing(false);
     }
@@ -130,28 +142,33 @@ const AICoachModal: React.FC<AICoachModalProps> = ({ onClose, evaluation = null 
     setMoveNumber(prev => prev + 1);
     setIsAnalyzing(true);
 
-    try {
-      // Get coaching feedback from GPT-4o about the player's move
-      const coachingResponse = await fetch(`${API_BASE_URL}/coach/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          position: newFen,
-          playerMove: moveResult.san,
-          difficulty: difficulty <= 3 ? 'beginner' : difficulty <= 6 ? 'intermediate' : 'advanced',
-          gameContext: {
-            moveNumber: moveNumber,
-            gamePhase: moveNumber <= 10 ? 'opening' : moveNumber <= 25 ? 'middlegame' : 'endgame'
-          }
-        })
-      });
+    // Initialize coaching feedback variable outside try block
+    let coachingFeedback = "Good move! Keep developing your pieces.";
 
-      let coachingFeedback = "Good move! Keep developing your pieces.";
-      if (coachingResponse.ok) {
-        const coachingData = await coachingResponse.json();
-        coachingFeedback = coachingData.coaching.message;
+    try {
+      // Only get coaching feedback if coach mode is enabled
+      if (coachModeEnabled) {
+        // Get coaching feedback from GPT-4o about the player's move
+        const coachingResponse = await fetch(`${API_BASE_URL}/coach/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            position: newFen,
+            playerMove: moveResult.san,
+            difficulty: difficulty <= 3 ? 'beginner' : difficulty <= 6 ? 'intermediate' : 'advanced',
+            gameContext: {
+              moveNumber: moveNumber,
+              gamePhase: moveNumber <= 10 ? 'opening' : moveNumber <= 25 ? 'middlegame' : 'endgame'
+            }
+          })
+        });
+
+        if (coachingResponse.ok) {
+          const coachingData = await coachingResponse.json();
+          coachingFeedback = coachingData.coaching.message;
+        }
       }
 
       // Get AI's response move from Stockfish
@@ -175,42 +192,21 @@ const AICoachModal: React.FC<AICoachModalProps> = ({ onClose, evaluation = null 
         const aiMoveResult = aiGame.move(aiMoveData.coaching.suggestedMove);
         
         if (aiMoveResult) {
-          // Get coaching explanation for AI's move
-          const aiExplanationResponse = await fetch(`${API_BASE_URL}/coach/chat`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              position: aiGame.fen(),
-              playerMove: aiMoveResult.san,
-              difficulty: difficulty <= 3 ? 'beginner' : difficulty <= 6 ? 'intermediate' : 'advanced',
-              gameContext: {
-                isAIMove: true,
-                explanation: true,
-                moveNumber: moveNumber + 1
-              }
-            })
-          });
-
-          let aiExplanation = `I played ${aiMoveResult.san}. This continues developing pieces.`;
-          if (aiExplanationResponse.ok) {
-            const aiExplanationData = await aiExplanationResponse.json();
-            aiExplanation = `I played ${aiMoveResult.san}. ${aiExplanationData.coaching.message}`;
-          }
-
           // Update position after AI move with a small delay for better UX
           setTimeout(() => {
             setCurrentPosition(aiGame.fen());
           }, 1500);
           
-          setCoachMessage(aiExplanation);
+          // Only show the coaching feedback for the player's move if coach mode is enabled
+          if (coachModeEnabled) {
+            setCoachMessage(coachingFeedback);
+          }
           
           setAiMoveHistory(prev => [...prev, {
             playerMove: moveResult.san || `${moveObj.from}-${moveObj.to}`,
             playerFeedback: coachingFeedback,
             aiMove: aiMoveResult.san,
-            aiExplanation: aiExplanation
+            aiExplanation: "" // No explanation for AI moves
           }]);
         }
       } else {
@@ -226,63 +222,69 @@ const AICoachModal: React.FC<AICoachModalProps> = ({ onClose, evaluation = null 
               setCurrentPosition(fallbackGame.fen());
             }, 1500);
             
-            setCoachMessage(`Good move! I'll play ${randomMove}. Keep developing your pieces.`);
+            // Only show coaching feedback for player's move, not AI move announcement, and only if coach mode enabled
+            if (coachModeEnabled) {
+              setCoachMessage(coachingFeedback);
+            }
             
             setAiMoveHistory(prev => [...prev, {
               playerMove: moveResult.san || `${moveObj.from}-${moveObj.to}`,
-              playerFeedback: "Good move!",
+              playerFeedback: coachingFeedback,
               aiMove: randomMove,
-              aiExplanation: "Keep developing your pieces."
+              aiExplanation: "" // No explanation for AI moves
             }]);
           }
         }
       }
     } catch (error) {
       console.error('Failed to get AI move:', error);
-      setCoachMessage("Good move! Keep developing your pieces and thinking about piece safety.");
+      // Use fallback coaching feedback for player's move only, and only if coach mode enabled
+      const fallbackFeedback = "Good move! Keep developing your pieces and thinking about piece safety.";
+      if (coachModeEnabled) {
+        setCoachMessage(coachingFeedback !== "Good move! Keep developing your pieces." ? coachingFeedback : fallbackFeedback);
+      }
       
       setAiMoveHistory(prev => [...prev, {
         playerMove: moveResult.san || `${moveObj.from}-${moveObj.to}`,
-        playerFeedback: "Good move! Keep developing your pieces and thinking about piece safety.",
+        playerFeedback: coachingFeedback !== "Good move! Keep developing your pieces." ? coachingFeedback : fallbackFeedback,
         aiMove: "",
         aiExplanation: ""
       }]);
     } finally {
       setIsAnalyzing(false);
     }
-  }, [API_BASE_URL, currentPosition, difficulty]);
+  }, [API_BASE_URL, currentPosition, difficulty, coachModeEnabled]);
 
   const getHint = async () => {
+    if (!coachModeEnabled) return; // Don't get hints if coach mode is disabled
+    
     setIsAnalyzing(true);
     
     try {
-      const difficultyLevel = difficulty <= 3 ? 'beginner' : difficulty <= 6 ? 'intermediate' : 'advanced';
-      const currentGamePhase = moveNumber <= 10 ? 'opening' : moveNumber <= 25 ? 'middlegame' : 'endgame';
-      
-      // Build PGN from move history
-      const gamePgn = aiMoveHistory.map((move, index) => {
-        const fullMoveNumber = Math.floor(index / 2) + 1;
-        const isWhiteMove = index % 2 === 0;
-        return isWhiteMove 
-          ? `${fullMoveNumber}.${move.playerMove} ${move.aiMove || ''}` 
-          : move.playerMove;
-      }).join(' ');
+      // Get current game context with full PGN
+      const gameContext: GameContext = {
+        pgn: getCurrentPGN(), // Get the complete PGN including all moves
+        moveHistory: aiMoveHistory,
+        currentFEN: game.fen(),
+        gamePhase: determineGamePhase(aiMoveHistory.length),
+        playerColor: isPlayerWhite ? 'white' : 'black',
+        difficulty: skillLevel.toString()
+      };
 
-      const response = await fetch(`${API_BASE_URL}/coach/hint`, {
+      const coachingRequest: CoachingRequest = {
+        position: game.fen(),
+        pgn: gameContext.pgn,
+        moveHistory: gameContext.moveHistory,
+        gameContext,
+        difficulty: skillLevel.toString()
+      };
+
+      const response = await fetch(`${API_BASE_URL}/api/coach/hint`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          position: currentPosition,
-          pgn: gamePgn,
-          moveHistory: aiMoveHistory.flatMap(m => [m.playerMove, m.aiMove]).filter(Boolean),
-          difficulty: difficultyLevel,
-          gameContext: {
-            moveNumber: moveNumber,
-            gamePhase: currentGamePhase
-          }
-        })
+        body: JSON.stringify(coachingRequest),
       });
 
       if (response.ok) {
@@ -299,10 +301,43 @@ const AICoachModal: React.FC<AICoachModalProps> = ({ onClose, evaluation = null 
     }
   };
 
+  const getCurrentPGN = (): string => {
+    // Build complete PGN from current game state
+    let pgn = `[Event "AmaChess Training"]
+[Site "AmaChess"]
+[Date "${new Date().toISOString().split('T')[0]}"]
+[Round "1"]
+[White "${isPlayerWhite ? 'Player' : 'Coach B'}"]
+[Black "${isPlayerWhite ? 'Coach B' : 'Player'}"]
+[Result "*"]
+
+`;
+
+    // Add all moves with proper numbering
+    for (let i = 0; i < aiMoveHistory.length; i++) {
+      const moveNumber = Math.floor(i / 2) + 1;
+      const isWhiteMove = i % 2 === 0;
+      
+      if (isWhiteMove) {
+        pgn += `${moveNumber}. ${aiMoveHistory[i]} `;
+      } else {
+        pgn += `${aiMoveHistory[i]} `;
+      }
+    }
+
+    return pgn.trim();
+  };
+
+  const determineGamePhase = (moveCount: number): 'opening' | 'middlegame' | 'endgame' => {
+    if (moveCount < 20) return 'opening';
+    if (moveCount < 40) return 'middlegame';
+    return 'endgame';
+  };
+
   // Monitor evaluation changes and trigger coaching when blunders detected
   useEffect(() => {
     const monitorEvaluation = async () => {
-      if (previousEvaluation === null || !currentPosition) return;
+      if (!coachModeEnabled || previousEvaluation === null || !currentPosition) return;
 
       const currentEval = evaluation;
       if (currentEval === null) return;
@@ -351,7 +386,7 @@ const AICoachModal: React.FC<AICoachModalProps> = ({ onClose, evaluation = null 
     };
 
     monitorEvaluation();
-  }, [evaluation, currentPosition, previousEvaluation, aiMoveHistory, difficulty, API_BASE_URL]);
+  }, [evaluation, currentPosition, previousEvaluation, aiMoveHistory, difficulty, API_BASE_URL, coachModeEnabled]);
 
   // Update game phase when move number changes
   useEffect(() => {
@@ -393,6 +428,28 @@ const AICoachModal: React.FC<AICoachModalProps> = ({ onClose, evaluation = null 
           
           {/* Controls */}
           <div className="flex items-center gap-3">
+            {/* Coach Mode Toggle */}
+            <div className="flex items-center gap-2">
+              <label htmlFor="coach-mode" className="text-white text-sm hidden sm:block">Coach Mode:</label>
+              <button
+                id="coach-mode"
+                onClick={() => setCoachModeEnabled(!coachModeEnabled)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  coachModeEnabled ? 'bg-blue-600' : 'bg-[#374162]'
+                }`}
+                title={coachModeEnabled ? 'Turn off coaching' : 'Turn on coaching'}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    coachModeEnabled ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+              <span className="text-[#97a1c4] text-xs sm:hidden">
+                {coachModeEnabled ? 'ON' : 'OFF'}
+              </span>
+            </div>
+
             {gameStarted && (
               <div className="flex items-center gap-2">
                 <label htmlFor="difficulty" className="text-white text-sm hidden sm:block">Difficulty:</label>
@@ -439,7 +496,7 @@ const AICoachModal: React.FC<AICoachModalProps> = ({ onClose, evaluation = null 
 
         <div className="flex flex-col lg:flex-row h-[70vh] sm:h-[75vh] lg:h-[70vh]">
           {/* Chess Board Section */}
-          <div className="flex-1 p-3 sm:p-6 lg:border-r lg:border-[#374162] min-h-0">
+          <div className={`flex-1 p-3 sm:p-6 ${coachModeEnabled ? 'lg:border-r lg:border-[#374162]' : ''} min-h-0`}>
             <div className="bg-[#272e45] rounded-lg p-2 sm:p-4 h-full flex items-center justify-center">
               {!gameStarted ? (
                 <div className="text-center px-2">
@@ -495,8 +552,9 @@ const AICoachModal: React.FC<AICoachModalProps> = ({ onClose, evaluation = null 
             </div>
           </div>
 
-          {/* Coach Chat Section */}
-          <div className="w-full lg:w-80 xl:w-96 flex flex-col min-h-0">
+          {/* Coach Chat Section - Only show when coach mode is enabled */}
+          {coachModeEnabled && (
+            <div className="w-full lg:w-80 xl:w-96 flex flex-col min-h-0">
             {/* Coach Avatar */}
             <div className="p-3 sm:p-4 border-b border-[#374162] shrink-0">
               <div className="flex items-center gap-2 sm:gap-3">
@@ -506,7 +564,7 @@ const AICoachModal: React.FC<AICoachModalProps> = ({ onClose, evaluation = null 
                   </svg>
                 </div>
                 <div className="flex-1">
-                  <p className="text-white font-medium text-sm sm:text-base">Coach Magnus</p>
+                  <p className="text-white font-medium text-sm sm:text-base">Coach B</p>
                   <p className="text-green-400 text-xs">● Online {gameStarted && `• Difficulty ${difficulty}`}</p>
                 </div>
                 
@@ -544,7 +602,7 @@ const AICoachModal: React.FC<AICoachModalProps> = ({ onClose, evaluation = null 
                   </div>
                 )}
 
-                {/* Display move history */}
+                {/* Display move history
                 {aiMoveHistory.map((moveSet, index) => (
                   <div key={index} className="space-y-2">
                     <div className="bg-blue-800 rounded-lg p-2 sm:p-3">
@@ -556,7 +614,7 @@ const AICoachModal: React.FC<AICoachModalProps> = ({ onClose, evaluation = null 
                       <p className="text-[#97a1c4] text-xs mt-1">Coach Magnus</p>
                     </div>
                   </div>
-                ))}
+                ))} */}
 
                 {/* Hint Button */}
                 {gameStarted && (
@@ -595,6 +653,7 @@ const AICoachModal: React.FC<AICoachModalProps> = ({ onClose, evaluation = null 
               </div>
             </div>
           </div>
+          )}
         </div>
 
         {/* Footer */}

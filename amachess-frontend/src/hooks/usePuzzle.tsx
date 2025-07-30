@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Chess } from 'chess.js';
-import { puzzleService, Puzzle, PuzzleFilters } from '../services/puzzleService';
+import { puzzleService, Puzzle, PuzzleFilters, PuzzleGameTracker, GameContext } from '../services/puzzleService';
 
 interface PuzzleState {
   currentPuzzle: Puzzle | null;
@@ -16,7 +16,8 @@ interface PuzzleState {
   chess: Chess | null; // Chess.js instance for move validation
   solvedMoves: number; // Number of moves correctly solved
   totalMoves: number; // Total moves in the puzzle solution
-  gameContext: any; // PGN and game information
+  gameContext: GameContext; // Enhanced with full PGN and game information
+  gameTracker: PuzzleGameTracker | null;
   analysisMode: boolean; // Whether we're in post-puzzle analysis
   
   // New fields for enhanced functionality
@@ -48,7 +49,8 @@ export const usePuzzle = () => {
     solutionMoves: [],
     solutionModeActive: false,
     solutionIndex: 0,
-    boardKey: 0
+    boardKey: 0,
+    gameTracker: null
   });
 
   // Load a specific puzzle by ID
@@ -104,6 +106,41 @@ export const usePuzzle = () => {
           }
         }
       }
+      
+      const initializePuzzle = (puzzle: Puzzle) => {
+        const playerColor = puzzle.sideToMove === 'white' ? 'white' : 'black';
+        const gameTracker = new PuzzleGameTracker(puzzle.fen, playerColor);
+        
+        // If puzzle has existing PGN, parse and add moves
+        if (puzzle.pgn) {
+          parseExistingPGN(puzzle.pgn, gameTracker);
+        }
+        
+        setState(prev => ({
+          ...prev,
+          gameTracker,
+          gameContext: gameTracker.getGameContext()
+        }));
+      };
+
+      const parseExistingPGN = (pgn: string, tracker: PuzzleGameTracker) => {
+        // Parse existing PGN and add moves to tracker
+        const moveRegex = /\d+\.\s*([^\s]+)(?:\s+([^\s]+))?/g;
+        let match;
+        let moveNumber = 1;
+        
+        while ((match = moveRegex.exec(pgn)) !== null) {
+          if (match[1]) {
+            tracker.addMove(match[1], moveNumber, true); // White move
+          }
+          if (match[2]) {
+            tracker.addMove(match[2], moveNumber, false); // Black move
+          }
+          moveNumber++;
+        }
+      };
+
+      initializePuzzle(puzzle);
       
       setState(prev => ({
         ...prev,
@@ -204,6 +241,41 @@ export const usePuzzle = () => {
           }
         }
       }
+      
+      const initializePuzzle = (puzzle: Puzzle) => {
+        const playerColor = puzzle.sideToMove === 'white' ? 'white' : 'black';
+        const gameTracker = new PuzzleGameTracker(puzzle.fen, playerColor);
+        
+        // If puzzle has existing PGN, parse and add moves
+        if (puzzle.pgn) {
+          parseExistingPGN(puzzle.pgn, gameTracker);
+        }
+        
+        setState(prev => ({
+          ...prev,
+          gameTracker,
+          gameContext: gameTracker.getGameContext()
+        }));
+      };
+
+      const parseExistingPGN = (pgn: string, tracker: PuzzleGameTracker) => {
+        // Parse existing PGN and add moves to tracker
+        const moveRegex = /\d+\.\s*([^\s]+)(?:\s+([^\s]+))?/g;
+        let match;
+        let moveNumber = 1;
+        
+        while ((match = moveRegex.exec(pgn)) !== null) {
+          if (match[1]) {
+            tracker.addMove(match[1], moveNumber, true); // White move
+          }
+          if (match[2]) {
+            tracker.addMove(match[2], moveNumber, false); // Black move
+          }
+          moveNumber++;
+        }
+      };
+
+      initializePuzzle(puzzle);
       
       setState(prev => ({
         currentPuzzle: puzzle,
@@ -397,6 +469,20 @@ export const usePuzzle = () => {
           error: null // Clear any previous errors when move is successful
         };
       });
+
+      // Update game context with the new move
+      if (state.gameTracker) {
+        const moveNumber = Math.floor(state.gameContext.moveHistory.length / 2) + 1;
+        const isWhiteMove = state.gameContext.moveHistory.length % 2 === 0;
+        
+        state.gameTracker.addMove(userUCI, moveNumber, isWhiteMove);
+        state.gameTracker.updatePosition(state.chess.fen());
+        
+        setState(prev => ({
+          ...prev,
+          gameContext: state.gameTracker.getGameContext()
+        }));
+      }
 
       return true;
     } catch (error) {

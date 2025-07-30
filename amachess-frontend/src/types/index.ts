@@ -306,3 +306,22 @@ export interface FormErrors {
 export type ClickHandler = () => void;
 export type ChangeHandler = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
 export type SubmitHandler = (e: React.FormEvent<HTMLFormElement>) => void;
+
+// Coaching and PGN context types
+export interface GameContext {
+  pgn?: string;
+  moveHistory?: string[];
+  currentFEN?: string;
+  gamePhase?: 'opening' | 'middlegame' | 'endgame';
+  playerColor?: 'white' | 'black';
+  difficulty?: string;
+}
+
+export interface CoachingRequest {
+  position: string;
+  pgn?: string;
+  moveHistory?: string[];
+  gameContext?: GameContext;
+  playerMove?: string;
+  difficulty?: string;
+}

@@ -100,7 +100,7 @@ router.post('/chat', async (req, res) => {
 
 /**
  * POST /api/coach/hint
- * Get strategic hints for the current position with PGN context (USER-REQUESTED ONLY)
+ * Get strategic hints with complete PGN context for enhanced analysis
  */
 router.post('/hint', async (req, res) => {
   try {
@@ -123,15 +123,19 @@ router.post('/hint', async (req, res) => {
       return res.status(400).json({ error: 'Invalid FEN position' });
     }
 
-    // Create enhanced context with PGN for deeper analysis
+    // Create comprehensive context with PGN for deeper analysis
     const enhancedContext = {
       difficulty,
       pgn: pgn.trim(),
       moveHistory,
+      gamePhase: gameContext.gamePhase || (moveHistory.length < 20 ? 'opening' : moveHistory.length < 40 ? 'middlegame' : 'endgame'),
+      playerColor: gameContext.playerColor || 'white',
       ...gameContext
     };
 
-    // Get strategic hint from Coach B with full game context
+    console.log(`Generating hint with PGN context: ${pgn.length} chars, ${moveHistory.length} moves`);
+
+    // Get strategic hint from Coach B with complete game context
     const hint = await openaiService.generateHint(position, enhancedContext);
 
     // Also provide basic position analysis from Stockfish if available
@@ -152,6 +156,11 @@ router.post('/hint', async (req, res) => {
         bestMove: analysis.bestMove,
         depth: analysis.depth
       } : null,
+      contextUsed: {
+        pgnLength: pgn.length,
+        moveCount: moveHistory.length,
+        gamePhase: enhancedContext.gamePhase
+      },
       timestamp: new Date().toISOString()
     });
 
@@ -166,7 +175,7 @@ router.post('/hint', async (req, res) => {
 
 /**
  * POST /api/coach/blunder-analysis  
- * Analyze blunders and provide targeted coaching (CRITICAL MOMENTS)
+ * Analyze blunders with complete game context
  */
 router.post('/blunder-analysis', async (req, res) => {
   try {
@@ -203,15 +212,21 @@ router.post('/blunder-analysis', async (req, res) => {
       });
     }
 
-    // Create context for blunder analysis
+    // Create context for blunder analysis with PGN
     const context = {
       difficulty,
       isUserBlunder,
       bestMove,
+      pgn: gameContext.pgn || '',
+      moveHistory: gameContext.moveHistory || [],
+      gamePhase: gameContext.gamePhase || 'middlegame',
+      playerColor: gameContext.playerColor || 'white',
       ...gameContext
     };
 
-    // Get targeted blunder coaching from Coach B
+    console.log(`Analyzing blunder with context: PGN=${context.pgn.length} chars, Phase=${context.gamePhase}`);
+
+    // Get targeted blunder coaching from Coach B with game context
     const coaching = await openaiService.analyzeBlunder(
       position, 
       playerMove, 
@@ -225,6 +240,11 @@ router.post('/blunder-analysis', async (req, res) => {
       coaching,
       evaluationChange,
       severity: coaching.severity,
+      contextUsed: {
+        pgnLength: context.pgn.length,
+        gamePhase: context.gamePhase,
+        moveCount: context.moveHistory.length
+      },
       timestamp: new Date().toISOString()
     });
 

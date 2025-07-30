@@ -352,7 +352,7 @@ class PGNAnalysisService {
       return evaluation.value > 0 ? 10000 : -10000;
     }
     
-    if (evaluation.type === 'centipawn') {
+    if (evaluation.type === 'centipawn') { // Make sure this matches frontend
       return evaluation.value || 0;
     }
     

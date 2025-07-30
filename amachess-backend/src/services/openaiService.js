@@ -24,7 +24,7 @@ class GroqService {
   }
 
   /**
-   * Generate chess coaching hints with PGN context (CRITICAL MOMENTS ONLY)
+   * Generate chess coaching hints with full PGN context for deep analysis
    */
   async generateHint(position, gameContext = {}) {
     if (!this.isConfigured()) {
@@ -38,28 +38,42 @@ class GroqService {
       const difficulty = gameContext.difficulty || 'intermediate';
       const pgn = gameContext.pgn || '';
       const moveHistory = gameContext.moveHistory || [];
+      const gamePhase = gameContext.gamePhase || this.determineGamePhase(moveHistory.length);
+      const playerColor = gameContext.playerColor || 'white';
 
-      const systemPrompt = `You are Coach B, an expert chess coach. Give strategic hints to help the student find good moves without revealing the exact solution.
+      // Enhanced context analysis from PGN
+      const pgnAnalysis = this.analyzePGNContext(pgn, gamePhase, playerColor);
 
-Your hint style:
-- Guide toward good principles without giving exact moves
-- Encourage tactical awareness and pattern recognition
-- Use questions to make the student think
-- Keep it appropriate for ${difficulty} level
-- Be encouraging and educational
-- Limit to 1-2 sentences maximum
-- Consider the game context and previous moves
+      const systemPrompt = `You are Coach B, an expert chess coach analyzing a live game. Provide strategic hints based on the complete game context.
 
-Position analysis:
-- Game phase: ${positionInfo.phase}
-- Key features: ${positionInfo.keyFeatures.join(', ') || 'Balanced position'}
-- Available tactics: ${positionInfo.tactics.length > 0 ? positionInfo.tactics.join(', ') : 'Look deeper'}
-- Material balance: ${positionInfo.materialBalance === 0 ? 'Equal' : positionInfo.materialBalance > 0 ? 'White ahead' : 'Black ahead'}
+GAME CONTEXT:
+- Player Color: ${playerColor}
+- Game Phase: ${gamePhase}
+- Move Count: ${moveHistory.length}
+- Difficulty: ${difficulty}
 
-${pgn ? `Game context (PGN): ${pgn.slice(-200)}` : ''}
-${moveHistory.length > 0 ? `Recent moves: ${moveHistory.slice(-6).join(' ')}` : ''}`;
+CURRENT POSITION ANALYSIS:
+- Phase: ${positionInfo.phase}
+- Key Features: ${positionInfo.keyFeatures.join(', ') || 'Balanced position'}
+- Material Balance: ${positionInfo.materialBalance === 0 ? 'Equal' : positionInfo.materialBalance > 0 ? 'White ahead' : 'Black ahead'}
+- Tactical Opportunities: ${positionInfo.tactics.length > 0 ? positionInfo.tactics.join(', ') : 'Look for patterns'}
 
-      const userPrompt = `Give me a strategic hint for this position: ${position}. Help me think about what to look for without revealing the best move.`;
+GAME HISTORY INSIGHTS:
+${pgnAnalysis.insights}
+
+COMPLETE GAME PGN:
+${pgn.slice(-500)} // Last 500 characters for context
+
+Your coaching style:
+- Provide hints that consider the entire game flow, not just the current position
+- Reference specific patterns or themes from the game history
+- Guide toward moves that fit the overall strategic plan
+- Consider the opening played and typical middlegame/endgame plans
+- Keep hints educational and appropriate for ${difficulty} level
+- Limit to 2-3 sentences maximum
+- Use the game context to provide more targeted advice`;
+
+      const userPrompt = `Analyze this position in the context of the complete game and give me a strategic hint. Consider the opening played, recent tactical themes, and the overall position trends.`;
 
       const response = await this.client.chat.completions.create({
         model: this.model,
@@ -67,7 +81,7 @@ ${moveHistory.length > 0 ? `Recent moves: ${moveHistory.slice(-6).join(' ')}` : 
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        max_tokens: 120,
+        max_tokens: 150,
         temperature: 0.7,
         top_p: 0.9
       });
@@ -77,7 +91,12 @@ ${moveHistory.length > 0 ? `Recent moves: ${moveHistory.slice(-6).join(' ')}` : 
         type: 'hint',
         coach: 'Coach B',
         timestamp: new Date().toISOString(),
-        positionAnalysis: positionInfo
+        positionAnalysis: positionInfo,
+        gameContext: {
+          phase: gamePhase,
+          moveCount: moveHistory.length,
+          pgnInsights: pgnAnalysis.keyThemes
+        }
       };
 
     } catch (error) {
@@ -87,7 +106,7 @@ ${moveHistory.length > 0 ? `Recent moves: ${moveHistory.slice(-6).join(' ')}` : 
   }
 
   /**
-   * Analyze a blunder and provide targeted coaching (CRITICAL MOMENTS ONLY)
+   * Analyze blunder with complete game context
    */
   async analyzeBlunder(position, playerMove, evaluationChange, gameContext = {}) {
     if (!this.isConfigured()) {
@@ -102,51 +121,62 @@ ${moveHistory.length > 0 ? `Recent moves: ${moveHistory.slice(-6).join(' ')}` : 
       const pgn = gameContext.pgn || '';
       const isUserBlunder = gameContext.isUserBlunder || false;
       const bestMove = gameContext.bestMove || '';
+      const gamePhase = gameContext.gamePhase || this.determineGamePhase(gameContext.moveHistory?.length || 0);
+      const playerColor = gameContext.playerColor || 'white';
+
+      // Analyze game context for blunder assessment
+      const pgnAnalysis = this.analyzePGNContext(pgn, gamePhase, playerColor);
 
       let systemPrompt;
       let userPrompt;
 
       if (isUserBlunder) {
-        // User made a blunder - provide constructive feedback
-        systemPrompt = `You are Coach B, a supportive chess instructor. The student just made a significant mistake (blunder). Your job is to help them learn without being harsh.
+        systemPrompt = `You are Coach B, providing constructive feedback on a player's blunder. Use the complete game context to explain why this move was problematic.
+
+GAME CONTEXT:
+- Player Color: ${playerColor}
+- Game Phase: ${gamePhase}
+- Difficulty Level: ${difficulty}
+- Evaluation Change: ${Math.abs(evaluationChange)} centipawns lost
+
+POSITION FEATURES:
+- ${positionInfo.keyFeatures.join(', ')}
+- Material: ${positionInfo.materialBalance === 0 ? 'Equal' : positionInfo.materialBalance > 0 ? 'White ahead' : 'Black ahead'}
+
+GAME HISTORY PATTERNS:
+${pgnAnalysis.insights}
+
+RECENT GAME CONTEXT:
+${pgn.slice(-300)}
 
 Your coaching approach:
-- Be understanding and encouraging
-- Explain what went wrong briefly
-- Suggest what to look for next time
-- Keep it appropriate for ${difficulty} level
-- Limit to 2-3 sentences maximum
-- Focus on learning, not criticism
+- Explain the blunder in context of the overall game plan
+- Point out what the player missed based on recent moves/themes
+- Suggest how this fits into patterns from the game
+- Be encouraging but educational
+- Reference the game flow and strategic themes
+- Keep it concise (2-3 sentences)`;
 
-Position analysis:
-- Game phase: ${positionInfo.phase}
-- Evaluation change: ${evaluationChange} centipawns
-- Key features: ${positionInfo.keyFeatures.join(', ') || 'Complex position'}
-${bestMove ? `- Better move was: ${bestMove}` : ''}
-
-${pgn ? `Game context: ${pgn.slice(-300)}` : ''}`;
-
-        userPrompt = `The student played ${playerMove} which was a blunder (evaluation dropped by ${Math.abs(evaluationChange)} centipawns). Provide supportive coaching to help them learn from this mistake.`;
+        userPrompt = `The player just played ${playerMove} and lost ${Math.abs(evaluationChange)} centipawns. ${bestMove ? `The better move was ${bestMove}.` : ''} Explain this blunder in the context of the complete game, focusing on what they missed based on the game's themes and recent moves.`;
       } else {
-        // AI/Engine made a blunder - prompt user to find the punishment
-        systemPrompt = `You are Coach B, an encouraging chess instructor. The opponent (engine/AI) just made a blunder, creating a tactical opportunity for the student.
+        systemPrompt = `You are Coach B, helping the player capitalize on the computer's mistake. Use the game context to guide them toward the best continuation.
 
-Your coaching approach:
-- Alert them to the opportunity without giving away the solution
-- Encourage them to look for forcing moves
-- Build their confidence
-- Keep it appropriate for ${difficulty} level
-- Limit to 1-2 sentences maximum
-- Make them excited about the opportunity
+GAME CONTEXT & OPPORTUNITY:
+- The computer just made an error (${Math.abs(evaluationChange)} centipawns)
+- Player Color: ${playerColor}
+- Game Phase: ${gamePhase}
+- Difficulty: ${difficulty}
 
-Position analysis:
-- Game phase: ${positionInfo.phase}
-- Evaluation swing: ${evaluationChange} centipawns in their favor
-- Key features: ${positionInfo.keyFeatures.join(', ') || 'Tactical position'}
+CURRENT POSITION:
+- ${positionInfo.keyFeatures.join(', ')}
+- Key Tactics: ${positionInfo.tactics.join(', ') || 'Look for forcing moves'}
 
-${pgn ? `Game context: ${pgn.slice(-300)}` : ''}`;
+GAME FLOW CONTEXT:
+${pgnAnalysis.insights}
 
-        userPrompt = `The opponent just played ${playerMove} which was a blunder (evaluation improved by ${Math.abs(evaluationChange)} centipawns for the student). Encourage them to find the best response without giving away the exact move.`;
+Help the player find the best response based on the game's strategic themes and tactical patterns.`;
+
+        userPrompt = `The computer just made a mistake! Based on the game context and themes we've seen, guide the player toward the strongest continuation without giving away the exact move.`;
       }
 
       const response = await this.client.chat.completions.create({
@@ -167,7 +197,11 @@ ${pgn ? `Game context: ${pgn.slice(-300)}` : ''}`;
         isUserBlunder,
         evaluationChange,
         severity: Math.abs(evaluationChange) > 300 ? 'major' : Math.abs(evaluationChange) > 150 ? 'moderate' : 'minor',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        gameContext: {
+          phase: gamePhase,
+          pgnInsights: pgnAnalysis.keyThemes
+        }
       };
 
     } catch (error) {
@@ -191,12 +225,13 @@ ${pgn ? `Game context: ${pgn.slice(-300)}` : ''}`;
       const difficulty = gameContext.difficulty || 'intermediate';
       const moveHistory = gameContext.moveHistory || [];
 
-      const systemPrompt = `You are Coach B, an expert chess coach. Provide helpful coaching based on the current position and player's move.
+      const systemPrompt = `You are Coach B, an expert chess coach. Provide helpful coaching ONLY for the student's moves, not for computer/AI moves.
 
 Your coaching style:
-- Supportive and educational
-- Focus on learning opportunities
-- Provide specific, actionable advice
+- Focus exclusively on analyzing and improving the student's play
+- Never announce or explain computer moves
+- Supportive and educational about student moves only
+- Provide specific, actionable advice for student improvement
 - Appropriate for ${difficulty} level
 - Keep responses concise (1-2 sentences)
 - Encourage improvement without being critical
@@ -209,8 +244,8 @@ Position analysis:
 ${moveHistory.length > 0 ? `Recent moves: ${moveHistory.slice(-4).join(' ')}` : ''}`;
 
       const userPrompt = playerMove 
-        ? `The player just played ${playerMove} in this position: ${position}. Provide coaching feedback.`
-        : `Provide coaching guidance for this position: ${position}`;
+        ? `The student just played ${playerMove} in this position: ${position}. Provide coaching feedback about their move only.`
+        : `Provide coaching guidance for the student in this position: ${position}.`;
 
       const response = await this.client.chat.completions.create({
         model: this.model,
@@ -587,7 +622,7 @@ Game context:
     }
 
     try {
-      const systemPrompt = `You are Magnus Carlsen, the world chess champion, welcoming a student to a personal chess training session. Create an encouraging, motivating welcome message that sets the tone for learning.
+      const systemPrompt = `You are Coach B, an expert chess coach, welcoming a student to a personal chess training session. Create an encouraging, motivating welcome message that sets the tone for learning.
 
 Your welcome style:
 - Warm and encouraging
@@ -595,7 +630,6 @@ Your welcome style:
 - Appropriate for ${difficulty} level players  
 - Keep it conversational and personal
 - Limit to 2-3 sentences
-- Stay in character as Magnus
 - Make them excited to play and learn`;
 
       const userPrompt = `Welcome a ${difficulty} level chess student to a new training session. Make them feel comfortable and excited to learn.`;
@@ -612,7 +646,7 @@ Your welcome style:
 
       return {
         message: response.choices[0].message.content.trim(),
-        coach: 'Magnus Carlsen',
+        coach: 'Coach B',
         timestamp: new Date().toISOString()
       };
 
@@ -765,6 +799,82 @@ Your welcome style:
     }
     
     return patterns;
+  }
+
+  /**
+   * Analyze PGN context to extract strategic insights
+   */
+  analyzePGNContext(pgn, gamePhase, playerColor) {
+    if (!pgn || pgn.length < 50) {
+      return {
+        insights: 'Limited game history available for analysis.',
+        keyThemes: [],
+        openingType: 'Unknown'
+      };
+    }
+
+    const insights = [];
+    const keyThemes = [];
+    
+    // Extract opening information
+    let openingType = 'Standard';
+    if (pgn.includes('1.e4')) {
+      openingType = 'King\'s Pawn';
+      insights.push('King\'s pawn opening - focus on central control and rapid development');
+    } else if (pgn.includes('1.d4')) {
+      openingType = 'Queen\'s Pawn';
+      insights.push('Queen\'s pawn opening - strategic game with positional themes');
+    } else if (pgn.includes('1.Nf3') || pgn.includes('1.c4')) {
+      openingType = 'Hypermodern';
+      insights.push('Hypermodern opening - controlling center from distance');
+    }
+
+    // Analyze tactical themes
+    if (pgn.includes('x')) {
+      keyThemes.push('captures');
+      insights.push('Active piece exchanges - material balance is important');
+    }
+    
+    if (pgn.includes('+')) {
+      keyThemes.push('checks');
+      insights.push('Tactical game with checking sequences - king safety is crucial');
+    }
+    
+    if (pgn.includes('O-O')) {
+      keyThemes.push('castling');
+      insights.push('Both sides have prioritized king safety through castling');
+    }
+    
+    if (pgn.includes('=Q')) {
+      keyThemes.push('promotion');
+      insights.push('Pawn promotion themes - endgame conversion is key');
+    }
+
+    // Analyze game flow
+    const moveCount = (pgn.match(/\d+\./g) || []).length;
+    if (gamePhase === 'opening' && moveCount > 10) {
+      insights.push('Extended opening phase - focus on completing development');
+    } else if (gamePhase === 'middlegame') {
+      insights.push('Critical middlegame - tactical awareness and strategic planning essential');
+    } else if (gamePhase === 'endgame') {
+      insights.push('Endgame phase - technique and precise calculation required');
+    }
+
+    return {
+      insights: insights.join('. ') + '.',
+      keyThemes,
+      openingType,
+      moveCount
+    };
+  }
+
+  /**
+   * Determine game phase based on move count
+   */
+  determineGamePhase(moveCount) {
+    if (moveCount < 20) return 'opening';
+    if (moveCount < 40) return 'middlegame';
+    return 'endgame';
   }
 }
 

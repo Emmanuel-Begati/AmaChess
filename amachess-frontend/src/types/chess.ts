@@ -22,7 +22,7 @@ export interface ChessMove {
 
 export interface StockfishEvaluation {
   value: number;
-  type: 'centipawns' | 'mate';
+  type: 'centipawn' | 'mate'; // Changed from 'centipawns' to 'centipawn' to match backend
 }
 
 export interface StockfishAnalysis {

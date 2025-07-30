@@ -1,21 +1,21 @@
-# 🤖 AI Chess Coach - GPT-4o Setup Guide
+# 🤖 AI Chess Coach - Groq LLaMA Setup Guide
 
 ## Quick Setup
 
-To enable the AI Chess Coach powered by GPT-4o, you need to configure your OpenAI API key:
+To enable the AI Chess Coach powered by Groq LLaMA, you need to configure your Groq API key:
 
-### Step 1: Get Your OpenAI API Key
+### Step 1: Get Your Groq API Key
 
-1. 🌐 Visit [OpenAI Platform](https://platform.openai.com/account/api-keys)
+1. 🌐 Visit [Groq Console](https://console.groq.com/keys)
 2. 🔐 Sign in to your account (create one if needed)
-3. ➕ Click "Create new secret key"
-4. 📋 Copy the key (starts with `sk-...`)
+3. ➕ Click "Create API Key"
+4. 📋 Copy the key (starts with `gsk_...`)
 
 ### Step 2: Configure Your API Key
 
 1. 📁 Open `amachess-backend/.env`
-2. 🔍 Find the line: `OPENAI_API_KEY=your-openai-api-key-here`
-3. ✏️ Replace it with: `OPENAI_API_KEY=sk-your-actual-key-here`
+2. 🔍 Find the line: `GROQ_API_KEY=your-groq-api-key-here`
+3. ✏️ Replace it with: `GROQ_API_KEY=gsk-your-actual-key-here`
 
 ### Step 3: Restart the Server
 
@@ -28,8 +28,8 @@ npm run dev
 
 After starting the server, you should see:
 ```
-✅ OpenAI Configuration Ready!
-🤖 AI Chess Coach: GPT-4o Enabled
+✅ Groq Configuration Ready!
+🤖 AI Chess Coach: Groq LLaMA Enabled
 ```
 
 If you see warnings about API key configuration, double-check your setup.
@@ -41,13 +41,13 @@ Once configured, your AI Chess Coach will provide:
 - **🎯 Real-time Move Analysis**: Get instant feedback on your moves
 - **💡 Strategic Hints**: Receive guided hints without spoiling the solution  
 - **📚 Educational Commentary**: Learn chess principles as you play
-- **🎭 Personalized Coaching**: Magnus Carlsen's coaching style
-- **⚡ GPT-4o Power**: Latest AI model for advanced chess understanding
+- **🎭 Personalized Coaching**: Coach B's coaching style
+- **⚡ Groq LLaMA Power**: Fast inference with LLaMA 3.3 70B model
 
 ## 💰 API Costs
 
-- **Typical Usage**: $0.01-0.05 per training session
-- **Model**: GPT-4o (latest and most capable)
+- **Typical Usage**: $0.001-0.01 per training session
+- **Model**: LLaMA 3.3 70B Versatile (fast and capable)
 - **Optimization**: Smart prompting to minimize tokens
 
 ## 🔧 Troubleshooting
@@ -58,18 +58,18 @@ Once configured, your AI Chess Coach will provide:
 - Restart the server after changes
 
 ### ❌ "Invalid API key format"  
-- API key should start with `sk-`
-- Should be 50+ characters long
-- Copy the full key from OpenAI platform
+- API key should start with `gsk_`
+- Should be 20+ characters long
+- Copy the full key from Groq Console
 
 ### ❌ "Rate limit exceeded"
-- You've hit OpenAI's usage limits
-- Check your [usage dashboard](https://platform.openai.com/account/usage)
+- You've hit Groq's usage limits
+- Check your [usage dashboard](https://console.groq.com/settings/billing)
 - Upgrade your plan or wait for limits to reset
 
 ### ❌ "Insufficient credits"
-- Add billing information to your OpenAI account
-- Purchase credits at [OpenAI Platform](https://platform.openai.com/account/billing)
+- Add billing information to your Groq account
+- Purchase credits at [Groq Console](https://console.groq.com/settings/billing)
 
 ## 🎮 Using the AI Coach
 

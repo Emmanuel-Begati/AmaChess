@@ -282,9 +282,15 @@ router.post('/coach/evaluate', async (req, res) => {
       success: true,
       evaluation: {
         playerMove: playerMove,
-        playerEvaluation: playerEval?.evaluation,
+        playerEvaluation: playerEval?.evaluation ? {
+          value: playerEval.evaluation.value,
+          type: playerEval.evaluation.type === 'mate' ? 'mate' : 'centipawn'
+        } : null,
         bestMove: bestAnalysis.bestMove,
-        bestEvaluation: bestEval?.evaluation,
+        bestEvaluation: bestEval?.evaluation ? {
+          value: bestEval.evaluation.value,
+          type: bestEval.evaluation.type === 'mate' ? 'mate' : 'centipawn'
+        } : null,
         quality: quality,
         feedback: generateMoveFeedback(quality, playerMove, bestAnalysis.bestMove),
         improvement: quality.rating < 80 ? `Consider ${bestAnalysis.bestMove} instead` : null
