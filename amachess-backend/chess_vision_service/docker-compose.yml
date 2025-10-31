@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  chess-vision-service:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./temp_uploads:/app/temp_uploads
+      - ./pdf_cache:/app/pdf_cache
+    environment:
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

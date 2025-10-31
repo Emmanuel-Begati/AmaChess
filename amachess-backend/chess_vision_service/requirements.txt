@@ -1,0 +1,20 @@
+Flask==2.3.3
+Flask-CORS==4.0.0
+opencv-python==4.8.1.78
+numpy>=1.21.0,<2.0.0
+pdf2image==1.16.3
+Pillow>=9.0.0
+Werkzeug==2.3.7
+requests==2.31.0
+
+# Chesscog dependencies
+torch>=1.9.0
+torchvision>=0.10.0
+python-chess>=1.999
+scikit-learn>=1.0.0
+scipy>=1.7.0
+matplotlib>=3.5.0
+seaborn>=0.11.0
+tqdm>=4.62.0
+pyyaml>=6.0
+albumentations>=1.1.0

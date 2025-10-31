@@ -1,0 +1,60 @@
+{
+  "name": "amachess-backend",
+  "version": "1.0.0",
+  "description": "AmaChess Backend API with Stockfish integration",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "cross-env NODE_ENV=development nodemon src/server.js",
+    "dev:windows": "nodemon src/server.js",
+    "install-stockfish": "node scripts/install-stockfish.js",
+    "test-stockfish": "node scripts/test-stockfish.js",
+    "test-api": "node scripts/test-api.js",
+    "test-lichess": "node scripts/test-lichess.js",
+    "test-analysis": "node scripts/test-analysis.js",
+    "test-books": "node scripts/test-books.js",
+    "test-enhanced-parsing": "node scripts/test-enhanced-pdf-parsing.js",
+    "test-chess-book": "node scripts/test-chess-book-parsing.js",
+    "test-chess-vision": "node scripts/test-chess-vision-endpoints.js",
+    "reprocess-pdfs": "node scripts/reprocess-pdfs.js",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:prod": "prisma migrate deploy",
+    "db:reset": "prisma migrate reset",
+    "db:seed": "node scripts/seed-puzzles.js",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.12.0",
+    "axios": "^1.6.0",
+    "bcryptjs": "^3.0.2",
+    "chess.js": "^1.0.0-beta.6",
+    "cors": "^2.8.5",
+    "csv-parser": "^3.2.0",
+    "dotenv": "^17.2.0",
+    "express": "^4.21.2",
+    "form-data": "^4.0.3",
+    "groq-sdk": "^0.29.0",
+    "jsonwebtoken": "^9.0.2",
+    "mime-types": "^3.0.1",
+    "multer": "^2.0.1",
+    "node-fetch": "^2.7.0",
+    "pdf-parse": "^1.1.1",
+    "pg": "^8.11.3",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.10.9",
+    "cross-env": "^10.0.0",
+    "nodemon": "^3.0.1",
+    "prisma": "^6.11.1"
+  },
+  "keywords": [
+    "chess",
+    "stockfish",
+    "api",
+    "ai"
+  ],
+  "author": "AmaChess",
+  "license": "MIT"
+}
