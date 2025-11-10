@@ -7,119 +7,53 @@ declare global {
 }
 
 export class StockfishEngine {
-  private engine: any = null;
   private isReady = false;
   private onMoveCallback: ((move: string) => void) | null = null;
   private difficulty: GameDifficulty = 5;
+  private apiService: StockfishAPI;
 
   constructor() {
+    this.apiService = new StockfishAPI();
     this.initializeEngine();
   }
 
   private async initializeEngine(): Promise<void> {
     try {
-      // Try to load Stockfish from CDN if not already loaded
-      if (!window.Stockfish) {
-        await this.loadStockfish();
-      }
-
-      if (window.Stockfish) {
-        this.engine = window.Stockfish();
-        this.setupEngine();
+      // Test API connection
+      const health = await this.apiService.checkHealth();
+      if (health.status === 'healthy' || health.status === 'ok') {
+        this.isReady = true;
+        console.log('Stockfish API service initialized successfully');
       } else {
-        console.warn('Stockfish not available, using random moves');
+        console.warn('Stockfish API not available, using fallback');
         this.isReady = true;
       }
     } catch (error) {
-      console.error('Failed to initialize Stockfish engine:', error);
-      console.log('Falling back to random move generation');
+      console.error('Failed to initialize Stockfish API:', error);
+      console.log('Using fallback mode');
       this.isReady = true;
     }
   }
 
-  private loadStockfish(): Promise<void> {
-    const stockfishUrls = [
-      'https://unpkg.com/stockfish@16.0.0/src/stockfish.js',
-      'https://cdn.jsdelivr.net/npm/stockfish@16.0.0/src/stockfish.js',
-      'https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js'
-    ];
-
-    return new Promise((resolve, reject) => {
-      let currentUrlIndex = 0;
-
-      const tryLoadScript = () => {
-        if (currentUrlIndex >= stockfishUrls.length) {
-          reject(new Error('All Stockfish CDN sources failed to load'));
-          return;
-        }
-
-        const script = document.createElement('script');
-        script.src = stockfishUrls[currentUrlIndex];
-        
-        script.onload = () => {
-          console.log(`Stockfish loaded from: ${stockfishUrls[currentUrlIndex]}`);
-          resolve();
-        };
-        
-        script.onerror = () => {
-          console.warn(`Failed to load Stockfish from: ${stockfishUrls[currentUrlIndex]}`);
-          document.head.removeChild(script);
-          currentUrlIndex++;
-          
-          // Try next URL after a short delay
-          setTimeout(tryLoadScript, 100);
-        };
-
-        document.head.appendChild(script);
-      };
-
-      tryLoadScript();
-    });
-  }
-
-  private setupEngine(): void {
-    if (!this.engine) return;
-
-    this.engine.addMessageListener((message: string) => {
-      console.log('Stockfish:', message);
-      
-      if (message === 'uciok') {
-        this.engine.postMessage('isready');
-      } else if (message === 'readyok') {
-        this.isReady = true;
-        this.setDifficulty(this.difficulty);
-      } else if (message.startsWith('bestmove')) {
-        const move = message.split(' ')[1];
-        if (this.onMoveCallback && move !== '(none)') {
-          this.onMoveCallback(move);
-        }
-      }
-    });
-
-    this.engine.postMessage('uci');
+  private mapDifficultyToLevel(level: GameDifficulty): DifficultyLevel {
+    if (level <= 2) return 'beginner';
+    if (level <= 4) return 'intermediate';
+    if (level <= 6) return 'advanced';
+    if (level <= 8) return 'expert';
+    return 'maximum';
   }
 
   public setDifficulty(level: GameDifficulty): void {
     this.difficulty = level;
-    
-    if (!this.engine || !this.isReady) return;
-
-    // Configure engine strength based on difficulty level
-    const skillLevel = Math.min(level * 2, 20); // Scale 1-10 to 2-20
-    const depth = Math.min(level + 5, 15); // Scale 1-10 to 6-15
-    
-    this.engine.postMessage(`setoption name Skill Level value ${skillLevel}`);
-    this.engine.postMessage(`setoption name Depth value ${depth}`);
-    
-    console.log(`Set Stockfish difficulty: Skill Level ${skillLevel}, Depth ${depth}`);
+    console.log(`Set Stockfish difficulty level: ${level} (${this.mapDifficultyToLevel(level)})`);
   }
 
   public async getBestMove(fen: string, onMove: (move: string) => void): Promise<void> {
     this.onMoveCallback = onMove;
 
-    if (!this.engine || !this.isReady) {
+    if (!this.isReady) {
       // Fallback to random legal move
-      console.log('Using random move (Stockfish not available)');
+      console.log('Using random move (Stockfish API not available)');
       setTimeout(() => {
         if (this.onMoveCallback) {
           this.onMoveCallback('random');
@@ -129,15 +63,19 @@ export class StockfishEngine {
     }
 
     try {
-      // Set position and request best move
-      this.engine.postMessage(`position fen ${fen}`);
+      const difficultyLevel = this.mapDifficultyToLevel(this.difficulty);
+      const timeLimit = Math.min(this.difficulty * 300 + 500, 3000); // 800ms to 3s
       
-      // Calculate search time based on difficulty
-      const thinkTime = Math.min(this.difficulty * 100 + 200, 2000); // 300ms to 2s
-      this.engine.postMessage(`go movetime ${thinkTime}`);
+      const result = await this.apiService.getBestMove(fen, difficultyLevel, timeLimit);
+      
+      if (this.onMoveCallback && result.move && result.move !== '(none)') {
+        this.onMoveCallback(result.move);
+      } else if (this.onMoveCallback) {
+        this.onMoveCallback('random');
+      }
       
     } catch (error) {
-      console.error('Error getting best move:', error);
+      console.error('Error getting best move from API:', error);
       if (this.onMoveCallback) {
         this.onMoveCallback('random');
       }
@@ -145,9 +83,8 @@ export class StockfishEngine {
   }
 
   public stop(): void {
-    if (this.engine) {
-      this.engine.postMessage('quit');
-    }
+    // No cleanup needed for API-based service
+    console.log('Stockfish API service stopped');
   }
 }
 

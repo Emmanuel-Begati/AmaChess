@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 const logger = require('./config/logger');
 
@@ -35,6 +36,10 @@ app.use(cors({
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Serve static files from the React app build directory
+const frontendBuildPath = path.join(__dirname, '../../amachess-frontend/dist');
+app.use(express.static(frontendBuildPath));
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -94,6 +99,22 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+// Catch all handler: send back React's index.html file for any non-API routes
+app.get('*', (req, res) => {
+  // Don't serve index.html for API routes
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ error: 'API endpoint not found' });
+  }
+  
+  const indexPath = path.join(frontendBuildPath, 'index.html');
+  res.sendFile(indexPath, (err) => {
+    if (err) {
+      logger.error('Error serving index.html:', err);
+      res.status(500).json({ error: 'Failed to serve frontend' });
+    }
+  });
+});
+
 // Initialize database and start server
 async function startServer() {
   try {
@@ -125,5 +146,38 @@ async function startServer() {
 
 // Start the server
 startServer();
+
+// Graceful shutdown handling
+const gracefulShutdown = async (signal) => {
+  logger.info(`Received ${signal}. Starting graceful shutdown...`);
+  
+  try {
+    // Get StockfishService instance and cleanup
+    const StockfishService = require('./services/stockfishService');
+    const stockfishService = new StockfishService();
+    await stockfishService.cleanup();
+    
+    logger.info('Graceful shutdown completed');
+    process.exit(0);
+  } catch (error) {
+    logger.error('Error during graceful shutdown:', error);
+    process.exit(1);
+  }
+};
+
+// Handle shutdown signals
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught Exception:', error);
+  gracefulShutdown('uncaughtException');
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  gracefulShutdown('unhandledRejection');
+});
 
 module.exports = app;

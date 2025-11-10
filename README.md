@@ -85,7 +85,7 @@ AmaChess is a comprehensive chess learning platform that combines interactive ga
 - **Performance Tracking**: Track your progress with detailed statistics
 
 ### 🛠 Technical Features
-- **Real-time Chess Engine**: Stockfish integration for game analysis
+- **Professional Chess Engine**: API-based Stockfish integration for game analysis
 - **Responsive Design**: Works seamlessly on desktop and mobile
 - **Dark/Light Themes**: Customizable UI themes
 - **PDF Processing**: Advanced chess book parsing and position extraction
@@ -132,65 +132,83 @@ Before installing AmaChess, ensure you have the following installed:
 
 ## 🚀 Installation & Setup
 
-### 1. Clone the Repository
+### Quick Start (Unified Hosting)
 
 ```bash
+# Clone the repository
 git clone https://github.com/yourusername/AmaChess.git
 cd AmaChess
+
+# Install all dependencies
+npm run install:all
+
+# Build and start the application
+npm run build:start
 ```
 
-### 2. Backend Setup
+The application will be available at `http://localhost:3001` (both frontend and backend served from the same port).
 
+### Development Setup
+
+#### Option 1: Unified Development (Recommended)
 ```bash
-# Navigate to backend directory
+# Install all dependencies
+npm run install:all
+
+# Set up backend environment
 cd amachess-backend
-
-# Install dependencies
-npm install
-
-# Set up environment variables
 cp .env.example .env
-# Edit .env file with your configuration:
-# - DATABASE_URL (for PostgreSQL) or leave default for SQLite
-# - JWT_SECRET (generate a secure random string)
-# - LICHESS_TOKEN (optional, for Lichess integration)
-# - OPENAI_API_KEY (optional, for AI features)
+# Edit .env file with your configuration
 
-# Generate Prisma client
+# Generate Prisma client and run migrations
 npm run db:generate
-
-# Run database migrations
 npm run db:migrate
 
-# Seed the database with puzzles (optional)
+# Seed the database (optional)
 npm run db:seed
 
-# Start the backend server
+# Go back to root and start development server
+cd ..
 npm run dev
 ```
 
-The backend will start on `http://localhost:3001`
-
-### 3. Frontend Setup
-
+#### Option 2: Separate Development Servers
 ```bash
-# Open a new terminal and navigate to frontend directory
-cd amachess-frontend
-
-# Install dependencies
+# Terminal 1 - Backend
+cd amachess-backend
 npm install
+cp .env.example .env
+npm run db:generate
+npm run db:migrate
+npm run dev
 
-# Start the development server
+# Terminal 2 - Frontend  
+cd amachess-frontend
+npm install
 npm run dev
 ```
 
-The frontend will start on `http://localhost:5173`
+### Available Scripts
 
-### 4. Access the Application
+From the root directory:
+- `npm run install:all` - Install dependencies for all projects
+- `npm run build` - Build the frontend for production
+- `npm start` - Start the backend server (serves both frontend and API)
+- `npm run dev` - Start backend in development mode
+- `npm run dev:frontend` - Start only the frontend development server
+- `npm run dev:backend` - Start only the backend development server
+- `npm run build:start` - Build frontend and start production server
+- `npm run deploy` - Deploy the application
 
-Open your browser and navigate to:
-- **Frontend**: `http://localhost:5173`
-- **Backend API**: `http://localhost:3001/api`
+### Access Points
+
+**Production Mode** (after `npm run build:start`):
+- **Application**: `http://localhost:3001` (frontend and API)
+- **API Health Check**: `http://localhost:3001/api/health`
+
+**Development Mode**:
+- **Unified**: `http://localhost:3001` (backend serves frontend with proxy)
+- **Separate**: Frontend at `http://localhost:5173`, Backend at `http://localhost:3001`
 
 ## 🎮 Usage Guide
 
@@ -244,8 +262,8 @@ cd amachess-backend
 # Test API endpoints
 npm run test-api
 
-# Test Stockfish integration
-npm run test-stockfish
+# Test Stockfish API integration
+npm run test-stockfish-api
 
 # Test Lichess integration
 npm run test-lichess
@@ -304,16 +322,31 @@ npm run preview
 
 ## 🚀 Deployment
 
-### Production Build
+### Production Deployment
 
-#### Frontend
+#### Single Server Deployment (Recommended)
+```bash
+# Build and deploy everything from root
+npm run install:all
+npm run build:start
+
+# Or use the deployment script
+npm run deploy
+```
+
+The backend serves both the React frontend and API endpoints from a single port (3001).
+
+#### Separate Deployment
+If you prefer to deploy frontend and backend separately:
+
+**Frontend**:
 ```bash
 cd amachess-frontend
 npm run build
 # Deploy the 'dist' folder to your hosting service
 ```
 
-#### Backend
+**Backend**:
 ```bash
 cd amachess-backend
 # Set NODE_ENV=production in your environment
@@ -323,8 +356,9 @@ npm start
 ```
 
 ### Deployment Options
-- **Frontend**: Vercel, Netlify, GitHub Pages
-- **Backend**: Railway, Heroku, DigitalOcean, AWS
+- **Unified**: Railway, Heroku, DigitalOcean, AWS (single server)
+- **Separate Frontend**: Vercel, Netlify, GitHub Pages
+- **Separate Backend**: Railway, Heroku, DigitalOcean, AWS
 - **Database**: PostgreSQL on Railway, Supabase, or AWS RDS
 
 ## 🤝 Contributing
@@ -342,7 +376,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - **Lichess** - For providing the puzzle database and API
-- **Stockfish** - For the powerful chess engine
+- **Stockfish API** - For professional chess engine analysis
 - **React Chess Board** - For the interactive chess board component
 - **Chess.js** - For chess game logic and validation
 

@@ -153,75 +153,46 @@ router.post('/analyze', throttleAnalysis, async (req, res) => {
 });
 
 // Health check endpoint
-router.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    stockfish: 'available',
-    activeEngines: stockfishService.engines.size
-  });
+router.get('/health', async (req, res) => {
+  try {
+    const healthStatus = await stockfishService.healthCheck();
+    res.json(healthStatus);
+  } catch (error) {
+    res.status(500).json({
+      status: 'unhealthy',
+      error: error.message
+    });
+  }
 });
 
-// Test Stockfish installation
+// Test Stockfish API
 router.get('/test', async (req, res) => {
   try {
-    const engineId = 'test_' + Date.now();
-    const engine = await stockfishService.createEngine(engineId);
-    
     // Test with starting position
     const testFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
     const result = await stockfishService.getBestMoveWithDifficulty(testFen, 'beginner', 2000);
     
-    engine.close();
-    
     res.json({
       status: 'success',
-      message: 'Stockfish is working correctly',
+      message: 'Stockfish API is working correctly',
       testResult: {
         move: result.bestMove,
         evaluation: result.evaluation,
-        time: result.timeUsed
+        time: result.timeUsed,
+        difficulty: result.difficulty
       }
     });
     
   } catch (error) {
     res.status(500).json({
       status: 'error',
-      message: 'Stockfish test failed',
+      message: 'Stockfish API test failed',
       error: error.message
     });
   }
 });
 
-// Analyze chess position
-router.post('/analyze', async (req, res) => {
-  try {
-    const { fen, depth = 15, time = 2000 } = req.body;
-    
-    if (!fen) {
-      return res.status(400).json({ error: 'FEN position is required' });
-    }
 
-    const analysis = await stockfishService.analyzePosition(fen, depth, time);
-    
-    res.json({
-      success: true,
-      analysis: {
-        bestMove: analysis.bestMove,
-        evaluation: analysis.evaluation,
-        principalVariation: analysis.principalVariation,
-        depth: analysis.depth,
-        fen: fen
-      }
-    });
-
-  } catch (error) {
-    console.error('Analysis error:', error);
-    res.status(500).json({ 
-      error: 'Failed to analyze position',
-      details: error.message 
-    });
-  }
-});
 
 // Get best move for AI coach
 router.post('/coach/move', async (req, res) => {
@@ -929,6 +900,38 @@ function calculateAdvantage(evaluation) {
   
   return 'Equal';
 }
+
+// Get service statistics
+router.get('/stats', (req, res) => {
+  try {
+    const stats = stockfishService.getStats();
+    res.json({
+      success: true,
+      stats: stats
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Clear cache
+router.post('/cache/clear', (req, res) => {
+  try {
+    const clearedCount = stockfishService.clearCache();
+    res.json({
+      success: true,
+      message: `Cleared ${clearedCount} cached entries`
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
 
 // ...rest of existing helper functions...
 module.exports = router;

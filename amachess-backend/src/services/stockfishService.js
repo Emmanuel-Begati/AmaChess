@@ -1,475 +1,489 @@
-const { spawn } = require('child_process');
-const path = require('path');
-const fs = require('fs');
+const axios = require('axios');
+const NodeCache = require('node-cache');
 const logger = require('../config/logger');
 
 class StockfishService {
   constructor() {
-    this.engines = new Map(); // Store multiple engine instances
-    this.stockfishPath = this.getStockfishPath();
-  }
-
-  getStockfishPath() {
-    // Try multiple common Stockfish locations, prioritizing Windows on Windows systems
-    const isWindows = process.platform === 'win32';
+    // Initialize cache with 5 minute TTL for position analysis
+    this.cache = new NodeCache({ stdTTL: 300, checkperiod: 60 });
     
-    const possiblePaths = isWindows ? [
-      path.join(__dirname, '../../stockfish/stockfish.exe'), // Windows executable (preferred on Windows)
-      path.join(__dirname, '../../stockfish/src/stockfish.exe'), // Built from source Windows
-      'stockfish.exe', // If in PATH on Windows
-      'stockfish' // Fallback to Linux-style name
-    ] : [
-      path.join(__dirname, '../../stockfish/stockfish/stockfish-ubuntu-x86-64-avx2'), // Precompiled Linux binary
-      'stockfish', // Linux system installation
-      path.join(__dirname, '../../stockfish/stockfish'), // Unix executable
-      path.join(__dirname, '../../stockfish/src/stockfish'), // Built from source Unix
-      path.join(__dirname, '../../stockfish/stockfish.exe'), // Windows executable as fallback
-    ];
-
-    for (const stockfishPath of possiblePaths) {
-      try {
-        if (fs.existsSync(stockfishPath)) {
-          console.log(`Found Stockfish at: ${stockfishPath}`);
-          // Test if the executable is actually working with better error handling
-          try {
-            const testSpawn = spawn(stockfishPath, [], { stdio: 'pipe' });
-            testSpawn.kill('SIGTERM');
-            console.log(`✅ Stockfish executable test passed: ${stockfishPath}`);
-            return stockfishPath;
-          } catch (spawnError) {
-            console.log(`❌ Stockfish spawn test failed for ${stockfishPath}:`, spawnError.message);
-            continue;
-          }
-        }
-      } catch (error) {
-        console.log(`Could not access ${stockfishPath}:`, error.message);
-        continue;
-      }
-    }
-
-    console.log('⚠️  No working Stockfish executable found, using PATH fallback');
-    return isWindows ? 'stockfish.exe' : 'stockfish';
+    // API configuration
+    this.apiConfig = {
+      baseURL: process.env.STOCKFISH_API_URL || 'https://stockfish.online/api/s/v2.php',
+      timeout: 30000, // 30 second timeout
+      retries: 3,
+      retryDelay: 1000
+    };
+    
+    // Rate limiting
+    this.requestQueue = [];
+    this.isProcessingQueue = false;
+    this.maxConcurrentRequests = 3;
+    this.activeRequests = 0;
+    
+    logger.info('StockfishService initialized with API integration');
   }
 
-  // Create a new Stockfish engine instance with improved error handling
-  createEngine(engineId = 'default') {
+  /**
+   * Generate cache key for position analysis
+   */
+  generateCacheKey(fen, depth, time, difficulty) {
+    return `analysis_${Buffer.from(fen).toString('base64')}_${depth}_${time}_${difficulty}`;
+  }
+
+  /**
+   * Add request to queue for rate limiting
+   */
+  async queueRequest(requestFn) {
     return new Promise((resolve, reject) => {
-      try {
-        console.log(`Creating Stockfish engine: ${engineId}`);
-        const engine = spawn(this.stockfishPath);
-        
-        engine.stdin.setEncoding('utf8');
-        engine.stdout.setEncoding('utf8');
-
-        let initialized = false;
-        let bestMove = '';
-        let evaluation = null;
-        let principalVariation = [];
-        let depth = 0;
-
-        const engineWrapper = {
-          engine,
-          send: (command) => {
-            console.log(`[${engineId}] Sending: ${command}`);
-            try {
-              engine.stdin.write(command + '\n');
-            } catch (error) {
-              console.error(`[${engineId}] Error sending command:`, error);
-            }
-          },
-          close: () => {
-            try {
-              console.log(`[${engineId}] Closing engine`);
-              engine.stdin.write('quit\n');
-              setTimeout(() => {
-                if (!engine.killed) {
-                  engine.kill();
-                }
-              }, 1000);
-            } catch (error) {
-              console.log(`[${engineId}] Force killing engine`);
-              engine.kill();
-            }
-          },
-          getBestMove: () => bestMove,
-          getEvaluation: () => evaluation,
-          getPrincipalVariation: () => principalVariation,
-          getDepth: () => depth
-        };
-
-        engine.stdout.on('data', (data) => {
-          const lines = data.toString().split('\n');
-          
-          lines.forEach(line => {
-            line = line.trim();
-            if (!line) return;
-
-            console.log(`[${engineId}] Output: ${line}`);
-
-            if (line.includes('uciok') && !initialized) {
-              initialized = true;
-              console.log(`[${engineId}] Engine initialized successfully`);
-              resolve(engineWrapper);
-            }
-
-            // Parse best move
-            if (line.startsWith('bestmove')) {
-              const parts = line.split(' ');
-              bestMove = parts[1];
-              console.log(`[${engineId}] Best move: ${bestMove}`);
-            }
-
-            // Parse evaluation and depth
-            if (line.includes('depth') && line.includes('score')) {
-              const depthMatch = line.match(/depth (\d+)/);
-              if (depthMatch) {
-                depth = parseInt(depthMatch[1]);
-              }
-
-              // Parse centipawn evaluation
-              const cpMatch = line.match(/score cp (-?\d+)/);
-              if (cpMatch) {
-                evaluation = {
-                  type: 'centipawn',
-                  value: parseInt(cpMatch[1])
-                };
-              }
-
-              // Parse mate evaluation
-              const mateMatch = line.match(/score mate (-?\d+)/);
-              if (mateMatch) {
-                evaluation = {
-                  type: 'mate',
-                  value: parseInt(mateMatch[1])
-                };
-              }
-
-              // Parse principal variation
-              const pvIndex = line.indexOf('pv ');
-              if (pvIndex !== -1) {
-                principalVariation = line.substring(pvIndex + 3).trim().split(' ').filter(move => move.length > 0);
-              }
-            }
-          });
-        });
-
-        engine.stderr.on('data', (data) => {
-          console.error(`[${engineId}] stderr:`, data.toString());
-        });
-
-        engine.on('close', (code) => {
-          console.log(`[${engineId}] Process exited with code ${code}`);
-          this.engines.delete(engineId);
-        });
-
-        engine.on('error', (error) => {
-          console.error(`[${engineId}] Process error:`, error);
-          reject(new Error(`Failed to start Stockfish: ${error.message}`));
-        });
-
-        // Initialize UCI protocol
-        engine.stdin.write('uci\n');
-
-        // Timeout for initialization
-        setTimeout(() => {
-          if (!initialized) {
-            reject(new Error('Stockfish initialization timeout'));
-          }
-        }, 10000);
-
-        this.engines.set(engineId, engineWrapper);
-
-      } catch (error) {
-        reject(new Error(`Failed to start Stockfish: ${error.message}`));
-      }
+      this.requestQueue.push({ requestFn, resolve, reject });
+      this.processQueue();
     });
   }
 
-  // Get best move with configurable difficulty
-  async getBestMoveWithDifficulty(fen, difficulty = 'intermediate', timeLimit = 3000) {
-    const engineId = `move_${Date.now()}`;
-    
+  /**
+   * Process request queue with rate limiting
+   */
+  async processQueue() {
+    if (this.isProcessingQueue || this.activeRequests >= this.maxConcurrentRequests) {
+      return;
+    }
+
+    this.isProcessingQueue = true;
+
+    while (this.requestQueue.length > 0 && this.activeRequests < this.maxConcurrentRequests) {
+      const { requestFn, resolve, reject } = this.requestQueue.shift();
+      
+      this.activeRequests++;
+      
+      try {
+        const result = await requestFn();
+        resolve(result);
+      } catch (error) {
+        reject(error);
+      } finally {
+        this.activeRequests--;
+      }
+    }
+
+    this.isProcessingQueue = false;
+  }
+
+  /**
+   * Make API request with retry logic
+   */
+  async makeApiRequest(params, retryCount = 0) {
     try {
-      console.log(`Getting move for difficulty: ${difficulty}, position: ${fen.substring(0, 30)}...`);
-      
-      const engine = await this.createEngine(engineId);
-      
-      // Configure difficulty settings
-      const difficultySettings = {
-        beginner: { skillLevel: 1, depth: 8, hash: 16 },
-        intermediate: { skillLevel: 10, depth: 12, hash: 64 },
-        advanced: { skillLevel: 15, depth: 16, hash: 128 },
-        expert: { skillLevel: 18, depth: 20, hash: 256 },
-        maximum: { skillLevel: 20, depth: 25, hash: 512 }
-      };
-
-      const settings = difficultySettings[difficulty] || difficultySettings.intermediate;
-      
-      return new Promise((resolve, reject) => {
-        let isComplete = false;
-        let startTime = Date.now();
-
-        const timeout = setTimeout(() => {
-          if (!isComplete) {
-            isComplete = true;
-            console.log(`[${engineId}] Move calculation timeout`);
-            engine.close();
-            reject(new Error('Move calculation timeout'));
-          }
-        }, timeLimit + 5000);
-
-        const checkForResult = () => {
-          if (isComplete) return;
-          
-          const move = engine.getBestMove();
-          if (move && move !== '(none)') {
-            isComplete = true;
-            clearTimeout(timeout);
-            
-            const result = {
-              bestMove: move,
-              evaluation: engine.getEvaluation(),
-              principalVariation: engine.getPrincipalVariation(),
-              depth: engine.getDepth(),
-              timeUsed: Date.now() - startTime,
-              difficulty: difficulty,
-              skillLevel: settings.skillLevel
-            };
-            
-            console.log(`[${engineId}] Move calculation complete:`, result);
-            engine.close();
-            resolve(result);
-          }
-        };
-
-        // Check for result periodically
-        const resultChecker = setInterval(() => {
-          checkForResult();
-          if (isComplete) {
-            clearInterval(resultChecker);
-          }
-        }, 100);
-
-        // Configure engine
-        engine.send('ucinewgame');
-        engine.send(`setoption name Hash value ${settings.hash}`);
-        engine.send(`setoption name Skill Level value ${settings.skillLevel}`);
-        engine.send(`setoption name UCI_LimitStrength value false`);
-        engine.send(`setoption name MultiPV value 1`);
-        engine.send(`position fen ${fen}`);
-        engine.send(`go depth ${settings.depth} movetime ${timeLimit}`);
-
-        // Also check immediately in case move is already available
-        setTimeout(checkForResult, 500);
+      const response = await axios.get(this.apiConfig.baseURL, {
+        params,
+        timeout: this.apiConfig.timeout,
+        headers: {
+          'User-Agent': 'AmaChess/1.0',
+          'Accept': 'application/json'
+        }
       });
 
+
+
+      if (response.data && response.data.success !== false) {
+        return response.data;
+      } else {
+        throw new Error(response.data?.error || 'API returned unsuccessful response');
+      }
     } catch (error) {
-      console.error('Error getting best move:', error);
+      if (retryCount < this.apiConfig.retries) {
+        logger.warn(`Stockfish API request failed, retrying (${retryCount + 1}/${this.apiConfig.retries}):`, error.message);
+        await new Promise(resolve => setTimeout(resolve, this.apiConfig.retryDelay * (retryCount + 1)));
+        return this.makeApiRequest(params, retryCount + 1);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Parse evaluation from API response
+   */
+  parseEvaluation(evalString) {
+    if (!evalString || typeof evalString !== 'string') return null;
+
+    try {
+      // Handle mate evaluations
+      if (evalString.includes('#')) {
+        const mateMatch = evalString.match(/#([+-]?\d+)/);
+        if (mateMatch) {
+          return {
+            type: 'mate',
+            value: parseInt(mateMatch[1])
+          };
+        }
+      }
+
+      // Handle centipawn evaluations
+      const cpMatch = evalString.match(/([+-]?\d+\.?\d*)/);
+      if (cpMatch) {
+        const value = Math.round(parseFloat(cpMatch[1]) * 100); // Convert to centipawns
+        return {
+          type: 'centipawn',
+          value: value
+        };
+      }
+    } catch (error) {
+      logger.warn('Error parsing evaluation:', evalString, error.message);
+    }
+
+    return null;
+  }
+
+  /**
+   * Parse API response into standardized format
+   */
+  parseApiResponse(response) {
+    let bestMove = '';
+    let evaluation = null;
+    let pv = [];
+
+    if (typeof response === 'string') {
+      // Handle string response format - the API returns the full UCI output
+
+      
+      const lines = response.split('\n');
+      for (const line of lines) {
+        const trimmedLine = line.trim();
+        if (trimmedLine.startsWith('bestmove')) {
+          const parts = trimmedLine.split(' ');
+          if (parts.length > 1 && parts[1] !== 'ponder') {
+            bestMove = parts[1]; // Extract just the move part
+          }
+        } else if (trimmedLine.includes('score')) {
+          const scoreMatch = trimmedLine.match(/score (cp|mate) ([+-]?\d+)/);
+          if (scoreMatch) {
+            evaluation = {
+              type: scoreMatch[1] === 'mate' ? 'mate' : 'centipawn',
+              value: parseInt(scoreMatch[2])
+            };
+          }
+        } else if (trimmedLine.includes('pv')) {
+          const pvIndex = trimmedLine.indexOf('pv ');
+          if (pvIndex !== -1) {
+            pv = trimmedLine.substring(pvIndex + 3).trim().split(' ').filter(move => move.length > 0);
+          }
+        }
+      }
+    } else if (response && typeof response === 'object') {
+      // Handle object response format
+      const bestmoveString = response.bestmove || response.move || '';
+      if (bestmoveString.startsWith('bestmove ')) {
+        const parts = bestmoveString.split(' ');
+        bestMove = parts[1]; // Extract the actual move
+      } else {
+        bestMove = bestmoveString;
+      }
+      
+      // Handle evaluation
+      if (response.mate !== null && response.mate !== undefined) {
+        evaluation = {
+          type: 'mate',
+          value: response.mate
+        };
+      } else if (response.evaluation !== null && response.evaluation !== undefined) {
+        evaluation = {
+          type: 'centipawn',
+          value: Math.round(response.evaluation * 100) // Convert to centipawns
+        };
+      }
+      
+      // Handle principal variation
+      if (response.continuation) {
+        pv = response.continuation.split(' ').filter(move => move.length > 0);
+      } else if (response.pv) {
+        pv = Array.isArray(response.pv) ? response.pv : response.pv.split(' ');
+      }
+    }
+
+    // Clean up bestMove if it contains extra text
+    if (bestMove && bestMove.includes(' ')) {
+      bestMove = bestMove.split(' ')[0];
+    }
+
+    // Validate the move format (should be like e2e4, g1f3, etc.)
+    if (bestMove && !/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(bestMove)) {
+      logger.warn('Invalid move format detected:', bestMove);
+      bestMove = '';
+    }
+
+    return { bestMove, evaluation, pv };
+  }
+
+  /**
+   * Map difficulty to API parameters
+   */
+  mapDifficultyToParams(difficulty) {
+    const difficultyMap = {
+      beginner: { depth: 5, skill: 1, time: 1000 },
+      intermediate: { depth: 8, skill: 10, time: 3000 },
+      advanced: { depth: 12, skill: 15, time: 8000 },
+      expert: { depth: 15, skill: 18, time: 12000 },
+      maximum: { depth: 15, skill: 20, time: 20000 }
+    };
+
+    return difficultyMap[difficulty] || difficultyMap.intermediate;
+  }
+
+  /**
+   * Get best move with configurable difficulty using API
+   */
+  async getBestMoveWithDifficulty(fen, difficulty = 'intermediate', timeLimit = 3000) {
+    const startTime = Date.now();
+    
+    try {
+      logger.info(`Getting move for difficulty: ${difficulty}, position: ${fen.substring(0, 30)}...`);
+      
+      // Check cache first
+      const cacheKey = this.generateCacheKey(fen, 0, timeLimit, difficulty);
+      const cachedResult = this.cache.get(cacheKey);
+      if (cachedResult) {
+        logger.info('Returning cached move result');
+        return cachedResult;
+      }
+
+      const params = this.mapDifficultyToParams(difficulty);
+      
+      const requestFn = async () => {
+        const apiParams = {
+          fen: fen,
+          depth: params.depth,
+          mode: 'bestmove'
+        };
+
+        const response = await this.makeApiRequest(apiParams);
+        const parsed = this.parseApiResponse(response);
+
+        if (!parsed.bestMove || parsed.bestMove === '(none)') {
+          throw new Error('No valid move returned from API');
+        }
+
+        const result = {
+          bestMove: parsed.bestMove,
+          evaluation: parsed.evaluation,
+          principalVariation: parsed.pv,
+          depth: params.depth,
+          timeUsed: Date.now() - startTime,
+          difficulty: difficulty,
+          skillLevel: params.skill
+        };
+
+        // Cache the result
+        this.cache.set(cacheKey, result);
+        
+        return result;
+      };
+
+      const result = await this.queueRequest(requestFn);
+      
+      logger.info(`Move calculation complete: ${result.bestMove} (${result.timeUsed}ms)`);
+      return result;
+
+    } catch (error) {
+      logger.error('Error getting best move:', error);
       throw new Error(`Move calculation failed: ${error.message}`);
     }
   }
 
-  // Analyze a chess position
+  /**
+   * Analyze a chess position using API
+   */
   async analyzePosition(fen, depth = 15, time = 1000) {
-    const engineId = `analysis_${Date.now()}`;
+    const startTime = Date.now();
     
     try {
-      const engine = await this.createEngine(engineId);
+      logger.info(`Analyzing position: ${fen.substring(0, 30)}... (depth: ${depth})`);
       
-      return new Promise((resolve, reject) => {
-        let analysis = {
-          bestMove: '',
-          evaluation: null,
-          principalVariation: [],
-          depth: 0
+      // Check cache first
+      const cacheKey = this.generateCacheKey(fen, depth, time, 'analysis');
+      const cachedResult = this.cache.get(cacheKey);
+      if (cachedResult) {
+        logger.info('Returning cached analysis result');
+        return cachedResult;
+      }
+
+      const requestFn = async () => {
+        const apiParams = {
+          fen: fen,
+          depth: depth,
+          mode: 'eval'
         };
 
-        let isAnalysisComplete = false;
+        const response = await this.makeApiRequest(apiParams);
+        const parsed = this.parseApiResponse(response);
 
-        const timeout = setTimeout(() => {
-          if (!isAnalysisComplete) {
-            console.log('Analysis timeout, returning current results');
-            isAnalysisComplete = true;
-            engine.close();
-            resolve(analysis);
-          }
-        }, time + 2000);
-
-        // Set up response handler
-        const handleData = (data) => {
-          const lines = data.toString().split('\n');
-          
-          lines.forEach(line => {
-            line = line.trim();
-            if (!line) return;
-
-            if (line.startsWith('bestmove') && !isAnalysisComplete) {
-              isAnalysisComplete = true;
-              clearTimeout(timeout);
-              
-              analysis.bestMove = line.split(' ')[1];
-              analysis.evaluation = engine.getEvaluation();
-              analysis.principalVariation = engine.getPrincipalVariation();
-              
-              console.log('Analysis complete:', analysis);
-              engine.close();
-              resolve(analysis);
-            }
-
-            if (line.includes('depth') && line.includes('score')) {
-              const depthMatch = line.match(/depth (\d+)/);
-              if (depthMatch) {
-                analysis.depth = parseInt(depthMatch[1]);
-              }
-            }
-          });
+        const analysis = {
+          bestMove: parsed.bestMove,
+          evaluation: parsed.evaluation,
+          principalVariation: parsed.pv,
+          depth: depth,
+          timeUsed: Date.now() - startTime
         };
 
-        // Listen for analysis data
-        engine.engine.stdout.on('data', handleData);
+        // Cache the result
+        this.cache.set(cacheKey, analysis);
+        
+        return analysis;
+      };
 
-        // Start analysis
-        engine.send('ucinewgame');
-        engine.send(`position fen ${fen}`);
-        engine.send(`go depth ${depth} movetime ${time}`);
-
-      });
+      const result = await this.queueRequest(requestFn);
+      
+      logger.info(`Analysis complete: ${result.bestMove} (${result.timeUsed}ms)`);
+      return result;
 
     } catch (error) {
+      logger.error('Error analyzing position:', error);
       throw new Error(`Analysis failed: ${error.message}`);
     }
   }
 
-  // Get best move for AI coaching
+  /**
+   * Get best move for AI coaching using API
+   */
   async getBestMove(fen, skillLevel = 20, depth = 15) {
-    const engineId = `coach_${Date.now()}`;
+    const startTime = Date.now();
     
     try {
-      const engine = await this.createEngine(engineId);
+      logger.info(`Getting coaching move: skill ${skillLevel}, depth ${depth}`);
       
-      return new Promise((resolve, reject) => {
-        let isComplete = false;
+      // Map skill level to difficulty for caching
+      const difficulty = skillLevel <= 5 ? 'beginner' : 
+                        skillLevel <= 12 ? 'intermediate' : 
+                        skillLevel <= 17 ? 'advanced' : 
+                        skillLevel <= 19 ? 'expert' : 'maximum';
 
-        const timeout = setTimeout(() => {
-          if (!isComplete) {
-            isComplete = true;
-            engine.close();
-            reject(new Error('Move calculation timeout'));
-          }
-        }, 10000);
+      const cacheKey = this.generateCacheKey(fen, depth, 0, `coach_${skillLevel}`);
+      const cachedResult = this.cache.get(cacheKey);
+      if (cachedResult) {
+        return cachedResult;
+      }
 
-        // Set up response handler
-        const handleData = (data) => {
-          const lines = data.toString().split('\n');
-          
-          lines.forEach(line => {
-            line = line.trim();
-            if (!line) return;
-
-            if (line.startsWith('bestmove') && !isComplete) {
-              isComplete = true;
-              clearTimeout(timeout);
-              
-              const bestMove = line.split(' ')[1];
-              const result = {
-                move: bestMove,
-                evaluation: engine.getEvaluation(),
-                pv: engine.getPrincipalVariation()
-              };
-              
-              console.log('Best move found:', result);
-              engine.close();
-              resolve(result);
-            }
-          });
+      const requestFn = async () => {
+        const apiParams = {
+          fen: fen,
+          depth: depth,
+          mode: 'bestmove'
         };
 
-        // Listen for move data
-        engine.engine.stdout.on('data', handleData);
+        const response = await this.makeApiRequest(apiParams);
+        const parsed = this.parseApiResponse(response);
 
-        // Start move calculation
-        engine.send('ucinewgame');
-        engine.send(`setoption name Skill Level value ${skillLevel}`);
-        engine.send(`position fen ${fen}`);
-        engine.send(`go depth ${depth}`);
+        const result = {
+          move: parsed.bestMove,
+          evaluation: parsed.evaluation,
+          pv: parsed.pv,
+          timeUsed: Date.now() - startTime
+        };
 
-      });
+        this.cache.set(cacheKey, result);
+        return result;
+      };
+
+      const result = await this.queueRequest(requestFn);
+      
+      logger.info(`Coaching move found: ${result.move} (${result.timeUsed}ms)`);
+      return result;
 
     } catch (error) {
+      logger.error('Error getting coaching move:', error);
       throw new Error(`Move calculation failed: ${error.message}`);
     }
   }
 
-  // Evaluate multiple moves for coaching feedback
+  /**
+   * Evaluate multiple moves for coaching feedback using API
+   */
   async evaluateMoves(fen, moves, depth = 12) {
     const results = [];
     
-    for (const move of moves) {
-      try {
-        const engineId = `eval_${Date.now()}_${move}`;
-        const engine = await this.createEngine(engineId);
-        
-        const evaluation = await new Promise((resolve, reject) => {
-          let isComplete = false;
+    try {
+      logger.info(`Evaluating ${moves.length} moves at depth ${depth}`);
+      
+      // Process moves in parallel with rate limiting
+      const evaluationPromises = moves.map(async (move) => {
+        try {
+          const Chess = require('chess.js').Chess;
+          const game = new Chess(fen);
           
-          const timeout = setTimeout(() => {
-            if (!isComplete) {
-              isComplete = true;
-              engine.close();
-              resolve({ move, evaluation: null, error: 'timeout' });
-            }
-          }, 5000);
+          // Validate and make the move
+          const moveResult = game.move(move);
+          if (!moveResult) {
+            return { move, evaluation: null, error: 'Invalid move' };
+          }
+          
+          const newFen = game.fen();
+          const cacheKey = this.generateCacheKey(newFen, depth, 0, `eval_${move}`);
+          const cachedResult = this.cache.get(cacheKey);
+          
+          if (cachedResult) {
+            return { move, ...cachedResult };
+          }
 
-          // Set up response handler
-          const handleData = (data) => {
-            const lines = data.toString().split('\n');
+          const requestFn = async () => {
+            const apiParams = {
+              fen: newFen,
+              depth: depth,
+              mode: 'eval'
+            };
+
+            const response = await this.makeApiRequest(apiParams);
             
-            lines.forEach(line => {
-              line = line.trim();
-              if (!line) return;
+            const result = {
+              move,
+              evaluation: this.parseEvaluation(response.evaluation),
+              bestResponse: response.bestmove || ''
+            };
 
-              if (line.startsWith('bestmove') && !isComplete) {
-                isComplete = true;
-                clearTimeout(timeout);
-                
-                const result = {
-                  move,
-                  evaluation: engine.getEvaluation(),
-                  bestResponse: line.split(' ')[1]
-                };
-                
-                engine.close();
-                resolve(result);
-              }
-            });
+            this.cache.set(cacheKey, result);
+            return result;
           };
 
-          // Listen for evaluation data
-          engine.engine.stdout.on('data', handleData);
+          return await this.queueRequest(requestFn);
+          
+        } catch (error) {
+          logger.warn(`Error evaluating move ${move}:`, error.message);
+          return { 
+            move, 
+            evaluation: null, 
+            error: error.message 
+          };
+        }
+      });
 
-          // Start evaluation
-          engine.send('ucinewgame');
-          engine.send(`position fen ${fen} moves ${move}`);
-          engine.send(`go depth ${depth}`);
-        });
+      const evaluationResults = await Promise.allSettled(evaluationPromises);
+      
+      evaluationResults.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          results.push(result.value);
+        } else {
+          results.push({
+            move: moves[index],
+            evaluation: null,
+            error: result.reason?.message || 'Evaluation failed'
+          });
+        }
+      });
 
-        results.push(evaluation);
-        
-      } catch (error) {
-        results.push({ 
-          move, 
-          evaluation: null, 
-          error: error.message 
-        });
-      }
+      logger.info(`Move evaluation complete: ${results.length} results`);
+      return results;
+
+    } catch (error) {
+      logger.error('Error in evaluateMoves:', error);
+      throw new Error(`Move evaluation failed: ${error.message}`);
     }
-
-    return results;
   }
 
-  // Generate coaching hints
+  /**
+   * Generate coaching hints with API analysis
+   */
   async generateHint(fen, difficulty = 'medium') {
     try {
+      logger.info(`Generating hint for difficulty: ${difficulty}`);
+      
       const analysis = await this.analyzePosition(fen, 15, 2000);
       
       const hints = {
@@ -496,14 +510,18 @@ class StockfishService {
       const difficultyHints = hints[difficulty] || hints.medium;
       const randomHint = difficultyHints[Math.floor(Math.random() * difficultyHints.length)];
 
-      return {
+      const result = {
         hint: randomHint,
         bestMove: analysis.bestMove,
         evaluation: analysis.evaluation,
         principalVariation: analysis.principalVariation.slice(0, 3)
       };
 
+      logger.info(`Hint generated: ${randomHint}`);
+      return result;
+
     } catch (error) {
+      logger.error('Error generating hint:', error);
       return {
         hint: "Consider your options carefully and look for the best move",
         error: error.message
@@ -511,17 +529,84 @@ class StockfishService {
     }
   }
 
-  // Close all engines
-  closeAllEngines() {
-    console.log('Closing all Stockfish engines');
-    this.engines.forEach((engine, id) => {
-      try {
-        engine.close();
-      } catch (error) {
-        console.error(`Error closing engine ${id}:`, error);
+  /**
+   * Health check for API service
+   */
+  async healthCheck() {
+    try {
+      const testFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+      const startTime = Date.now();
+      
+      const response = await this.makeApiRequest({
+        fen: testFen,
+        depth: 5,
+        mode: 'bestmove'
+      });
+      
+      const responseTime = Date.now() - startTime;
+      
+      return {
+        status: 'healthy',
+        responseTime: responseTime,
+        apiUrl: this.apiConfig.baseURL,
+        cacheStats: this.cache.getStats(),
+        activeRequests: this.activeRequests,
+        queueLength: this.requestQueue.length
+      };
+    } catch (error) {
+      logger.error('Health check failed:', error);
+      return {
+        status: 'unhealthy',
+        error: error.message,
+        apiUrl: this.apiConfig.baseURL
+      };
+    }
+  }
+
+  /**
+   * Clear cache
+   */
+  clearCache() {
+    const keys = this.cache.keys();
+    this.cache.flushAll();
+    logger.info(`Cleared ${keys.length} cached entries`);
+    return keys.length;
+  }
+
+  /**
+   * Get service statistics
+   */
+  getStats() {
+    return {
+      cacheStats: this.cache.getStats(),
+      activeRequests: this.activeRequests,
+      queueLength: this.requestQueue.length,
+      apiConfig: {
+        baseURL: this.apiConfig.baseURL,
+        timeout: this.apiConfig.timeout,
+        retries: this.apiConfig.retries
       }
-    });
-    this.engines.clear();
+    };
+  }
+
+  /**
+   * Cleanup method for graceful shutdown
+   */
+  async cleanup() {
+    logger.info('Cleaning up StockfishService...');
+    
+    // Wait for active requests to complete
+    let waitCount = 0;
+    while (this.activeRequests > 0 && waitCount < 30) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      waitCount++;
+    }
+    
+    // Clear cache and queue
+    this.cache.flushAll();
+    this.requestQueue.length = 0;
+    
+    logger.info('StockfishService cleanup complete');
   }
 }
 
