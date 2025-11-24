@@ -137,7 +137,7 @@ export type DifficultyLevel = 'beginner' | 'intermediate' | 'advanced' | 'expert
 class StockfishAPI {
   private baseUrl: string;
 
-  constructor(baseUrl: string = 'http://localhost:3001/api/stockfish') {
+  constructor(baseUrl: string = `${import.meta.env.VITE_API_BASE_URL || '/api'}/stockfish`) {
     this.baseUrl = baseUrl;
   }
 

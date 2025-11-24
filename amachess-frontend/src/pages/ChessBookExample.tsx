@@ -7,20 +7,21 @@ const ChessBookExample = () => {
   const [showReader, setShowReader] = useState(false);
 
   // Example PDF URLs for testing
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
   const exampleBooks = [
     {
       title: "Chess Fundamentals",
-      url: "http://localhost:3001/api/books/1/pdf",
+      url: `${API_BASE}/books/1/pdf`,
       description: "Classic chess instruction by José Capablanca"
     },
     {
       title: "My System",
-      url: "http://localhost:3001/api/books/2/pdf", 
+      url: `${API_BASE}/books/2/pdf`, 
       description: "Revolutionary chess strategy by Aron Nimzowitsch"
     },
     {
       title: "Dvoretsky's Endgame Manual",
-      url: "http://localhost:3001/api/books/3/pdf",
+      url: `${API_BASE}/books/3/pdf`,
       description: "Comprehensive endgame study by Mark Dvoretsky"
     }
   ];

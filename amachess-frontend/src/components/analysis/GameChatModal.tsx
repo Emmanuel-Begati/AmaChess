@@ -19,7 +19,7 @@ const GameChatModal = ({ isOpen, onClose, game }: GameChatModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const API_BASE_URL = 'http://localhost:3001/api';
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

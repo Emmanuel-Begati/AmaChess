@@ -71,7 +71,7 @@ const Learn = () => {
     
     try {
       console.log('Importing games and analysis for:', username);
-      const response = await fetch(`http://localhost:3001/api/import/lichess/${username}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/api'}/import/lichess/${username}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -130,7 +130,7 @@ const Learn = () => {
 ${game.moves}`;
       }
 
-      const response = await fetch('http://localhost:3001/api/analyze', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/api'}/analyze`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -189,7 +189,7 @@ ${game.moves}`;
       reader.onload = async (e) => {
         const pgnContent = e.target.result;
         try {
-          const response = await fetch('http://localhost:3001/api/analyze', {
+          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/api'}/analyze`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

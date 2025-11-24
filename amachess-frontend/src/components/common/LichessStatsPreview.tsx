@@ -44,7 +44,7 @@ const LichessStatsPreview: React.FC<LichessStatsPreviewProps> = ({ username }) =
       setError(null);
       
       try {
-        const response = await fetch(`http://localhost:3001/api/games/${username}/stats`);
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/api'}/games/${username}/stats`);
         const data = await response.json();
         
         if (data.success) {

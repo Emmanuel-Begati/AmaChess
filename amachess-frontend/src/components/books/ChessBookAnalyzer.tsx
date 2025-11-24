@@ -71,7 +71,7 @@ const ChessBookAnalyzer: React.FC = () => {
     
     setIsAnalyzing(true);
     try {
-      const response = await fetch('http://localhost:3001/api/stockfish/analyze', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/api'}/stockfish/analyze`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

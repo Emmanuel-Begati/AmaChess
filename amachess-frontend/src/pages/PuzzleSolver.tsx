@@ -160,7 +160,7 @@ const PuzzleSolver = () => {
     if (userId && userId !== 'anonymous') {
       try {
         console.log('📊 Loading user stats for:', userId);
-        const response = await fetch(`http://localhost:3001/api/users/${userId}/stats`, {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/api'}/users/${userId}/stats`, {
           headers: {
             'Authorization': `Bearer ${(user as any)?.token}`
           }

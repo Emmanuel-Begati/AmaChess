@@ -264,7 +264,7 @@ const Puzzles = () => {
   const loadPuzzleThemes = async () => {
     try {
       // Load themes from backend API
-      const themesResponse = await fetch('http://localhost:3001/api/puzzles/themes');
+      const themesResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/api'}/puzzles/themes`);
       
       if (!themesResponse.ok) {
         throw new Error(`HTTP error! status: ${themesResponse.status}`);

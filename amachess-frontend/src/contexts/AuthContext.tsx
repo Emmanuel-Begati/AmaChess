@@ -15,7 +15,7 @@ interface ApiResponse<T = any> {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 // API base URL - adjust this to match your backend
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 // Configure axios defaults
 axios.defaults.baseURL = API_BASE_URL;

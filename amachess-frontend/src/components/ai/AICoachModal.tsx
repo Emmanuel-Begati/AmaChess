@@ -26,7 +26,7 @@ const AICoachModal: React.FC<AICoachModalProps> = ({ onClose, evaluation = null 
   const [gamePhase, setGamePhase] = useState<'opening' | 'middlegame' | 'endgame'>('opening');
   const [coachModeEnabled, setCoachModeEnabled] = useState(true); // New state for coach mode toggle
 
-  const API_BASE_URL = 'http://localhost:3001/api';
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
   // Load welcome message when modal opens
   React.useEffect(() => {
