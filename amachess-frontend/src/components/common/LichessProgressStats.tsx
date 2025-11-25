@@ -41,7 +41,8 @@ const LichessProgressStats: React.FC<LichessProgressStatsProps> = ({ username })
     setError(null);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/api'}/lichess/${username}/progress`);
+      const apiBaseUrl = (import.meta as any).env?.VITE_API_BASE_URL || '/api';
+      const response = await fetch(`${apiBaseUrl}/lichess/${username}/progress`);
       
       if (!response.ok) {
         let errorMessage;
@@ -104,15 +105,15 @@ const LichessProgressStats: React.FC<LichessProgressStatsProps> = ({ username })
 
   if (!username || username.trim().length === 0) {
     return (
-      <div className="bg-white p-6 rounded-lg shadow-lg">
+      <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl p-8 border border-slate-700/50 backdrop-blur-sm">
         <div className="flex items-center space-x-3 mb-4">
-          <TrendingUp className="w-6 h-6 text-purple-600" />
-          <h3 className="text-xl font-semibold text-gray-800">Lichess Progress Statistics</h3>
+          <TrendingUp className="w-6 h-6 text-purple-400" />
+          <h3 className="text-2xl font-bold text-white">Lichess Progress Statistics</h3>
         </div>
-        <div className="text-gray-600 text-center py-8">
-          <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-          <p className="text-lg font-medium mb-2">No Lichess Username Configured</p>
-          <p className="text-sm">Add your Lichess username to your profile to see your progress statistics.</p>
+        <div className="text-center py-8">
+          <AlertCircle className="w-12 h-12 text-gray-500 mx-auto mb-3" />
+          <p className="text-lg font-medium text-gray-300 mb-2">No Lichess Username Configured</p>
+          <p className="text-sm text-gray-400">Add your Lichess username to your profile to see your progress statistics.</p>
         </div>
       </div>
     );
@@ -120,15 +121,15 @@ const LichessProgressStats: React.FC<LichessProgressStatsProps> = ({ username })
 
   if (loading) {
     return (
-      <div className="bg-white p-6 rounded-lg shadow-lg">
+      <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl p-8 border border-slate-700/50 backdrop-blur-sm">
         <div className="flex items-center space-x-3 mb-4">
-          <TrendingUp className="w-6 h-6 text-purple-600" />
-          <h3 className="text-xl font-semibold text-gray-800">Lichess Progress Statistics</h3>
+          <TrendingUp className="w-6 h-6 text-purple-400" />
+          <h3 className="text-2xl font-bold text-white">Lichess Progress Statistics</h3>
         </div>
         <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
-          <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
-          <div className="h-32 bg-gray-200 rounded"></div>
+          <div className="h-4 bg-slate-700/50 rounded w-3/4 mb-4"></div>
+          <div className="h-4 bg-slate-700/50 rounded w-1/2 mb-4"></div>
+          <div className="h-32 bg-slate-700/50 rounded"></div>
         </div>
       </div>
     );
@@ -136,19 +137,19 @@ const LichessProgressStats: React.FC<LichessProgressStatsProps> = ({ username })
 
   if (error) {
     return (
-      <div className="bg-white p-6 rounded-lg shadow-lg">
+      <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl p-8 border border-slate-700/50 backdrop-blur-sm">
         <div className="flex items-center space-x-3 mb-4">
-          <TrendingUp className="w-6 h-6 text-purple-600" />
-          <h3 className="text-xl font-semibold text-gray-800">Lichess Progress Statistics</h3>
+          <TrendingUp className="w-6 h-6 text-purple-400" />
+          <h3 className="text-2xl font-bold text-white">Lichess Progress Statistics</h3>
         </div>
-        <div className="text-red-600 flex items-center justify-between">
+        <div className="flex items-center justify-between bg-red-500/10 border border-red-500/30 rounded-xl p-4">
           <div className="flex items-center space-x-2">
-            <AlertCircle className="w-5 h-5" />
-            <span>{error}</span>
+            <AlertCircle className="w-5 h-5 text-red-400" />
+            <span className="text-red-300">{error}</span>
           </div>
           <button
             onClick={() => fetchProgressData()}
-            className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded-md text-sm font-medium transition-colors"
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
           >
             Retry
           </button>
@@ -175,79 +176,79 @@ const LichessProgressStats: React.FC<LichessProgressStatsProps> = ({ username })
 
   const getTimeControlColor = (timeControl: string) => {
     const colors: { [key: string]: string } = {
-      bullet: 'bg-red-100 text-red-800',
-      blitz: 'bg-yellow-100 text-yellow-800',
-      rapid: 'bg-green-100 text-green-800',
-      classical: 'bg-blue-100 text-blue-800'
+      bullet: 'bg-red-500/20 text-red-300 border border-red-500/30',
+      blitz: 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30',
+      rapid: 'bg-green-500/20 text-green-300 border border-green-500/30',
+      classical: 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
     };
-    return colors[timeControl] || 'bg-gray-100 text-gray-800';
+    return colors[timeControl] || 'bg-gray-500/20 text-gray-300 border border-gray-500/30';
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-lg">
+    <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl p-8 border border-slate-700/50 backdrop-blur-sm">
       <div className="flex items-center space-x-3 mb-6">
-        <TrendingUp className="w-6 h-6 text-purple-600" />
-        <h3 className="text-xl font-semibold text-gray-800">Lichess Progress Statistics</h3>
+        <TrendingUp className="w-6 h-6 text-purple-400" />
+        <h3 className="text-2xl font-bold text-white">Lichess Progress Statistics</h3>
       </div>
 
       {/* Overall Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div className="bg-purple-50 p-4 rounded-lg">
+        <div className="bg-gradient-to-r from-purple-500/20 to-purple-600/20 border border-purple-500/30 p-6 rounded-xl backdrop-blur-sm">
           <div className="flex items-center space-x-2 mb-2">
-            <BarChart3 className="w-5 h-5 text-purple-600" />
-            <h4 className="font-medium text-gray-700">Total Games</h4>
+            <BarChart3 className="w-5 h-5 text-purple-400" />
+            <h4 className="font-medium text-gray-300">Total Games</h4>
           </div>
-          <p className="text-2xl font-bold text-purple-600">{progressData.totalGames.toLocaleString()}</p>
+          <p className="text-3xl font-bold text-white">{progressData.totalGames.toLocaleString()}</p>
         </div>
-        <div className="bg-green-50 p-4 rounded-lg">
+        <div className="bg-gradient-to-r from-green-500/20 to-green-600/20 border border-green-500/30 p-6 rounded-xl backdrop-blur-sm">
           <div className="flex items-center space-x-2 mb-2">
-            <Trophy className="w-5 h-5 text-green-600" />
-            <h4 className="font-medium text-gray-700">Overall Win Rate</h4>
+            <Trophy className="w-5 h-5 text-green-400" />
+            <h4 className="font-medium text-gray-300">Overall Win Rate</h4>
           </div>
-          <p className="text-2xl font-bold text-green-600">{formatWinRate(progressData.overallWinRate)}%</p>
+          <p className="text-3xl font-bold text-white">{formatWinRate(progressData.overallWinRate)}%</p>
         </div>
       </div>
 
       {/* Time Control Breakdown */}
       <div className="mb-6">
         <div className="flex items-center space-x-2 mb-4">
-          <Clock className="w-5 h-5 text-gray-600" />
-          <h4 className="text-lg font-medium text-gray-700">Performance by Time Control</h4>
+          <Clock className="w-5 h-5 text-blue-400" />
+          <h4 className="text-lg font-semibold text-white">Performance by Time Control</h4>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {Object.entries(progressData.timeControlBreakdown).map(([timeControl, stats]) => (
-            <div key={timeControl} className="border border-gray-200 p-4 rounded-lg">
+            <div key={timeControl} className="bg-slate-700/30 border border-slate-600/50 p-5 rounded-xl backdrop-blur-sm hover:bg-slate-700/40 transition-all duration-200">
               <div className="flex items-center justify-between mb-3">
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getTimeControlColor(timeControl)}`}>
+                <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getTimeControlColor(timeControl)}`}>
                   {getTimeControlName(timeControl)}
                 </span>
                 {stats.currentRating && (
-                  <span className="text-sm text-gray-600">
-                    Rating: {stats.currentRating}
+                  <span className="text-sm text-gray-300 font-medium">
+                    Rating: <span className="text-white">{stats.currentRating}</span>
                   </span>
                 )}
               </div>
               
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Games:</span>
-                  <span className="font-medium">{stats.total}</span>
+                  <span className="text-gray-400">Games:</span>
+                  <span className="font-semibold text-white">{stats.total}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Win Rate:</span>
-                  <span className="font-medium text-green-600">{formatWinRate(stats.winRate)}%</span>
+                  <span className="text-gray-400">Win Rate:</span>
+                  <span className="font-semibold text-green-400">{formatWinRate(stats.winRate)}%</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Record:</span>
-                  <span className="font-medium">
-                    {stats.wins}W-{stats.losses}L-{stats.draws}D
+                  <span className="text-gray-400">Record:</span>
+                  <span className="font-semibold text-white">
+                    <span className="text-green-400">{stats.wins}W</span>-<span className="text-red-400">{stats.losses}L</span>-<span className="text-yellow-400">{stats.draws}D</span>
                   </span>
                 </div>
                 
                 {/* Win rate progress bar */}
-                <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                <div className="w-full bg-slate-600/50 rounded-full h-2.5 mt-3">
                   <div 
-                    className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                    className="bg-gradient-to-r from-green-500 to-green-400 h-2.5 rounded-full transition-all duration-300 shadow-lg shadow-green-500/50"
                     style={{ width: `${stats.winRate * 100}%` }}
                   ></div>
                 </div>
@@ -261,20 +262,20 @@ const LichessProgressStats: React.FC<LichessProgressStatsProps> = ({ username })
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Strengths */}
         <div>
-          <div className="flex items-center space-x-2 mb-3">
-            <Trophy className="w-5 h-5 text-green-600" />
-            <h4 className="text-lg font-medium text-gray-700">Strength Areas</h4>
+          <div className="flex items-center space-x-2 mb-4">
+            <Trophy className="w-5 h-5 text-green-400" />
+            <h4 className="text-lg font-semibold text-white">Strength Areas</h4>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {progressData.strengthAreas.length > 0 ? (
               progressData.strengthAreas.map((strength, index) => (
-                <div key={index} className="bg-green-50 border border-green-200 p-3 rounded-lg">
-                  <p className="text-sm text-green-800">{strength}</p>
+                <div key={index} className="bg-green-500/10 border border-green-500/30 p-4 rounded-xl backdrop-blur-sm hover:bg-green-500/15 transition-all duration-200">
+                  <p className="text-sm text-green-300 leading-relaxed">{strength}</p>
                 </div>
               ))
             ) : (
-              <div className="bg-gray-50 border border-gray-200 p-3 rounded-lg">
-                <p className="text-sm text-gray-600">Keep playing to identify strength areas!</p>
+              <div className="bg-slate-700/30 border border-slate-600/50 p-4 rounded-xl backdrop-blur-sm">
+                <p className="text-sm text-gray-400">Keep playing to identify strength areas!</p>
               </div>
             )}
           </div>
@@ -282,20 +283,20 @@ const LichessProgressStats: React.FC<LichessProgressStatsProps> = ({ username })
 
         {/* Improvement Areas */}
         <div>
-          <div className="flex items-center space-x-2 mb-3">
-            <Target className="w-5 h-5 text-orange-600" />
-            <h4 className="text-lg font-medium text-gray-700">Areas to Improve</h4>
+          <div className="flex items-center space-x-2 mb-4">
+            <Target className="w-5 h-5 text-orange-400" />
+            <h4 className="text-lg font-semibold text-white">Areas to Improve</h4>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {progressData.improvementAreas.length > 0 ? (
               progressData.improvementAreas.map((improvement, index) => (
-                <div key={index} className="bg-orange-50 border border-orange-200 p-3 rounded-lg">
-                  <p className="text-sm text-orange-800">{improvement}</p>
+                <div key={index} className="bg-orange-500/10 border border-orange-500/30 p-4 rounded-xl backdrop-blur-sm hover:bg-orange-500/15 transition-all duration-200">
+                  <p className="text-sm text-orange-300 leading-relaxed">{improvement}</p>
                 </div>
               ))
             ) : (
-              <div className="bg-gray-50 border border-gray-200 p-3 rounded-lg">
-                <p className="text-sm text-gray-600">Great job! No major areas for improvement identified.</p>
+              <div className="bg-slate-700/30 border border-slate-600/50 p-4 rounded-xl backdrop-blur-sm">
+                <p className="text-sm text-gray-400">Great job! No major areas for improvement identified.</p>
               </div>
             )}
           </div>

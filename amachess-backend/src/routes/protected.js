@@ -2,6 +2,7 @@ const express = require('express');
 const { authenticateToken } = require('../middleware/auth');
 const LichessService = require('../services/lichessService');
 const { PrismaClient } = require('@prisma/client');
+const cacheMonitor = require('../utils/cacheMonitor');
 
 const router = express.Router();
 const lichessService = new LichessService();
@@ -28,15 +29,35 @@ router.get('/dashboard', authenticateToken, async (req, res) => {
     let lichessAnalytics = null;
     let recentGames = [];
     
-    // If user has a Lichess username, fetch their stats and analytics
+    // If user has a Lichess username, fetch their stats and analytics IN PARALLEL
     if (user.lichessUsername) {
       try {
-        lichessStats = await lichessService.getUserStats(user.lichessUsername);
-        lichessAnalytics = await lichessService.getUserRatingAnalytics(user.lichessUsername);
-        
-        // Fetch recent rapid games from Lichess
-        const lichessGames = await lichessService.getRecentRapidGames(user.lichessUsername, 3);
-        recentGames.push(...lichessGames);
+        // OPTIMIZATION: Use Promise.allSettled to fetch all Lichess data in parallel
+        // This allows independent API calls to run simultaneously
+        const [statsResult, analyticsResult, gamesResult] = await Promise.allSettled([
+          lichessService.getUserStats(user.lichessUsername),
+          lichessService.getUserRatingAnalytics(user.lichessUsername),
+          lichessService.getRecentRapidGames(user.lichessUsername, 3)
+        ]);
+
+        // Extract successful results, ignore failures
+        if (statsResult.status === 'fulfilled') {
+          lichessStats = statsResult.value;
+        } else {
+          console.error('Error fetching Lichess stats:', statsResult.reason);
+        }
+
+        if (analyticsResult.status === 'fulfilled') {
+          lichessAnalytics = analyticsResult.value;
+        } else {
+          console.error('Error fetching Lichess analytics:', analyticsResult.reason);
+        }
+
+        if (gamesResult.status === 'fulfilled') {
+          recentGames.push(...gamesResult.value);
+        } else {
+          console.error('Error fetching Lichess games:', gamesResult.reason);
+        }
       } catch (error) {
         console.error('Error fetching Lichess data for dashboard:', error);
         // Don't fail the entire request if Lichess API is down
@@ -131,6 +152,30 @@ router.get('/games', authenticateToken, (req, res) => {
       ]
     }
   });
+});
+
+// Cache statistics endpoint (admin/monitoring)
+router.get('/cache/stats', authenticateToken, (req, res) => {
+  try {
+    const stats = cacheMonitor.getStats();
+    const recommendations = cacheMonitor.getRecommendations();
+    
+    res.json({
+      success: true,
+      message: 'Cache statistics retrieved successfully',
+      data: {
+        ...stats,
+        recommendations
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching cache stats:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve cache statistics',
+      message: error.message
+    });
+  }
 });
 
 module.exports = router;

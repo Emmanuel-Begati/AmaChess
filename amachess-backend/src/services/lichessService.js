@@ -1,13 +1,19 @@
 const axios = require('axios');
 const fs = require('fs').promises;
 const path = require('path');
+const cacheMonitor = require('../utils/cacheMonitor');
 
 class LichessService {
   constructor() {
     this.baseURL = 'https://lichess.org/api';
     this.token = process.env.LICHESS_API_TOKEN;
     this.gameCache = new Map(); // In-memory cache for PGN data
+    this.statsCache = new Map(); // Cache for user stats
+    this.analyticsCache = new Map(); // Cache for rating analytics
+    this.gamesCache = new Map(); // Cache for recent games
+    this.progressCache = new Map(); // Cache for progress stats
     this.cacheDir = path.join(__dirname, '../../cache');
+    this.CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache TTL
     this.initializeCache();
   }
 
@@ -268,8 +274,18 @@ class LichessService {
   // Get user statistics from Lichess API
   async getUserStats(username) {
     try {
+      // Check cache first
+      const cacheKey = `stats_${username}`;
+      const cachedData = this.statsCache.get(cacheKey);
+      if (cachedData && Date.now() - cachedData.timestamp < this.CACHE_TTL) {
+        console.log(`✅ Cache hit for stats: ${username}`);
+        cacheMonitor.recordHit('stats', 10); // ~10ms for cache retrieval
+        return cachedData.data;
+      }
+
       // Always use public endpoint for user stats (no authentication required)
       console.log(`Fetching stats for user: ${username}`);
+      const startTime = Date.now();
 
       // Get user profile data (public endpoint, no auth required)
       const profileResponse = await axios.get(`${this.baseURL}/user/${username}`, {
@@ -324,6 +340,16 @@ class LichessService {
         language: profile.language || 'en',
         country: profile.profile?.country || null
       };
+
+      // Cache the result
+      this.statsCache.set(cacheKey, {
+        data: stats,
+        timestamp: Date.now()
+      });
+
+      // Record cache miss with API response time
+      const responseTime = Date.now() - startTime;
+      cacheMonitor.recordMiss('stats', responseTime);
 
       return stats;
     } catch (error) {
@@ -711,7 +737,17 @@ class LichessService {
    */
   async getUserRatingAnalytics(username) {
     try {
+      // Check cache first
+      const cacheKey = `analytics_${username}`;
+      const cachedData = this.analyticsCache.get(cacheKey);
+      if (cachedData && Date.now() - cachedData.timestamp < this.CACHE_TTL) {
+        console.log(`✅ Cache hit for analytics: ${username}`);
+        cacheMonitor.recordHit('analytics', 10);
+        return cachedData.data;
+      }
+
       console.log(`Fetching rating analytics for user: ${username}`);
+      const startTime = Date.now();
 
       // Get rating history
       const historyResponse = await axios.get(`${this.baseURL}/user/${username}/rating-history`, {
@@ -744,6 +780,16 @@ class LichessService {
 
       // Process rating history to find peak ratings and calculate 30-day changes
       const analytics = this.processRatingAnalytics(ratingHistory, perfStats);
+
+      // Cache the result
+      this.analyticsCache.set(cacheKey, {
+        data: analytics,
+        timestamp: Date.now()
+      });
+
+      // Record cache miss with API response time
+      const responseTime = Date.now() - startTime;
+      cacheMonitor.recordMiss('analytics', responseTime);
 
       console.log(`✅ Successfully fetched rating analytics for: ${username}`);
       return analytics;
@@ -857,6 +903,16 @@ class LichessService {
   // Get user's recent rapid games from Lichess
   async getRecentRapidGames(username, maxGames = 5) {
     try {
+      // Check cache first
+      const cacheKey = `games_${username}_${maxGames}`;
+      const cachedData = this.gamesCache.get(cacheKey);
+      if (cachedData && Date.now() - cachedData.timestamp < this.CACHE_TTL) {
+        console.log(`✅ Cache hit for games: ${username}`);
+        cacheMonitor.recordHit('games', 10);
+        return cachedData.data;
+      }
+
+      const startTime = Date.now();
       const response = await axios.get(`${this.baseURL}/games/user/${username}`, {
         params: {
           max: 20, // Get more to filter for rapid games
@@ -882,7 +938,7 @@ class LichessService {
         .slice(0, maxGames); // Take only the requested number
 
       // Format games for the dashboard
-      return games.map(game => {
+      const formattedGames = games.map(game => {
         const isWhite = game.players.white.user?.name?.toLowerCase() === username.toLowerCase();
         const opponent = isWhite 
           ? (game.players.black.user?.name || 'Anonymous')
@@ -909,6 +965,18 @@ class LichessService {
         };
       });
 
+      // Cache the result
+      this.gamesCache.set(cacheKey, {
+        data: formattedGames,
+        timestamp: Date.now()
+      });
+
+      // Record cache miss with API response time
+      const responseTime = Date.now() - startTime;
+      cacheMonitor.recordMiss('games', responseTime);
+
+      return formattedGames;
+
     } catch (error) {
       console.error('Error fetching Lichess rapid games:', error);
       return [];
@@ -922,9 +990,19 @@ class LichessService {
    */
   async getUserProgressStats(username) {
     try {
-      console.log(`Fetching Lichess progress stats for user: ${username}`);
+      // Check cache first
+      const cacheKey = `progress_${username}`;
+      const cachedData = this.progressCache.get(cacheKey);
+      if (cachedData && Date.now() - cachedData.timestamp < this.CACHE_TTL) {
+        console.log(`✅ Cache hit for progress stats: ${username}`);
+        cacheMonitor.recordHit('progress', 10);
+        return cachedData.data;
+      }
 
-      // Get user stats first
+      console.log(`Fetching Lichess progress stats for user: ${username}`);
+      const startTime = Date.now();
+
+      // Get user stats first (will use cache if available)
       const stats = await this.getUserStats(username);
 
       // Get recent games for analysis
@@ -1026,6 +1104,16 @@ class LichessService {
       } else if (progressStats.totalGames >= 100) {
         progressStats.strengthAreas.push('Active player (100+ games)');
       }
+
+      // Cache the result
+      this.progressCache.set(cacheKey, {
+        data: progressStats,
+        timestamp: Date.now()
+      });
+
+      // Record cache miss with response time
+      const responseTime = Date.now() - startTime;
+      cacheMonitor.recordMiss('progress', responseTime);
 
       console.log(`✅ Successfully calculated Lichess progress stats for: ${username}`);
       return progressStats;

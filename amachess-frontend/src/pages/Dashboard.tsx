@@ -48,59 +48,67 @@ const Dashboard = () => {
     });
   };
 
-  // Fetch protected dashboard data from backend
+  // OPTIMIZATION: Fetch all dashboard data in parallel
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const fetchAllDashboardData = async () => {
+      if (!user?.id) return;
+      
       try {
         setLoading(true);
-        const response = await axios.get('/user/dashboard');
-        setDashboardData(response.data.data);
         
-        // Set Lichess stats from dashboard response if available
-        if (response.data.data.lichessStats) {
-          setLichessStats(response.data.data.lichessStats);
+        // Fetch all data sources in parallel using Promise.allSettled
+        // This prevents one slow API from blocking others
+        // Note: LichessProgressStats component handles its own data fetching
+        const [dashboardResult, statsResult, analyticsResult, leaderboardResult] = await Promise.allSettled([
+          axios.get('/user/dashboard'),
+          puzzleService.getUserStats(user.id),
+          puzzleService.getUserAnalytics(user.id, 30),
+          puzzleService.getLeaderboard(10)
+        ]);
+
+        // Process dashboard data
+        if (dashboardResult.status === 'fulfilled') {
+          setDashboardData(dashboardResult.value.data.data);
+          if (dashboardResult.value.data.data.lichessStats) {
+            setLichessStats(dashboardResult.value.data.data.lichessStats);
+          }
+        } else {
+          console.error('Failed to fetch dashboard data:', dashboardResult.reason);
+          setError('Failed to load dashboard data. Please try again.');
+        }
+
+        // Process puzzle stats
+        if (statsResult.status === 'fulfilled') {
+          setPuzzleStats(statsResult.value);
+        } else {
+          console.error('Failed to fetch puzzle stats:', statsResult.reason);
+        }
+
+        // Process puzzle analytics
+        if (analyticsResult.status === 'fulfilled') {
+          setPuzzleAnalytics(analyticsResult.value);
+        } else {
+          console.error('Failed to fetch puzzle analytics:', analyticsResult.reason);
+        }
+
+        // Process leaderboard
+        if (leaderboardResult.status === 'fulfilled') {
+          setLeaderboard(leaderboardResult.value);
+        } else {
+          console.error('Failed to fetch leaderboard:', leaderboardResult.reason);
         }
         
         setError(null);
       } catch (err) {
-        console.error('Failed to fetch dashboard data:', err);
+        console.error('Unexpected error fetching dashboard data:', err);
         setError('Failed to load dashboard data. Please try again.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchDashboardData();
-  }, []);
-
-  // Fetch puzzle analytics data
-  useEffect(() => {
-    const fetchPuzzleData = async () => {
-      if (!user?.id) return;
-      
-      try {
-        const userId = user.id;
-        
-        // Fetch user puzzle stats
-        const statsResponse = await puzzleService.getUserStats(userId);
-        setPuzzleStats(statsResponse);
-        
-        // Fetch user analytics (last 30 days)
-        const analyticsResponse = await puzzleService.getUserAnalytics(userId, 30);
-        setPuzzleAnalytics(analyticsResponse);
-        
-        // Fetch leaderboard
-        const leaderboardResponse = await puzzleService.getLeaderboard(10);
-        setLeaderboard(leaderboardResponse);
-        
-      } catch (err) {
-        console.error('Failed to fetch puzzle data:', err);
-        // Don't set error state for puzzle data - just log it
-      }
-    };
-
-    fetchPuzzleData();
-  }, [user]);
+    fetchAllDashboardData();
+  }, [user?.id]);
 
   // Remove the separate Lichess API call since it's now handled in the dashboard endpoint
   // This effect is now commented out since we get Lichess data from the dashboard
