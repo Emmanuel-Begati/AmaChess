@@ -14,7 +14,50 @@ class LichessService {
     this.progressCache = new Map(); // Cache for progress stats
     this.cacheDir = path.join(__dirname, '../../cache');
     this.CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache TTL
+    
+    // Request queue to prevent parallel Lichess API calls
+    this.requestQueue = [];
+    this.isProcessingQueue = false;
+    
     this.initializeCache();
+  }
+
+  /**
+   * Queue a request to Lichess API to prevent parallel requests
+   * Lichess only allows 1 request at a time per IP
+   */
+  async queueRequest(requestFn) {
+    return new Promise((resolve, reject) => {
+      this.requestQueue.push({ requestFn, resolve, reject });
+      this.processQueue();
+    });
+  }
+
+  /**
+   * Process queued requests one at a time
+   */
+  async processQueue() {
+    if (this.isProcessingQueue || this.requestQueue.length === 0) {
+      return;
+    }
+
+    this.isProcessingQueue = true;
+
+    while (this.requestQueue.length > 0) {
+      const { requestFn, resolve, reject } = this.requestQueue.shift();
+      
+      try {
+        const result = await requestFn();
+        resolve(result);
+      } catch (error) {
+        reject(error);
+      }
+
+      // Small delay between requests to be respectful to Lichess API
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    this.isProcessingQueue = false;
   }
 
   // Validate the API token
@@ -241,6 +284,7 @@ class LichessService {
   // Get user's games from Lichess
   async getUserGames(username, maxGames = 50) {
     try {
+      // This is called from within queueRequest, so don't queue again
       const response = await axios.get(`${this.baseURL}/games/user/${username}`, {
         params: {
           max: maxGames,
@@ -287,12 +331,14 @@ class LichessService {
       console.log(`Fetching stats for user: ${username}`);
       const startTime = Date.now();
 
-      // Get user profile data (public endpoint, no auth required)
-      const profileResponse = await axios.get(`${this.baseURL}/user/${username}`, {
-        timeout: 10000,
-        headers: {
-          'User-Agent': 'AmaChess-Backend/1.0.0'
-        }
+      // Queue the API request to prevent parallel calls
+      const profileResponse = await this.queueRequest(async () => {
+        return await axios.get(`${this.baseURL}/user/${username}`, {
+          timeout: 10000,
+          headers: {
+            'User-Agent': 'AmaChess-Backend/1.0.0'
+          }
+        });
       });
 
       const profile = profileResponse.data;
@@ -300,7 +346,9 @@ class LichessService {
       // Get recent games to calculate additional stats
       let recentGames = [];
       try {
-        recentGames = await this.getUserGames(username, 20);
+        recentGames = await this.queueRequest(async () => {
+          return await this.getUserGames(username, 20);
+        });
       } catch (gamesError) {
         console.warn('Could not fetch recent games:', gamesError.message);
         // Continue without recent games data
@@ -749,27 +797,31 @@ class LichessService {
       console.log(`Fetching rating analytics for user: ${username}`);
       const startTime = Date.now();
 
-      // Get rating history
-      const historyResponse = await axios.get(`${this.baseURL}/user/${username}/rating-history`, {
-        timeout: 10000,
-        headers: {
-          'User-Agent': 'AmaChess-Backend/1.0.0'
-        }
+      // Queue the API request to prevent parallel calls
+      const historyResponse = await this.queueRequest(async () => {
+        return await axios.get(`${this.baseURL}/user/${username}/rating-history`, {
+          timeout: 10000,
+          headers: {
+            'User-Agent': 'AmaChess-Backend/1.0.0'
+          }
+        });
       });
 
       const ratingHistory = historyResponse.data;
 
-      // Get performance statistics for main game types
+      // Get performance statistics for main game types (queued sequentially)
       const perfTypes = ['rapid', 'blitz', 'bullet', 'classical'];
       const perfStats = {};
 
       for (const perfType of perfTypes) {
         try {
-          const perfResponse = await axios.get(`${this.baseURL}/user/${username}/perf/${perfType}`, {
-            timeout: 10000,
-            headers: {
-              'User-Agent': 'AmaChess-Backend/1.0.0'
-            }
+          const perfResponse = await this.queueRequest(async () => {
+            return await axios.get(`${this.baseURL}/user/${username}/perf/${perfType}`, {
+              timeout: 10000,
+              headers: {
+                'User-Agent': 'AmaChess-Backend/1.0.0'
+              }
+            });
           });
           perfStats[perfType] = perfResponse.data;
         } catch (perfError) {
@@ -913,20 +965,24 @@ class LichessService {
       }
 
       const startTime = Date.now();
-      const response = await axios.get(`${this.baseURL}/games/user/${username}`, {
-        params: {
-          max: 20, // Get more to filter for rapid games
-          rated: true,
-          moves: false,
-          opening: true,
-          clocks: true,
-          sort: 'dateDesc',
-          perfType: 'rapid' // Filter for rapid games only
-        },
-        headers: {
-          'Accept': 'application/x-ndjson'
-        },
-        responseType: 'text'
+      
+      // Queue the API request to prevent parallel calls
+      const response = await this.queueRequest(async () => {
+        return await axios.get(`${this.baseURL}/games/user/${username}`, {
+          params: {
+            max: 20, // Get more to filter for rapid games
+            rated: true,
+            moves: false,
+            opening: true,
+            clocks: true,
+            sort: 'dateDesc',
+            perfType: 'rapid' // Filter for rapid games only
+          },
+          headers: {
+            'Accept': 'application/x-ndjson'
+          },
+          responseType: 'text'
+        });
       });
 
       // Parse NDJSON response

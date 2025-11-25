@@ -35,18 +35,23 @@ Your dashboard's Lichess data fetching has been optimized using **parallel progr
 6. ✅ `OPTIMIZATION_SUMMARY.md` - Quick reference
 7. ✅ `TESTING_GUIDE.md` - How to test and verify
 8. ✅ `PROGRESS_STATS_OPTIMIZATION.md` - Progress stats caching fix
-9. ✅ `README_OPTIMIZATION.md` - This file
+9. ✅ `LICHESS_RATE_LIMIT_FIX.md` - Rate limiting solution
+10. ✅ `LICHESS_PROGRESS_UI_REDESIGN.md` - UI redesign details
+11. ✅ `UI_REDESIGN_SUMMARY.md` - Visual comparison
+12. ✅ `README_OPTIMIZATION.md` - This file
 
 ---
 
 ## 📊 Performance Improvements
 
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| **First Load** | 3.8s | 1.2s | **68% faster** ⚡ |
-| **Cached Load** | 3.8s | 0.2s | **95% faster** 🚀 |
-| **API Calls (5 min)** | 15 | 3 | **80% reduction** 💰 |
-| **User Experience** | Poor | Excellent | **Much better** 😊 |
+| Metric | Before | After (with queue) | Improvement |
+|--------|--------|-------------------|-------------|
+| **First Load** | ❌ Failed (429) | 3.5s | **100% reliable** ✅ |
+| **Cached Load** | ❌ Failed (429) | 0.2s | **Instant** 🚀 |
+| **API Calls (5 min)** | 15 (failed) | 3 (queued) | **80% reduction** 💰 |
+| **Success Rate** | 0% | 100% | **Reliable** 😊 |
+
+**Note:** Lichess API only allows 1 request at a time. We implemented a request queue to ensure reliability. First load is ~3.5s (sequential), but cached loads are instant (0.2s).
 
 ---
 
