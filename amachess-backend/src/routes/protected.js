@@ -2,7 +2,19 @@ const express = require('express');
 const { authenticateToken } = require('../middleware/auth');
 const LichessService = require('../services/lichessService');
 const { PrismaClient } = require('@prisma/client');
-const cacheMonitor = require('../utils/cacheMonitor');
+
+// Optional cache monitor - won't crash if file doesn't exist
+let cacheMonitor = null;
+try {
+  cacheMonitor = require('../utils/cacheMonitor');
+} catch (error) {
+  console.warn('Cache monitor not available - stats endpoint disabled');
+  // Create a mock cacheMonitor
+  cacheMonitor = {
+    getStats: () => ({ error: 'Cache monitor not available' }),
+    getRecommendations: () => ['Cache monitor not installed']
+  };
+}
 
 const router = express.Router();
 const lichessService = new LichessService();

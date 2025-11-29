@@ -1,7 +1,19 @@
 const axios = require('axios');
 const fs = require('fs').promises;
 const path = require('path');
-const cacheMonitor = require('../utils/cacheMonitor');
+
+// Optional cache monitor - won't crash if file doesn't exist
+let cacheMonitor = null;
+try {
+  cacheMonitor = require('../utils/cacheMonitor');
+} catch (error) {
+  console.warn('Cache monitor not available - performance tracking disabled');
+  // Create a mock cacheMonitor that does nothing
+  cacheMonitor = {
+    recordHit: () => {},
+    recordMiss: () => {}
+  };
+}
 
 class LichessService {
   constructor() {
