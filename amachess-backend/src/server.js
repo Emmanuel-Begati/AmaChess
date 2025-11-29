@@ -41,22 +41,39 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 const frontendBuildPath = path.join(__dirname, '../../amachess-frontend/dist');
 app.use(express.static(frontendBuildPath));
 
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/user', protectedRoutes);
-app.use('/api/user/puzzles', userPuzzleRoutes); // New user puzzle management routes
-app.use('/api/stockfish', stockfishRoutes);
-app.use('/api/import', importRoutes);
-app.use('/api/test', testRoutes);
-app.use('/api/lichess', lichessRoutes); // Lichess API endpoints
-app.use('/api/games', lichessRoutes); // Games API endpoints (alias for lichess routes)
-app.use('/api/analyze', analyzeRoutes);
-app.use('/api/books', booksRoutes);
-app.use('/api/puzzles', puzzleRoutes);
-app.use('/api', chessVisionRoutes); // Chess vision endpoints (detect-chess, get-fen, etc.)
-app.use('/api/coach', coachRoutes); // AI Chess Coach endpoints
-app.use('/api/user-games', gamesRoutes); // User game storage endpoints
-app.use('/api/chat', chatRoutes); // AI chat endpoints
+// ============================================================================
+// API ROUTES
+// ============================================================================
+
+// Authentication & User Management
+app.use('/api/auth', authRoutes);                    // Login, Register, Logout
+app.use('/api/user', protectedRoutes);               // User dashboard, profile, settings
+
+// Chess Puzzles
+app.use('/api/puzzles', puzzleRoutes);               // Get puzzles, daily challenge, themes
+app.use('/api/user/puzzles', userPuzzleRoutes);      // User puzzle stats, progress, analytics
+
+// External Data (Lichess)
+app.use('/api/lichess', lichessRoutes);              // Fetch Lichess user stats, games, ratings
+
+// Game Storage & Analysis
+app.use('/api/user-games', gamesRoutes);             // Save/load user's games
+app.use('/api/analyze', analyzeRoutes);              // Analyze games and positions
+app.use('/api/import', importRoutes);                // Import games from PGN/Lichess
+
+// Chess Engine
+app.use('/api/stockfish', stockfishRoutes);          // Stockfish engine for analysis & play
+
+// AI Features
+app.use('/api/coach', coachRoutes);                  // AI chess coach (move suggestions, evaluation)
+app.use('/api/chat', chatRoutes);                    // AI chat assistant
+
+// Chess Books & Vision
+app.use('/api/books', booksRoutes);                  // Chess books library
+app.use('/api', chessVisionRoutes);                  // PDF chess detection (detect-chess, get-fen)
+
+// Testing & Development
+app.use('/api/test', testRoutes);                    // Test endpoints for debugging
 
 // Enhanced health check with database status
 app.get('/api/health', async (req, res) => {
