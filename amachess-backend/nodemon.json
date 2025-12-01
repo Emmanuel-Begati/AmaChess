@@ -4,7 +4,7 @@
   "ignore": ["node_modules", "*.test.js"],
   "exec": "node src/server.js",
   "env": {
-    "NODE_ENV": "development"
+    "NODE_ENV": "production"
   },
   "delay": "1000",
   "legacyWatch": true
