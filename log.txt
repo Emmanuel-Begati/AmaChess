@@ -1,0 +1,81 @@
+commit 1e2609b095ac2db14ad3fb5d4918311033d668c9
+Author: Emmanuel-Begati <begati16@gmail.com>
+Date:   Sat Mar 14 18:36:20 2026 -0300
+
+    hel/
+
+M	amachess-backend/.gitignore
+D	amachess-backend/lichess_db_puzzle.csv
+M	amachess-frontend/package-lock.json
+M	amachess-frontend/src/pages/ContactUs.tsx
+M	amachess-frontend/src/pages/Dashboard.tsx
+M	amachess-frontend/src/pages/HomePage.tsx
+M	amachess-frontend/src/pages/Learn.tsx
+M	amachess-frontend/src/pages/Library.tsx
+M	amachess-frontend/src/pages/PuzzleSolver.tsx
+M	amachess-frontend/src/pages/Puzzles.tsx
+M	amachess-frontend/src/pages/Settings.tsx
+M	package.json
+
+commit 40461212ca0a931e3570ec226650fc1b4b676326
+Author: Emmanuel-Begati <begati16@gmail.com>
+Date:   Sat Mar 14 18:11:40 2026 -0300
+
+    beginning
+
+M	.vscode/settings.json
+A	amachess-backend/lichess_db_puzzle.csv
+M	amachess-backend/package-lock.json
+M	amachess-backend/prisma/dev.db
+A	amachess-backend/scripts/check-puzzle-count.js
+M	amachess-backend/scripts/load-puzzles-from-csv.js
+M	amachess-backend/scripts/seed-puzzles.js
+M	amachess-backend/src/routes/puzzles.js
+M	amachess-frontend/package-lock.json
+M	amachess-frontend/src/components/ui/Header.tsx
+M	amachess-frontend/src/components/ui/HeroSection.tsx
+M	amachess-frontend/src/pages/HomePage.tsx
+M	amachess-frontend/src/pages/Puzzles.tsx
+M	amachess-frontend/src/services/booksApi.ts
+M	amachess-frontend/src/services/dailyPuzzleService.ts
+M	amachess-frontend/src/services/puzzleService.ts
+M	amachess-frontend/vite.config.ts
+A	node_modules/.package-lock.json
+A	node_modules/node-fetch/LICENSE.md
+A	node_modules/node-fetch/README.md
+A	node_modules/node-fetch/browser.js
+A	node_modules/node-fetch/lib/index.es.js
+A	node_modules/node-fetch/lib/index.js
+A	node_modules/node-fetch/lib/index.mjs
+A	node_modules/node-fetch/package.json
+A	node_modules/tr46/.npmignore
+A	node_modules/tr46/index.js
+A	node_modules/tr46/lib/.gitkeep
+A	node_modules/tr46/lib/mappingTable.json
+A	node_modules/tr46/package.json
+A	node_modules/webidl-conversions/LICENSE.md
+A	node_modules/webidl-conversions/README.md
+A	node_modules/webidl-conversions/lib/index.js
+A	node_modules/webidl-conversions/package.json
+A	node_modules/whatwg-url/LICENSE.txt
+A	node_modules/whatwg-url/README.md
+A	node_modules/whatwg-url/lib/URL-impl.js
+A	node_modules/whatwg-url/lib/URL.js
+A	node_modules/whatwg-url/lib/public-api.js
+A	node_modules/whatwg-url/lib/url-state-machine.js
+A	node_modules/whatwg-url/lib/utils.js
+A	node_modules/whatwg-url/package.json
+M	package-lock.json
+
+commit 0ad02c53c0139ff02120ede2cf24b1973c4741ab
+Author: Emmanuel-Begati <begati16@gmail.com>
+Date:   Mon Dec 1 04:40:50 2025 +0200
+
+    added things
+
+D	amachess-backend/check-db.js
+M	amachess-backend/nodemon.json
+D	amachess-backend/setup-wsl.sh
+D	amachess-frontend/README.md
+D	amachess-frontend/public/capture-sound.mp3
+D	amachess-frontend/public/move-sound.mp3

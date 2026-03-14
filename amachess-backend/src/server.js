@@ -22,6 +22,7 @@ const chessVisionRoutes = require('./routes/chessVision'); // Chess vision/PDF d
 const coachRoutes = require('./routes/coach'); // AI chess coach routes
 const gamesRoutes = require('./routes/games'); // Game storage routes
 const chatRoutes = require('./routes/chat'); // AI chat routes
+const insightsRoutes = require('./routes/insights'); // AI dashboard insights routes
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -67,6 +68,7 @@ app.use('/api/stockfish', stockfishRoutes);          // Stockfish engine for ana
 // AI Features
 app.use('/api/coach', coachRoutes);                  // AI chess coach (move suggestions, evaluation)
 app.use('/api/chat', chatRoutes);                    // AI chat assistant
+app.use('/api/insights', insightsRoutes);            // AI dashboard coaching insights
 
 // Chess Books & Vision
 app.use('/api/books', booksRoutes);                  // Chess books library

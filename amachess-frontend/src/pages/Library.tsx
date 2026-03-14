@@ -339,7 +339,7 @@ const Library = () => {
             )}
             
             {/* My Library Section - Responsive Grid */}
-            {!loading && (activeTab === 'My Library' || activeTab === 'All') && uploadedBooks.length > 0 && (
+            {!loading && (activeTab === 'My Library' || activeTab === 'All') && uploadedBooks?.length > 0 && (
               <section className="mb-8 lg:mb-12">
                 <h2 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-white mb-4 lg:mb-6">
                   My Uploaded Books
