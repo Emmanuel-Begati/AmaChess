@@ -635,7 +635,7 @@ const PuzzleSolver = () => {
         </div>
       )}
 
-      <main className="container mx-auto px-4 py-8 max-w-7xl">
+      <main className="container mx-auto px-4 pt-24 pb-8 sm:pt-28 max-w-7xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>

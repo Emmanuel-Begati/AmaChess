@@ -242,7 +242,7 @@ const Library = () => {
       )}
       
       {/* Main Content Container - Two Column Layout */}
-      <main className="flex-1 w-full">
+      <main className="flex-1 w-full pt-16 sm:pt-20">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-6 lg:py-8">
           <div className="max-w-[1600px] mx-auto">
             

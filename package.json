@@ -15,7 +15,13 @@
   "dependencies": {
     "node-fetch": "^2.7.0"
   },
-  "keywords": ["chess", "stockfish", "react", "express", "fullstack"],
+  "keywords": [
+    "chess",
+    "stockfish",
+    "react",
+    "express",
+    "fullstack"
+  ],
   "author": "AmaChess",
   "license": "MIT"
 }

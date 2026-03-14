@@ -14,20 +14,20 @@ const Puzzles = () => {
   const [activeTab, setActiveTab] = useState('All');
   const [selectedDifficulty, setSelectedDifficulty] = useState('All');
   const [randomPuzzleMode, setRandomPuzzleMode] = useState(false);
-  
+
   // New state for user statistics and daily challenge
   const [userStats, setUserStats] = useState<UserPuzzleStats | null>(null);
   const [dailyChallenge, setDailyChallenge] = useState<DailyChallenge | null>(null);
   const [dailyChallengeStats, setDailyChallengeStats] = useState<DailyChallengeStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState<string | null>(null);
-  
+
   // New state for leaderboard and analytics
   const [realLeaderboard, setRealLeaderboard] = useState<any[]>([]);
   const [realPerformanceData, setRealPerformanceData] = useState<any>(null);
   const [leaderboardLoading, setLeaderboardLoading] = useState(true);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
-  
+
   // Use the puzzle hook for Lichess puzzle integration
   const {
     puzzle: currentPuzzle,
@@ -49,22 +49,20 @@ const Puzzles = () => {
       try {
         setStatsLoading(true);
         setStatsError(null);
-        
-        // Load daily challenge using unified service with specific puzzle ID
+
+        // Load daily challenge using unified service - let backend select based on date
         try {
-          // Use a specific puzzle ID for the daily challenge
-          // You can modify this to use any puzzle ID you want
-          const puzzleId = 'lichess-01av5'; // Example puzzle ID - replace with desired puzzle
-          const challenge = await dailyPuzzleService.getDailyPuzzle(puzzleId);
+          // Let the backend select the daily puzzle based on date seed
+          const challenge = await dailyPuzzleService.getDailyPuzzle();
           setDailyChallenge(challenge);
-          
+
           // Load daily challenge statistics
           const challengeStats = await puzzleService.getDailyChallengeStats();
           setDailyChallengeStats(challengeStats);
         } catch (error) {
           console.error('Failed to load daily challenge:', error);
         }
-        
+
         // Load leaderboard (public endpoint)
         try {
           setLeaderboardLoading(true);
@@ -75,13 +73,13 @@ const Puzzles = () => {
         } finally {
           setLeaderboardLoading(false);
         }
-        
+
         // Try to load user statistics and analytics (requires auth)
         if (isAuthenticated && user?.id) {
           try {
             const stats = await puzzleService.getUserStats(user.id);
             setUserStats(stats);
-            
+
             // Load user analytics
             setAnalyticsLoading(true);
             const analytics = await puzzleService.getUserAnalytics(user.id, 7);
@@ -115,7 +113,7 @@ const Puzzles = () => {
           });
           setAnalyticsLoading(false);
         }
-        
+
       } catch (error) {
         console.error('Failed to load user data:', error);
         setStatsError('Failed to load user data');
@@ -123,7 +121,7 @@ const Puzzles = () => {
         setStatsLoading(false);
       }
     };
-    
+
     loadUserData();
   }, [isAuthenticated, user?.id]);
 
@@ -135,7 +133,7 @@ const Puzzles = () => {
           // Calculate time spent (placeholder - you'd track this properly)
           const timeSpent = 30; // seconds, should be tracked from puzzle start
           const isCorrect = true; // Should be determined from puzzle solution validation
-          
+
           // Update user statistics in backend
           const updatedStats = await puzzleService.updateUserStats(
             user.id,
@@ -143,10 +141,10 @@ const Puzzles = () => {
             isCorrect,
             timeSpent
           );
-          
+
           // Update local state with new statistics
           setUserStats(updatedStats);
-          
+
           // Reload analytics data to reflect the new puzzle completion
           try {
             const analytics = await puzzleService.getUserAnalytics(user.id, 7);
@@ -154,14 +152,14 @@ const Puzzles = () => {
           } catch (error) {
             console.error('Failed to reload analytics after puzzle completion:', error);
           }
-          
+
           console.log('User statistics updated after puzzle completion');
         } catch (error) {
           console.error('Failed to update user statistics:', error);
         }
       }
     };
-    
+
     handlePuzzleCompletion();
   }, [puzzleCompleted, currentPuzzle, isAuthenticated, user?.id]);
 
@@ -251,10 +249,10 @@ const Puzzles = () => {
     { name: "Double Attack", count: 478, difficulty: "★★☆", color: "bg-pink-600" },
     { name: "Zugzwang", count: 234, difficulty: "★★★★", color: "bg-gray-600" }
   ]);
-  
+
   // State for showing more themes
   const [showAllThemes, setShowAllThemes] = useState(false);
-  const [allThemes, setAllThemes] = useState<Array<{name: string, count: number, difficulty: string, color: string}>>([]);
+  const [allThemes, setAllThemes] = useState<Array<{ name: string, count: number, difficulty: string, color: string }>>([]);
 
   // Load actual themes from the database
   useEffect(() => {
@@ -265,20 +263,20 @@ const Puzzles = () => {
     try {
       // Load themes from backend API
       const themesResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/api'}/puzzles/themes`);
-      
+
       if (!themesResponse.ok) {
         throw new Error(`HTTP error! status: ${themesResponse.status}`);
       }
-      
+
       const themesData = await themesResponse.json();
-      
+
       if (themesData.success && themesData.data) {
         const themeColors = [
           "bg-blue-600", "bg-green-600", "bg-purple-600", "bg-red-600",
           "bg-orange-600", "bg-indigo-600", "bg-pink-600", "bg-teal-600",
           "bg-cyan-600", "bg-yellow-600", "bg-rose-600", "bg-violet-600"
         ];
-        
+
         // Helper functions for theme UI
         const getThemeColor = (index: number) => themeColors[index % themeColors.length];
         const getThemeDifficulty = (count: number) => {
@@ -287,15 +285,15 @@ const Puzzles = () => {
           if (count > 200) return "★★★";
           return "★★★★";
         };
-        
+
         // For now, assign random counts since we don't have stats endpoint
         const themesWithData = themesData.data.map((theme: string, index: number) => {
           // Estimate count based on theme popularity (this would come from stats in real app)
           const baseCount = Math.floor(Math.random() * 800) + 200;
-          const count = theme === 'mate' ? baseCount + 500 : 
-                       theme === 'fork' ? baseCount + 300 : 
-                       theme === 'pin' ? baseCount + 250 : baseCount;
-          
+          const count = theme === 'mate' ? baseCount + 500 :
+            theme === 'fork' ? baseCount + 300 :
+              theme === 'pin' ? baseCount + 250 : baseCount;
+
           return {
             name: theme,
             count: count,
@@ -303,7 +301,7 @@ const Puzzles = () => {
             color: getThemeColor(index)
           };
         }).sort((a: any, b: any) => b.count - a.count);
-        
+
         // Store all themes and show top 10 by default
         setAllThemes(themesWithData);
         setPuzzleThemes(themesWithData.slice(0, 10));
@@ -379,33 +377,33 @@ const Puzzles = () => {
   const startRandomPuzzleMode = async () => {
     setRandomPuzzleMode(true);
     setShowSolution(false);
-    
+
     // Load a random puzzle with difficulty filter
     const difficultyMap: { [key: string]: string } = {
       'All': '',
       'Easy': 'Beginner',
-      'Medium': 'Intermediate', 
+      'Medium': 'Intermediate',
       'Hard': 'Advanced',
       'Expert': 'Expert'
     };
-    
-    const filters = selectedDifficulty !== 'All' ? 
+
+    const filters = selectedDifficulty !== 'All' ?
       { difficulty: difficultyMap[selectedDifficulty] as any } : undefined;
-    
+
     await loadRandomPuzzle(filters);
   };
 
   const handleRandomPuzzleMove = (move: { from: string; to: string; san?: string }) => {
     if (!currentPuzzle || puzzleCompleted) return;
-    
+
     console.log('Random puzzle move:', move);
     console.log('Current puzzle:', currentPuzzle);
-    
+
     // Convert move to UCI format
     const uciMove = `${move.from}${move.to}`;
     console.log('UCI move:', uciMove);
     console.log('Expected move:', currentPuzzle.moves[0]);
-    
+
     // Use the puzzle hook's move validation
     const isCorrect = makeMove(uciMove);
     console.log('Move correct:', isCorrect);
@@ -415,14 +413,14 @@ const Puzzles = () => {
     const difficultyMap: { [key: string]: string } = {
       'All': '',
       'Easy': 'Beginner',
-      'Medium': 'Intermediate', 
+      'Medium': 'Intermediate',
       'Hard': 'Advanced',
       'Expert': 'Expert'
     };
-    
-    const filters = selectedDifficulty !== 'All' ? 
+
+    const filters = selectedDifficulty !== 'All' ?
       { difficulty: difficultyMap[selectedDifficulty] as any } : undefined;
-    
+
     await loadRandomPuzzle(filters);
   };
 
@@ -432,14 +430,14 @@ const Puzzles = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#121621] text-white" style={{fontFamily: 'Lexend, "Noto Sans", sans-serif'}}>
+    <div className="min-h-screen bg-[#121621] text-white" style={{ fontFamily: 'Lexend, "Noto Sans", sans-serif' }}>
       <Header />
-      
+
       {/* Main Content Container - Fully Responsive */}
-      <main className="flex-1 w-full bg-[#121621]">
+      <main className="flex-1 w-full bg-[#121621] pt-16 sm:pt-20">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-6 lg:py-8 bg-[#121621]">
           <div className="max-w-[1400px] mx-auto bg-[#121621]">
-            
+
             {/* Random Puzzle Solver Mode */}
             {randomPuzzleMode && (
               <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-2 xs:p-4">
@@ -449,7 +447,7 @@ const Puzzles = () => {
                       <h2 className="text-xl xs:text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2 leading-tight">Random Puzzle Challenge</h2>
                       <p className="text-[#97a1c4] text-sm xs:text-base lg:text-lg">Solve puzzles to improve your tactical skills</p>
                     </div>
-                    <button 
+                    <button
                       onClick={exitRandomPuzzleMode}
                       className="text-[#97a1c4] hover:text-white transition-colors self-end sm:self-center p-1 hover:bg-white/10 rounded-lg"
                     >
@@ -470,7 +468,7 @@ const Puzzles = () => {
                     <div className="flex items-center justify-center py-12">
                       <div className="text-center">
                         <p className="text-red-400 text-lg mb-4">Error loading puzzle: {puzzleError}</p>
-                        <button 
+                        <button
                           onClick={() => loadRandomPuzzle()}
                           className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
                         >
@@ -492,7 +490,7 @@ const Puzzles = () => {
                             engineEnabled={false}
                           />
                         </div>
-                        
+
                         {/* Puzzle Status */}
                         <div className="text-center">
                           <p className="text-[#97a1c4] text-sm xs:text-base mb-3 xs:mb-4 leading-relaxed">{currentPuzzle.description}</p>
@@ -551,7 +549,7 @@ const Puzzles = () => {
                               Next Puzzle
                             </button>
                           )}
-                          
+
                           <button
                             onClick={() => showHintAction()}
                             className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 xs:py-4 rounded-lg font-semibold transition-colors text-base xs:text-lg"
@@ -615,7 +613,7 @@ const Puzzles = () => {
               <div className="text-center">
                 <h2 className="text-2xl lg:text-3xl font-bold text-white mb-3">Ready to Solve Puzzles?</h2>
                 <p className="text-blue-100 text-lg mb-6">Jump into our interactive puzzle solver and start improving your chess skills!</p>
-                <Link 
+                <Link
                   to="/puzzle-solver"
                   className="inline-flex items-center gap-3 px-8 py-4 bg-white text-blue-600 font-bold text-lg rounded-xl hover:bg-blue-50 transition-all duration-300 hover:scale-105 shadow-lg"
                 >
@@ -708,7 +706,7 @@ const Puzzles = () => {
                         <ChessGame
                           isModalMode={true}
                           position={dailyChallenge.fen}
-                          onMove={() => {}} // Disabled interaction
+                          onMove={() => { }} // Disabled interaction
                           interactive={false}
                           showNotation={false}
                           engineEnabled={false}
@@ -728,7 +726,7 @@ const Puzzles = () => {
                   </div>
                   <div className="text-center space-y-3">
                     <p className="text-[#97a1c4] text-sm xs:text-base mb-3 xs:mb-4 leading-relaxed">{dailyChallenge?.description || 'Loading puzzle description...'}</p>
-                    <button 
+                    <button
                       onClick={() => navigate(dailyPuzzleService.getPuzzleSolverUrl(dailyChallenge || undefined))}
                       className="w-full py-3 bg-gradient-to-r from-[#115fd4] to-[#4a90e2] text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-[#115fd4]/25 transition-all duration-300"
                     >
@@ -791,11 +789,10 @@ const Puzzles = () => {
                 {['All', 'Daily', 'Custom', 'Saved'].map((tab) => (
                   <button
                     key={tab}
-                    className={`flex flex-col items-center justify-center border-b-[3px] pb-3 xs:pb-4 pt-3 xs:pt-4 whitespace-nowrap min-w-0 ${
-                      activeTab === tab 
-                        ? 'border-b-blue-800 text-white' 
+                    className={`flex flex-col items-center justify-center border-b-[3px] pb-3 xs:pb-4 pt-3 xs:pt-4 whitespace-nowrap min-w-0 ${activeTab === tab
+                        ? 'border-b-blue-800 text-white'
                         : 'border-b-transparent text-[#97a1c4] hover:text-white'
-                    }`}
+                      }`}
                     onClick={() => setActiveTab(tab)}
                   >
                     <p className="text-sm sm:text-base lg:text-lg font-bold leading-normal tracking-[0.015em]">{tab}</p>
@@ -809,7 +806,7 @@ const Puzzles = () => {
             {/* Performance Analytics - Responsive Grid */}
             <div className="mb-6 sm:mb-8">
               <h2 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-white mb-4 sm:mb-6 lg:mb-8">Performance Analytics</h2>
-              
+
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
                 {/* Weekly Progress Chart */}
                 <div className="bg-[#272e45] rounded-lg xs:rounded-xl lg:rounded-2xl p-4 sm:p-6 lg:p-8 border border-[#374162]">
@@ -820,7 +817,7 @@ const Puzzles = () => {
                         <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
                           <span className="text-[#97a1c4] text-sm sm:text-base w-8 sm:w-10 flex-shrink-0">{day.day}</span>
                           <div className="flex-1 bg-[#374162] rounded-full h-2 sm:h-2.5 lg:h-3 min-w-0">
-                            <div 
+                            <div
                               className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 sm:h-2.5 lg:h-3 rounded-full transition-all duration-300"
                               style={{ width: `${(day.solved / 25) * 100}%` }}
                             ></div>
@@ -861,7 +858,7 @@ const Puzzles = () => {
                 <div className="flex items-end gap-2 sm:gap-4 lg:gap-6 h-24 sm:h-32 lg:h-40 px-2 sm:px-4">
                   {performanceData.ratingHistory.map((month, index) => (
                     <div key={index} className="flex-1 flex flex-col items-center min-w-0">
-                      <div 
+                      <div
                         className="bg-gradient-to-t from-blue-600 to-purple-600 w-full rounded-t-lg lg:rounded-t-xl transition-all duration-300"
                         style={{ height: `${((month.rating - 1500) / 200) * 100}%` }}
                       ></div>
@@ -878,13 +875,12 @@ const Puzzles = () => {
               <h2 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-white mb-4 sm:mb-6 lg:mb-8">Latest Puzzle Achievements</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 xl:gap-8">
                 {achievements.map((achievement) => (
-                  <div key={achievement.id} className={`bg-gradient-to-br from-[#272e45] to-[#374162] rounded-lg xs:rounded-xl lg:rounded-2xl p-4 sm:p-6 lg:p-8 border transition-all duration-300 hover:scale-105 ${
-                    achievement.unlocked 
-                      ? achievement.rarity === 'Legendary' ? 'border-yellow-500 shadow-lg shadow-yellow-500/20' 
+                  <div key={achievement.id} className={`bg-gradient-to-br from-[#272e45] to-[#374162] rounded-lg xs:rounded-xl lg:rounded-2xl p-4 sm:p-6 lg:p-8 border transition-all duration-300 hover:scale-105 ${achievement.unlocked
+                      ? achievement.rarity === 'Legendary' ? 'border-yellow-500 shadow-lg shadow-yellow-500/20'
                         : achievement.rarity === 'Epic' ? 'border-purple-500 shadow-lg shadow-purple-500/20'
-                        : 'border-blue-500 shadow-lg shadow-blue-500/20'
+                          : 'border-blue-500 shadow-lg shadow-blue-500/20'
                       : 'border-[#374162] opacity-75'
-                  }`}>
+                    }`}>
                     <div className="text-center">
                       <div className={`text-2xl sm:text-3xl lg:text-4xl xl:text-5xl mb-3 sm:mb-4 lg:mb-6 ${achievement.unlocked ? '' : 'grayscale'}`}>
                         {achievement.icon}
@@ -893,14 +889,13 @@ const Puzzles = () => {
                         {achievement.title}
                       </h4>
                       <p className="text-[#97a1c4] text-xs sm:text-sm lg:text-base mb-3 sm:mb-4 lg:mb-6 leading-relaxed">{achievement.description}</p>
-                      
+
                       {achievement.unlocked ? (
                         <div>
-                          <span className={`inline-block px-2 sm:px-3 lg:px-4 py-1 sm:py-1.5 lg:py-2 rounded text-xs sm:text-sm lg:text-base font-medium ${
-                            achievement.rarity === 'Legendary' ? 'bg-yellow-600 text-white' :
-                            achievement.rarity === 'Epic' ? 'bg-purple-600 text-white' :
-                            'bg-blue-600 text-white'
-                          }`}>
+                          <span className={`inline-block px-2 sm:px-3 lg:px-4 py-1 sm:py-1.5 lg:py-2 rounded text-xs sm:text-sm lg:text-base font-medium ${achievement.rarity === 'Legendary' ? 'bg-yellow-600 text-white' :
+                              achievement.rarity === 'Epic' ? 'bg-purple-600 text-white' :
+                                'bg-blue-600 text-white'
+                            }`}>
                             {achievement.rarity}
                           </span>
                           <p className="text-green-400 text-xs sm:text-sm lg:text-base mt-2 sm:mt-3">Unlocked {achievement.date}</p>
@@ -909,7 +904,7 @@ const Puzzles = () => {
                         <div>
                           <p className="text-gray-500 text-xs sm:text-sm lg:text-base mb-2 sm:mb-3">Progress: {achievement.progress}/100</p>
                           <div className="w-full bg-gray-700 rounded-full h-1.5 sm:h-2 lg:h-2.5">
-                            <div className="bg-blue-600 h-1.5 sm:h-2 lg:h-2.5 rounded-full transition-all duration-300" style={{width: `${achievement.progress}%`}}></div>
+                            <div className="bg-blue-600 h-1.5 sm:h-2 lg:h-2.5 rounded-full transition-all duration-300" style={{ width: `${achievement.progress}%` }}></div>
                           </div>
                         </div>
                       )}
@@ -936,11 +931,10 @@ const Puzzles = () => {
                     </thead>
                     <tbody>
                       {realLeaderboard.map((player, index) => (
-                        <tr key={index} className={`border-b border-[#374162] transition-colors duration-200 ${
-                          player.highlight 
-                            ? 'bg-blue-800/20 border-blue-600' 
+                        <tr key={index} className={`border-b border-[#374162] transition-colors duration-200 ${player.highlight
+                            ? 'bg-blue-800/20 border-blue-600'
                             : 'hover:bg-[#374162]/50'
-                        }`}>
+                          }`}>
                           <td className="px-3 sm:px-4 lg:px-6 xl:px-8 py-3 sm:py-4 lg:py-6">
                             <div className="flex items-center gap-1 sm:gap-2 lg:gap-3">
                               {(player.rank || index + 1) <= 3 && (
@@ -962,12 +956,11 @@ const Puzzles = () => {
                             </div>
                           </td>
                           <td className="px-3 sm:px-4 lg:px-6 xl:px-8 py-3 sm:py-4 lg:py-6">
-                            <span className={`text-sm sm:text-base lg:text-lg font-bold ${
-                              (player.rating || player.currentPuzzleRating || 1200) >= 2000 ? 'text-yellow-400' :
-                              (player.rating || player.currentPuzzleRating || 1200) >= 1800 ? 'text-orange-400' :
-                              (player.rating || player.currentPuzzleRating || 1200) >= 1500 ? 'text-blue-400' :
-                              'text-green-400'
-                            }`}>
+                            <span className={`text-sm sm:text-base lg:text-lg font-bold ${(player.rating || player.currentPuzzleRating || 1200) >= 2000 ? 'text-yellow-400' :
+                                (player.rating || player.currentPuzzleRating || 1200) >= 1800 ? 'text-orange-400' :
+                                  (player.rating || player.currentPuzzleRating || 1200) >= 1500 ? 'text-blue-400' :
+                                    'text-green-400'
+                              }`}>
                               {player.rating || player.currentPuzzleRating || 1200}
                             </span>
                           </td>
@@ -990,8 +983,8 @@ const Puzzles = () => {
               <h2 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-white mb-4 sm:mb-6 lg:mb-8">Practice by Theme</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 xl:gap-8">
                 {(showAllThemes ? allThemes : puzzleThemes).map((theme, index) => (
-                  <Link 
-                    key={index} 
+                  <Link
+                    key={index}
                     to={`/puzzle-solver?theme=${theme.name}`}
                     className="bg-[#272e45] hover:bg-[#374162] rounded-lg xs:rounded-xl lg:rounded-2xl p-4 sm:p-6 lg:p-8 border border-[#374162] hover:border-blue-600 transition-all duration-300 hover:scale-105 text-left block"
                   >
@@ -1015,7 +1008,7 @@ const Puzzles = () => {
                   </Link>
                 ))}
               </div>
-              
+
               {/* Show More/Show Less Button */}
               {allThemes.length > 10 && (
                 <div className="flex justify-center mt-6 sm:mt-8">
@@ -1046,7 +1039,7 @@ const Puzzles = () => {
           </div>
         </div>
       </main>
-      
+
       <Footer />
     </div>
   );

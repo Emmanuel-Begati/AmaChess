@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+// Empty base URL - AuthContext sets axios.defaults.baseURL to '/api'
+const API_BASE_URL = '';
 
 export interface Book {
   id: string;
@@ -142,7 +143,7 @@ export class BooksApiService {
     formData.append('pdf', file);
     formData.append('title', title);
     formData.append('author', author);
-    
+
     try {
       const response = await booksApi.post('/upload', formData, {
         headers: {
@@ -150,7 +151,7 @@ export class BooksApiService {
         },
         timeout: 120000, // 2 minute timeout for large files
       });
-      
+
       // Handle warnings for processing issues
       if (response.data.warning) {
         console.warn('Upload warning:', response.data.warning);
@@ -159,15 +160,15 @@ export class BooksApiService {
           console.warn('Processing details:', response.data.processingDetails);
         }
       }
-      
+
       return response.data.book;
     } catch (error: any) {
       console.error('Upload error details:', error);
-      
+
       // Enhanced error handling with specific messages
       if (error.response) {
         const { status, data } = error.response;
-        
+
         switch (status) {
           case 400:
             throw new Error(data.error || 'Invalid file or missing information');
@@ -241,7 +242,7 @@ export class BooksApiService {
     const params = new URLSearchParams();
     if (difficulty && difficulty !== 'all') params.append('difficulty', difficulty);
     if (type && type !== 'all') params.append('type', type);
-    
+
     const response = await booksApi.get(`/${bookId}/exercises?${params.toString()}`);
     return response.data.exercises;
   }
@@ -286,7 +287,7 @@ export class BooksApiService {
   // Search books (for now, just filter locally - you can implement backend search later)
   async searchBooks(query: string): Promise<Book[]> {
     const allBooks = await this.getBooks();
-    return allBooks.filter(book => 
+    return allBooks.filter(book =>
       book.title.toLowerCase().includes(query.toLowerCase()) ||
       book.author.toLowerCase().includes(query.toLowerCase())
     );
@@ -299,11 +300,11 @@ export class BooksApiService {
       const response = await booksApi.get(`/${bookId}/pdf`, {
         responseType: 'blob'
       });
-      
+
       // Create a local URL for the PDF blob
       const pdfBlob = new Blob([response.data], { type: 'application/pdf' });
       const pdfUrl = URL.createObjectURL(pdfBlob);
-      
+
       return pdfUrl;
     } catch (error) {
       console.error('Error getting PDF URL:', error);
@@ -317,11 +318,11 @@ export class BooksApiService {
       const response = await booksApi.get(`/${bookId}/pdf`, {
         responseType: 'blob'
       });
-      
+
       // Create a File object from the blob
       const pdfBlob = new Blob([response.data], { type: 'application/pdf' });
       const pdfFile = new File([pdfBlob], `book-${bookId}.pdf`, { type: 'application/pdf' });
-      
+
       return pdfFile;
     } catch (error) {
       console.error('Error getting PDF file:', error);

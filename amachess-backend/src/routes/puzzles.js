@@ -10,10 +10,13 @@ const activePuzzleService = databasePuzzleService;
 router.get('/random', async (req, res) => {
   try {
     const { themes, difficulty, minRating, maxRating, userId } = req.query;
-    
+
     const filters = {};
     if (themes) {
-      filters.themes = themes.split(',').map(t => t.trim());
+      // Handle both array format (themes[]=fork) and comma-separated string format (themes=fork,pin)
+      filters.themes = Array.isArray(themes)
+        ? themes.map(t => t.trim())
+        : themes.split(',').map(t => t.trim());
     }
     if (difficulty) {
       filters.difficulty = difficulty;
@@ -24,10 +27,10 @@ router.get('/random', async (req, res) => {
     if (maxRating) {
       filters.maxRating = parseInt(maxRating);
     }
-    
+
     // Pass userId for adaptive difficulty
     const puzzle = await activePuzzleService.getRandomPuzzle(filters, userId);
-    
+
     res.json({
       success: true,
       data: puzzle
@@ -49,7 +52,7 @@ router.get('/theme/:theme', async (req, res) => {
     const { limit = 10 } = req.query;
 
     const puzzles = await activePuzzleService.getPuzzlesByTheme(theme, parseInt(limit));
-    
+
     res.json({
       success: true,
       data: puzzles,
@@ -69,7 +72,7 @@ router.get('/theme/:theme', async (req, res) => {
 router.get('/themes', async (req, res) => {
   try {
     const themes = await activePuzzleService.getAvailableThemes();
-    
+
     res.json({
       success: true,
       data: themes
@@ -88,7 +91,7 @@ router.get('/themes', async (req, res) => {
 router.get('/stats', async (req, res) => {
   try {
     const stats = await activePuzzleService.getPuzzleStats();
-    
+
     res.json({
       success: true,
       data: stats
@@ -117,7 +120,7 @@ router.post('/validate', async (req, res) => {
 
     // This is a basic validation - in a real app you'd want to store puzzle state
     // For now, we'll just check if the move matches the expected solution move
-    
+
     res.json({
       success: true,
       data: {
@@ -140,16 +143,16 @@ router.post('/validate', async (req, res) => {
 router.get('/:puzzleId/context', async (req, res) => {
   try {
     const { puzzleId } = req.params;
-    
+
     const puzzle = await activePuzzleService.getPuzzleById(puzzleId);
-    
+
     if (!puzzle) {
       return res.status(404).json({
         success: false,
         error: 'Puzzle not found'
       });
     }
-    
+
     res.json({
       success: true,
       data: puzzle
@@ -168,16 +171,16 @@ router.get('/:puzzleId/context', async (req, res) => {
 router.get('/:puzzleId/analysis', async (req, res) => {
   try {
     const { puzzleId } = req.params;
-    
+
     const puzzle = await activePuzzleService.getPuzzleById(puzzleId);
-    
+
     if (!puzzle) {
       return res.status(404).json({
         success: false,
         error: 'Puzzle not found'
       });
     }
-    
+
     res.json({
       success: true,
       data: puzzle
@@ -197,7 +200,7 @@ router.post('/:puzzleId/validate', async (req, res) => {
   try {
     const { puzzleId } = req.params;
     const { moves } = req.body;
-    
+
     const puzzle = await activePuzzleService.getPuzzleById(puzzleId);
     if (!puzzle) {
       return res.status(404).json({
@@ -205,14 +208,14 @@ router.post('/:puzzleId/validate', async (req, res) => {
         error: 'Puzzle not found'
       });
     }
-    
+
     // Check if the provided moves match the puzzle solution
-    const isCorrect = moves.every((move, index) => 
+    const isCorrect = moves.every((move, index) =>
       index < puzzle.solution.length && move === puzzle.solution[index]
     );
-    
+
     const isComplete = moves.length === puzzle.solution.length && isCorrect;
-    
+
     res.json({
       success: true,
       data: {
@@ -238,9 +241,9 @@ router.post('/:puzzleId/validate', async (req, res) => {
 router.get('/user/:userId/stats', auth, async (req, res) => {
   try {
     const { userId } = req.params;
-    
+
     const userStats = await activePuzzleService.getUserStats(userId);
-    
+
     res.json({
       success: true,
       data: userStats
@@ -260,7 +263,7 @@ router.post('/user/:userId/stats/update', auth, async (req, res) => {
   try {
     const { userId } = req.params;
     const { puzzleData, isCorrect, timeSpent, hintsUsed, solutionShown } = req.body;
-    
+
     console.log('🎯 PUZZLE STATS UPDATE REQUEST:');
     console.log('- User ID:', userId);
     console.log('- Puzzle ID:', puzzleData?.id);
@@ -269,25 +272,25 @@ router.post('/user/:userId/stats/update', auth, async (req, res) => {
     console.log('- Hints Used:', hintsUsed);
     console.log('- Solution Shown:', solutionShown);
     console.log('- Auth User:', req.user?.id);
-    
+
     // Verify user exists
     const userExists = await activePuzzleService.getUserStats(userId);
     console.log('- User exists in DB:', !!userExists);
-    
+
     const updatedStats = await activePuzzleService.updateUserStatsAfterPuzzle(
-      userId, 
-      puzzleData, 
-      isCorrect, 
+      userId,
+      puzzleData,
+      isCorrect,
       timeSpent,
       hintsUsed || 0,
       solutionShown || false
     );
-    
+
     console.log('✅ PUZZLE STATS UPDATED SUCCESSFULLY');
     console.log('- New total solved:', updatedStats.totalPuzzlesSolved);
     console.log('- New rating:', updatedStats.currentPuzzleRating);
     console.log('- New streak:', updatedStats.currentStreak);
-    
+
     res.json({
       success: true,
       data: updatedStats
@@ -309,7 +312,7 @@ router.get('/daily-challenge', async (req, res) => {
   try {
     const { puzzleId } = req.query;
     const dailyChallenge = await activePuzzleService.getDailyChallenge(puzzleId);
-    
+
     res.json({
       success: true,
       data: dailyChallenge
@@ -328,9 +331,9 @@ router.get('/daily-challenge', async (req, res) => {
 router.get('/daily-challenge/stats', async (req, res) => {
   try {
     const { date } = req.query;
-    
+
     const challengeStats = await activePuzzleService.getDailyChallengeStats(date);
-    
+
     res.json({
       success: true,
       data: challengeStats
@@ -349,9 +352,9 @@ router.get('/daily-challenge/stats', async (req, res) => {
 router.get('/leaderboard', async (req, res) => {
   try {
     const { limit = 10 } = req.query;
-    
+
     const leaderboard = await activePuzzleService.getLeaderboard(parseInt(limit));
-    
+
     res.json({
       success: true,
       data: leaderboard
@@ -374,7 +377,7 @@ router.get('/user/:userId/test', auth, async (req, res) => {
     console.log('- User ID from params:', userId);
     console.log('- Auth User ID:', req.user?.id);
     console.log('- Auth User Email:', req.user?.email);
-    
+
     res.json({
       success: true,
       data: {
@@ -399,9 +402,9 @@ router.get('/user/:userId/analytics', auth, async (req, res) => {
   try {
     const { userId } = req.params;
     const { days = 7 } = req.query; // Default to last 7 days
-    
+
     const analytics = await activePuzzleService.getUserAnalytics(userId, parseInt(days));
-    
+
     res.json({
       success: true,
       data: analytics
@@ -420,9 +423,9 @@ router.get('/user/:userId/analytics', auth, async (req, res) => {
 router.get('/leaderboard', async (req, res) => {
   try {
     const { limit = 10 } = req.query;
-    
+
     const leaderboard = await activePuzzleService.getLeaderboard(parseInt(limit));
-    
+
     res.json({
       success: true,
       data: leaderboard
@@ -441,9 +444,9 @@ router.get('/leaderboard', async (req, res) => {
 router.get('/daily-challenge', async (req, res) => {
   try {
     const { puzzleId } = req.query;
-    
+
     const dailyChallenge = await activePuzzleService.getDailyChallenge(puzzleId);
-    
+
     res.json({
       success: true,
       data: dailyChallenge
@@ -462,9 +465,9 @@ router.get('/daily-challenge', async (req, res) => {
 router.get('/daily-challenge/:puzzleId', async (req, res) => {
   try {
     const { puzzleId } = req.params;
-    
+
     const dailyChallenge = await activePuzzleService.getDailyChallenge(puzzleId);
-    
+
     res.json({
       success: true,
       data: dailyChallenge
@@ -483,9 +486,9 @@ router.get('/daily-challenge/:puzzleId', async (req, res) => {
 router.get('/daily-challenge-stats', async (req, res) => {
   try {
     const { challengeDate } = req.query;
-    
+
     const stats = await activePuzzleService.getDailyChallengeStats(challengeDate);
-    
+
     res.json({
       success: true,
       data: stats
@@ -504,9 +507,9 @@ router.get('/daily-challenge-stats', async (req, res) => {
 router.get('/leaderboard', async (req, res) => {
   try {
     const { limit = 10 } = req.query;
-    
+
     const leaderboard = await activePuzzleService.getLeaderboard(parseInt(limit));
-    
+
     res.json({
       success: true,
       data: leaderboard
@@ -525,9 +528,9 @@ router.get('/leaderboard', async (req, res) => {
 router.get('/daily-challenge', async (req, res) => {
   try {
     const { puzzleId } = req.query;
-    
+
     const dailyChallenge = await activePuzzleService.getDailyChallenge(puzzleId);
-    
+
     res.json({
       success: true,
       data: dailyChallenge
@@ -546,9 +549,9 @@ router.get('/daily-challenge', async (req, res) => {
 router.get('/daily-challenge/:puzzleId', async (req, res) => {
   try {
     const { puzzleId } = req.params;
-    
+
     const dailyChallenge = await activePuzzleService.getDailyChallenge(puzzleId);
-    
+
     res.json({
       success: true,
       data: dailyChallenge
@@ -567,9 +570,9 @@ router.get('/daily-challenge/:puzzleId', async (req, res) => {
 router.get('/daily-challenge-stats', async (req, res) => {
   try {
     const { challengeDate } = req.query;
-    
+
     const stats = await activePuzzleService.getDailyChallengeStats(challengeDate);
-    
+
     res.json({
       success: true,
       data: stats
@@ -588,16 +591,16 @@ router.get('/daily-challenge-stats', async (req, res) => {
 router.get('/:puzzleId', async (req, res) => {
   try {
     const { puzzleId } = req.params;
-    
+
     const puzzle = await activePuzzleService.getPuzzleById(puzzleId);
-    
+
     if (!puzzle) {
       return res.status(404).json({
         success: false,
         error: 'Puzzle not found'
       });
     }
-    
+
     res.json({
       success: true,
       data: puzzle

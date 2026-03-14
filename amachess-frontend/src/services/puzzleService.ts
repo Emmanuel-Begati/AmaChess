@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+// Empty base URL - AuthContext sets axios.defaults.baseURL to '/api'
+const API_BASE_URL = '';
 
 export interface Puzzle {
   id: string;
@@ -88,7 +89,7 @@ export interface PuzzleGameState {
 
 export class PuzzleGameTracker {
   private gameState: PuzzleGameState;
-  
+
   constructor(initialFEN: string, playerColor: 'white' | 'black') {
     this.gameState = {
       pgn: this.initializePGN(playerColor),
@@ -98,7 +99,7 @@ export class PuzzleGameTracker {
       playerColor
     };
   }
-  
+
   private initializePGN(playerColor: 'white' | 'black'): string {
     const date = new Date().toISOString().split('T')[0];
     return `[Event "AmaChess Training"]
@@ -111,21 +112,21 @@ export class PuzzleGameTracker {
 
 `;
   }
-  
+
   addMove(move: string, moveNumber: number, isWhiteMove: boolean): void {
     this.gameState.moveHistory.push(move);
-    
+
     // Update PGN with proper formatting
     if (isWhiteMove) {
       this.gameState.pgn += `${moveNumber}. ${move} `;
     } else {
       this.gameState.pgn += `${move} `;
     }
-    
+
     // Update game phase based on move count
     this.updateGamePhase();
   }
-  
+
   private updateGamePhase(): void {
     const moveCount = this.gameState.moveHistory.length;
     if (moveCount < 20) {
@@ -136,7 +137,7 @@ export class PuzzleGameTracker {
       this.gameState.gamePhase = 'endgame';
     }
   }
-  
+
   getGameContext(): GameContext {
     return {
       pgn: this.gameState.pgn.trim(),
@@ -146,7 +147,7 @@ export class PuzzleGameTracker {
       playerColor: this.gameState.playerColor
     };
   }
-  
+
   updatePosition(fen: string): void {
     this.gameState.currentFEN = fen;
   }
@@ -156,7 +157,7 @@ class PuzzleService {
   async getPuzzleById(puzzleId: string): Promise<Puzzle> {
     try {
       const response = await axios.get(`${API_BASE_URL}/puzzles/${puzzleId}`);
-      
+
       if (response.data.success) {
         return response.data.data;
       } else {
@@ -176,7 +177,7 @@ class PuzzleService {
   async getRandomPuzzle(filters?: PuzzleFilters, userId?: string): Promise<Puzzle> {
     try {
       const params = new URLSearchParams();
-      
+
       if (filters?.minRating) {
         params.append('minRating', filters.minRating.toString());
       }
@@ -192,9 +193,9 @@ class PuzzleService {
       if (userId) {
         params.append('userId', userId);
       }
-      
+
       const response = await axios.get(`${API_BASE_URL}/puzzles/random?${params.toString()}`);
-      
+
       if (response.data.success) {
         return response.data.data;
       } else {
@@ -214,11 +215,11 @@ class PuzzleService {
   async getPuzzlesByTheme(theme: string, limit: number = 10): Promise<Puzzle[]> {
     try {
       const response = await axios.get(`${API_BASE_URL}/puzzles/theme/${theme}?limit=${limit}`);
-      
+
       if (!response.data.success) {
         throw new Error(response.data.error || 'Failed to load puzzles');
       }
-      
+
       return response.data.data;
     } catch (error) {
       console.error('Error loading puzzles by theme:', error);
@@ -229,11 +230,11 @@ class PuzzleService {
   async getAvailableThemes(): Promise<string[]> {
     try {
       const response = await axios.get(`${API_BASE_URL}/puzzles/themes`);
-      
+
       if (!response.data.success) {
         throw new Error(response.data.error || 'Failed to load themes');
       }
-      
+
       return response.data.data;
     } catch (error) {
       console.error('Error loading puzzle themes:', error);
@@ -244,11 +245,11 @@ class PuzzleService {
   async getPuzzleStats() {
     try {
       const response = await axios.get(`${API_BASE_URL}/puzzles/stats`);
-      
+
       if (!response.data.success) {
         throw new Error(response.data.error || 'Failed to load puzzle stats');
       }
-      
+
       return response.data.data;
     } catch (error) {
       console.error('Error loading puzzle stats:', error);
@@ -259,11 +260,11 @@ class PuzzleService {
   async initializePuzzleDatabase() {
     try {
       const response = await axios.post(`${API_BASE_URL}/puzzles/initialize`);
-      
+
       if (!response.data.success) {
         throw new Error(response.data.error || 'Failed to initialize puzzle database');
       }
-      
+
       return response.data.data;
     } catch (error) {
       console.error('Error initializing puzzle database:', error);
@@ -280,11 +281,11 @@ class PuzzleService {
           'Authorization': `Bearer ${token}`
         }
       });
-      
+
       if (!response.data.success) {
         throw new Error(response.data.error || 'Failed to load user statistics');
       }
-      
+
       return response.data.data;
     } catch (error) {
       console.error('Error loading user statistics:', error);
@@ -307,11 +308,11 @@ class PuzzleService {
           'Content-Type': 'application/json'
         }
       });
-      
+
       if (!response.data.success) {
         throw new Error(response.data.error || 'Failed to update user statistics');
       }
-      
+
       return response.data.data;
     } catch (error) {
       console.error('Error updating user statistics:', error);
@@ -326,14 +327,14 @@ class PuzzleService {
       if (puzzleId) {
         params.append('puzzleId', puzzleId);
       }
-      
+
       const url = `${API_BASE_URL}/puzzles/daily-challenge${params.toString() ? '?' + params.toString() : ''}`;
       const response = await axios.get(url);
-      
+
       if (!response.data.success) {
         throw new Error(response.data.error || 'Failed to load daily challenge');
       }
-      
+
       return response.data.data;
     } catch (error) {
       console.error('Error loading daily challenge:', error);
@@ -345,13 +346,13 @@ class PuzzleService {
     try {
       const params = new URLSearchParams();
       if (date) params.append('date', date);
-      
+
       const response = await axios.get(`${API_BASE_URL}/puzzles/daily-challenge/stats?${params.toString()}`);
-      
+
       if (!response.data.success) {
         throw new Error(response.data.error || 'Failed to load daily challenge stats');
       }
-      
+
       return response.data.data;
     } catch (error) {
       console.error('Error loading daily challenge stats:', error);
@@ -362,11 +363,11 @@ class PuzzleService {
   async getLeaderboard(limit: number = 10): Promise<any[]> {
     try {
       const response = await axios.get(`${API_BASE_URL}/puzzles/leaderboard?limit=${limit}`);
-      
+
       if (!response.data.success) {
         throw new Error(response.data.error || 'Failed to load leaderboard');
       }
-      
+
       return response.data.data;
     } catch (error) {
       console.error('Error loading leaderboard:', error);
@@ -382,11 +383,11 @@ class PuzzleService {
           'Authorization': `Bearer ${token}`
         }
       });
-      
+
       if (!response.data.success) {
         throw new Error(response.data.error || 'Failed to load user analytics');
       }
-      
+
       return response.data.data;
     } catch (error) {
       console.error('Error loading user analytics:', error);
@@ -398,28 +399,28 @@ class PuzzleService {
   validateMove(userMove: string, expectedMoves: string[], moveIndex: number = 0): boolean {
     if (!expectedMoves || expectedMoves.length === 0) return false;
     if (moveIndex >= expectedMoves.length) return false;
-    
+
     const expectedMove = expectedMoves[moveIndex];
     if (!expectedMove) return false;
-    
+
     // Handle UCI format (e.g., "e2e4") or SAN format (e.g., "e4")
     const normalizedUserMove = this.normalizeMove(userMove);
     const normalizedExpectedMove = this.normalizeMove(expectedMove);
-    
+
     return normalizedUserMove === normalizedExpectedMove;
   }
 
   private normalizeMove(move: string): string {
     if (!move) return '';
-    
+
     // Remove check/checkmate symbols and extra characters
     let normalized = move.toLowerCase().replace(/[+#!?]/g, '');
-    
+
     // If it's UCI format (4 characters like "e2e4"), keep as is
     if (/^[a-h][1-8][a-h][1-8]$/.test(normalized)) {
       return normalized;
     }
-    
+
     // If it's SAN format, try to extract the source and destination squares
     // This is a simplified approach - for full accuracy, use chess.js
     return normalized;
@@ -444,7 +445,7 @@ class PuzzleService {
       'Advanced': { min: 1800, max: 2200 },
       'Expert': { min: 2200, max: 3000 }
     };
-    
+
     return ranges[difficulty as keyof typeof ranges] || { min: 0, max: 3000 };
   }
 

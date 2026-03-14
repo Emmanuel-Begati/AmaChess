@@ -226,7 +226,7 @@ const Dashboard = () => {
     <div className="min-h-screen w-full bg-gradient-to-b from-[#0a0f1c] via-[#111827] to-[#0a0f1c] text-white">
       <Header />
       
-      <main className="w-full">
+      <main className="w-full pt-16 sm:pt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Loading State */}
           {loading && (
@@ -243,29 +243,7 @@ const Dashboard = () => {
             </div>
           )}
 
-          {/* User Info Display */}
-          {user && (
-            <div className="mb-6 p-4 bg-blue-600/20 border border-blue-600/50 rounded-lg">
-              <p className="text-blue-400">
-                ✅ <strong>Authentication Status:</strong> Logged in as {user.email}
-              </p>
-              <p className="text-gray-400 text-sm mt-1">
-                User ID: {user.id} | Member since: {new Date(user.createdAt).toLocaleDateString()}
-              </p>
-            </div>
-          )}
 
-          {/* Stats Summary */}
-          {dashboardData && (
-            <div className="mb-6 p-4 bg-green-600/20 border border-green-600/50 rounded-lg">
-              <p className="text-green-400">
-                🔒 <strong>Protected Data Loaded:</strong> Welcome back! You have {dashboardData.stats?.gamesPlayed || 0} games played with a {dashboardData.stats?.winRate || 0}% win rate.
-              </p>
-              <p className="text-gray-400 text-sm mt-1">
-                Current Rating: {dashboardData.stats?.currentRating || 0} | Favorite Opening: {dashboardData.stats?.favoriteOpening || 'None'}
-              </p>
-            </div>
-          )}
           {/* Hero Section */}
           <div className="mb-12">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">

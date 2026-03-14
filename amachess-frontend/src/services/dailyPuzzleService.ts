@@ -4,27 +4,26 @@ class DailyPuzzleService {
   private dailyPuzzle: DailyChallenge | null = null;
   private loading: boolean = false;
   private error: string | null = null;
-  private lastFetchedPuzzleId: string | null = null;
+  private cachedDate: string | null = null;
 
-  // Check if we need to fetch new daily puzzle
-  private shouldFetch(puzzleId?: string): boolean {
-    if (!this.dailyPuzzle || !!this.error) {
+  // Check if we need to fetch new daily puzzle (only once per day)
+  private shouldFetch(): boolean {
+    const today = new Date().toISOString().split('T')[0];
+
+    // Fetch if no puzzle cached, if there's an error, or if date has changed
+    if (!this.dailyPuzzle || !!this.error || this.cachedDate !== today) {
       return true;
     }
-    
-    // If puzzle ID is provided, check if it's different from cached one
-    if (puzzleId) {
-      return this.lastFetchedPuzzleId !== puzzleId;
-    }
-    
-    // If no puzzle ID provided, always fetch (fallback behavior)
-    return true;
+
+    return false;
   }
 
   // Fetch daily puzzle from backend
   async getDailyPuzzle(puzzleId?: string): Promise<DailyChallenge> {
-    // Return cached puzzle if it's still valid for the requested puzzle ID
-    if (!this.shouldFetch(puzzleId) && this.dailyPuzzle) {
+    const today = new Date().toISOString().split('T')[0];
+
+    // Return cached puzzle if it's still valid for today
+    if (!this.shouldFetch() && this.dailyPuzzle) {
       return this.dailyPuzzle;
     }
 
@@ -34,7 +33,7 @@ class DailyPuzzleService {
       while (this.loading) {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
-      if (this.dailyPuzzle && this.lastFetchedPuzzleId === puzzleId) {
+      if (this.dailyPuzzle && this.cachedDate === today) {
         return this.dailyPuzzle;
       }
     }
@@ -45,7 +44,7 @@ class DailyPuzzleService {
     try {
       console.log('Fetching daily puzzle from backend...', puzzleId ? `with ID: ${puzzleId}` : 'without specific ID');
       const puzzle = await puzzleService.getDailyChallenge(puzzleId);
-      
+
       // Ensure the puzzle has all required fields
       if (!puzzle.fen) {
         throw new Error('Daily puzzle missing FEN position');
@@ -56,15 +55,15 @@ class DailyPuzzleService {
         isDailyChallenge: true,
         challengeDate: new Date().toISOString().split('T')[0]
       };
-      
-      this.lastFetchedPuzzleId = puzzleId || puzzle.id || null;
+
+      this.cachedDate = today;
       console.log('Daily puzzle fetched successfully:', this.dailyPuzzle);
-      
+
       return this.dailyPuzzle;
     } catch (error) {
       console.error('Failed to fetch daily puzzle:', error);
       this.error = error instanceof Error ? error.message : 'Failed to load daily puzzle';
-      
+
       // Return fallback puzzle if backend fails
       const today = new Date().toISOString().split('T')[0];
       const fallbackPuzzle: DailyChallenge = {
@@ -83,10 +82,10 @@ class DailyPuzzleService {
         isDailyChallenge: true,
         challengeDate: today
       };
-      
+
       this.dailyPuzzle = fallbackPuzzle;
-      this.lastFetchedPuzzleId = puzzleId || fallbackPuzzle.id || '';
-      
+      this.cachedDate = today;
+
       console.log('Using fallback daily puzzle:', this.dailyPuzzle);
       return this.dailyPuzzle;
     } finally {
@@ -110,11 +109,11 @@ class DailyPuzzleService {
   }
 
   // Force refresh daily puzzle
-  async refresh(puzzleId?: string): Promise<DailyChallenge> {
+  async refresh(): Promise<DailyChallenge> {
     this.dailyPuzzle = null;
-    this.lastFetchedPuzzleId = null;
+    this.cachedDate = null;
     this.error = null;
-    return this.getDailyPuzzle(puzzleId);
+    return this.getDailyPuzzle();
   }
 
   // Generate navigation URL for puzzle solver

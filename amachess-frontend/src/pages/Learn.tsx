@@ -256,7 +256,7 @@ ${game.moves}`;
     <div className="min-h-screen w-full bg-gradient-to-b from-[#0a0f1c] via-[#111827] to-[#0a0f1c] text-white">
       <Header />
       
-      <main className="w-full">
+      <main className="w-full pt-16 sm:pt-20">
         <div className="flex flex-1 justify-center py-3 sm:py-5 px-3 sm:px-6">
           <div className="flex flex-col lg:flex-row gap-3 lg:gap-6 max-w-7xl w-full">
             {/* Left Column - Game Library & Upload */}

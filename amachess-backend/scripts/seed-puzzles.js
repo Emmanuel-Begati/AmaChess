@@ -1,13 +1,19 @@
 const fs = require('fs');
 const path = require('path');
 const csv = require('csv-parser');
+
+// Load environment variables from .env file
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
+
 const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
 class PuzzleSeeder {
   constructor() {
-    this.csvPath = path.join(__dirname, '../utils/lichess_db_puzzle.csv');
+    // CSV file is in the backend root directory
+    this.csvPath = path.join(__dirname, '../lichess_db_puzzle.csv');
+    // Configure how many puzzles to import (default 50k for faster initial load)
     this.maxRows = parseInt(process.env.MAX_PUZZLES_TO_LOAD) || 50000;
     this.batchSize = 1000; // Insert in batches for better performance
   }
@@ -36,7 +42,7 @@ class PuzzleSeeder {
       await this.insertPuzzlesInBatches(puzzles);
 
       console.log('🎉 Puzzle seeding completed successfully!');
-      
+
       // Print some statistics
       await this.printStats();
 
@@ -63,7 +69,7 @@ class PuzzleSeeder {
             if (puzzle) {
               puzzles.push(puzzle);
               rowCount++;
-              
+
               // Log progress
               if (rowCount % 5000 === 0) {
                 console.log(`📥 Processed ${rowCount} puzzles...`);
@@ -93,6 +99,7 @@ class PuzzleSeeder {
     const rating = parseInt(row.Rating) || 1500;
     const moves = row.Moves ? row.Moves.split(' ').filter(move => move.trim()) : [];
     const themes = row.Themes ? row.Themes.split(' ').filter(theme => theme.trim()) : [];
+    const openingTags = row.OpeningTags ? row.OpeningTags.split(' ').filter(tag => tag.trim()) : [];
 
     // Skip puzzles with no moves or invalid data
     if (moves.length === 0) {
@@ -102,14 +109,14 @@ class PuzzleSeeder {
     return {
       lichessId: row.PuzzleId,
       fen: row.FEN,
-      moves: moves,
+      moves: JSON.stringify(moves),           // Store as JSON string for SQLite
       rating: rating,
       ratingDeviation: parseInt(row.RatingDeviation) || 0,
       popularity: parseInt(row.Popularity) || 0,
       nbPlays: parseInt(row.NbPlays) || 0,
-      themes: themes,
+      themes: JSON.stringify(themes),         // Store as JSON string for SQLite
       gameUrl: row.GameUrl || null,
-      openingTags: row.OpeningTags || null,
+      openingTags: JSON.stringify(openingTags), // Store as JSON string for SQLite
       sideToMove: this.getSideToMoveFromFEN(row.FEN),
       difficulty: this.getDifficultyFromRating(rating),
       description: this.generateDescription(themes, rating),
@@ -120,26 +127,20 @@ class PuzzleSeeder {
   async insertPuzzlesInBatches(puzzles) {
     console.log(`📦 Inserting ${puzzles.length} puzzles in batches of ${this.batchSize}...`);
 
-    // PostgreSQL-optimized batch insertion with transaction management
+    // SQLite-compatible batch insertion
     let insertedCount = 0;
     let errorCount = 0;
 
     for (let i = 0; i < puzzles.length; i += this.batchSize) {
       const batch = puzzles.slice(i, i + this.batchSize);
-      
+
       try {
-        // Use transaction for better performance and consistency
-        await prisma.$transaction(async (tx) => {
-          const result = await tx.puzzle.createMany({
-            data: batch,
-            skipDuplicates: true, // Skip puzzles that already exist
-          });
-          
-          insertedCount += result.count;
-        }, {
-          maxWait: 10000, // 10 seconds
-          timeout: 30000, // 30 seconds
+        // Use createMany without skipDuplicates (not supported in SQLite)
+        const result = await prisma.puzzle.createMany({
+          data: batch
         });
+
+        insertedCount += result.count;
 
         // Progress update
         const progress = Math.round((i + batch.length) / puzzles.length * 100);
@@ -148,31 +149,36 @@ class PuzzleSeeder {
       } catch (error) {
         errorCount += batch.length;
         console.error(`❌ Error inserting batch starting at index ${i}:`, error.message);
-        
+
         // Try to insert individually for this batch to identify problematic puzzles
-        await this.insertIndividually(batch);
+        const individualCount = await this.insertIndividually(batch);
+        insertedCount += individualCount;
       }
     }
 
     console.log(`✅ Batch insertion completed:`);
     console.log(`   Successfully inserted: ${insertedCount} puzzles`);
     console.log(`   Errors: ${errorCount} puzzles`);
-    
+
     return { inserted: insertedCount, errors: errorCount };
   }
 
   async insertIndividually(batch) {
     console.log(`🔧 Attempting individual insertion for ${batch.length} puzzles...`);
-    
+    let count = 0;
+
     for (const puzzle of batch) {
       try {
         await prisma.puzzle.create({
           data: puzzle
         });
+        count++;
       } catch (error) {
-        console.warn(`⚠️  Failed to insert puzzle ${puzzle.lichessId}: ${error.message}`);
+        // Silently skip duplicates and other errors during individual insertion
       }
     }
+    console.log(`   Inserted ${count} puzzles individually`);
+    return count;
   }
 
   getSideToMoveFromFEN(fen) {
@@ -216,7 +222,7 @@ class PuzzleSeeder {
 
   async printStats() {
     console.log('\\n📊 PUZZLE DATABASE STATISTICS:');
-    
+
     const totalPuzzles = await prisma.puzzle.count();
     console.log(`Total puzzles: ${totalPuzzles.toLocaleString()}`);
 
@@ -257,7 +263,7 @@ class PuzzleSeeder {
     });
 
     const topThemes = Object.entries(themeCount)
-      .sort(([,a], [,b]) => b - a)
+      .sort(([, a], [, b]) => b - a)
       .slice(0, 10);
 
     console.log('\\nTop 10 themes (from sample):');
@@ -272,7 +278,7 @@ class PuzzleSeeder {
 // Run the seeder if called directly
 async function main() {
   const seeder = new PuzzleSeeder();
-  
+
   try {
     await seeder.seedPuzzles();
   } catch (error) {

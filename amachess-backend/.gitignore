@@ -20,3 +20,7 @@ stockfish/
 
 utils/
 __pycache__
+
+# Large data files
+*.csv
+lichess_db_puzzle.csv

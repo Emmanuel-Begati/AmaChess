@@ -28,7 +28,7 @@ const ContactUs = () => {
     <div className="min-h-screen w-full bg-gradient-to-b from-[#111822] via-[#0f1419] to-[#111822] text-white">
       <Header />
       
-      <main className="w-full">
+      <main className="w-full pt-16 sm:pt-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           {/* Header Section */}
           <div className="text-center mb-12">
