@@ -15,18 +15,41 @@ model User {
   lichessUsername String?
   country         String?
   fideRating      String?
+  chessGoal       String?  // Optional improvement goal, e.g., "Reach 1600"
+  focusAreas      String?  // JSON array of areas to focus on, e.g., ["endgame", "tactics"]
+  targetRating    Int?     // Numeric target rating
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   
   // Relationships
-  books           Book[]
-  puzzleAttempts  PuzzleAttempt[]
-  puzzleSessions  PuzzleSession[]
-  userStats       UserStats?
-  games           Game[]
-  chatSessions    ChatSession[]
+  books              Book[]
+  puzzleAttempts     PuzzleAttempt[]
+  puzzleSessions     PuzzleSession[]
+  userStats          UserStats?
+  games              Game[]
+  chatSessions       ChatSession[]
+  coachingSnapshots  CoachingSnapshot[]
 
   @@map("users")
+}
+
+model CoachingSnapshot {
+  id             String   @id @default(cuid())
+  userId         String
+  winRate        Float
+  averageRating  Int
+  totalBlunders  Int
+  totalMistakes  Int
+  accuracy       Float?
+  gamesAnalyzed  Int
+  insightText    String
+  themes         String   // JSON string of recommended themes
+  createdAt      DateTime @default(now())
+  
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("coaching_snapshots")
+  @@index([userId, createdAt])
 }
 
 model Book {

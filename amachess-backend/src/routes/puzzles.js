@@ -258,6 +258,35 @@ router.get('/user/:userId/stats', auth, async (req, res) => {
   }
 });
 
+// Check if a user has solved a specific puzzle
+router.get('/user/:userId/puzzle-status/:puzzleId', auth, async (req, res) => {
+  try {
+    const { userId, puzzleId } = req.params;
+    
+    // Check for a solved attempt
+    const prisma = require('../config/database');
+    const previousSolvedAttempt = await prisma.puzzleAttempt.findFirst({
+      where: {
+        userId,
+        puzzleId,
+        isSolved: true
+      }
+    });
+
+    res.json({
+      success: true,
+      isSolved: !!previousSolvedAttempt
+    });
+  } catch (error) {
+    console.error('Error checking puzzle solved status:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to check puzzle status',
+      message: error.message
+    });
+  }
+});
+
 // Update user statistics after puzzle completion
 router.post('/user/:userId/stats/update', auth, async (req, res) => {
   try {

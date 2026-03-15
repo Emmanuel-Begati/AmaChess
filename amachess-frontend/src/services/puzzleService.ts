@@ -293,6 +293,26 @@ class PuzzleService {
     }
   }
 
+  async checkPuzzleSolvedStatus(userId: string, puzzleId: string): Promise<boolean> {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await axios.get(`${API_BASE_URL}/puzzles/user/${userId}/puzzle-status/${puzzleId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to check puzzle status');
+      }
+
+      return response.data.isSolved;
+    } catch (error) {
+      console.error('Error checking puzzle status:', error);
+      return false; // Safely default to false on error
+    }
+  }
+
   async updateUserStats(userId: string, puzzleData: Puzzle, isCorrect: boolean, timeSpent: number, hintsUsed: number = 0, solutionShown: boolean = false): Promise<UserPuzzleStats> {
     try {
       const token = localStorage.getItem('authToken');

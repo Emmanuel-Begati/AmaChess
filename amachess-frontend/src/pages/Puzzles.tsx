@@ -18,6 +18,7 @@ const Puzzles = () => {
   // New state for user statistics and daily challenge
   const [userStats, setUserStats] = useState<UserPuzzleStats | null>(null);
   const [dailyChallenge, setDailyChallenge] = useState<DailyChallenge | null>(null);
+  const [isDailyChallengeSolved, setIsDailyChallengeSolved] = useState<boolean>(false);
   const [dailyChallengeStats, setDailyChallengeStats] = useState<DailyChallengeStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState<string | null>(null);
@@ -59,6 +60,14 @@ const Puzzles = () => {
           // Load daily challenge statistics
           const challengeStats = await puzzleService.getDailyChallengeStats();
           setDailyChallengeStats(challengeStats);
+          
+          // Check if this specific user has solved the daily challenge
+          if (isAuthenticated && user?.id && challenge?.id) {
+            const isSolved = await puzzleService.checkPuzzleSolvedStatus(user.id, challenge.id);
+            setIsDailyChallengeSolved(isSolved);
+          } else {
+            setIsDailyChallengeSolved(false); // Reset if not auth'd or no challenge
+          }
         } catch (error) {
           console.error('Failed to load daily challenge:', error);
         }
@@ -728,9 +737,13 @@ const Puzzles = () => {
                     <p className="text-[#97a1c4] text-sm xs:text-base mb-3 xs:mb-4 leading-relaxed">{dailyChallenge?.description || 'Loading puzzle description...'}</p>
                     <button
                       onClick={() => navigate(dailyPuzzleService.getPuzzleSolverUrl(dailyChallenge || undefined))}
-                      className="w-full py-3 bg-gradient-to-r from-[#115fd4] to-[#4a90e2] text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-[#115fd4]/25 transition-all duration-300"
+                      className={`w-full py-3 text-white font-semibold rounded-xl hover:shadow-lg transition-all duration-300 ${
+                        isDailyChallengeSolved
+                          ? 'bg-gradient-to-r from-green-600 to-green-500 hover:shadow-green-500/25'
+                          : 'bg-gradient-to-r from-[#115fd4] to-[#4a90e2] hover:shadow-[#115fd4]/25'
+                      }`}
                     >
-                      🎯 Take Daily Challenge
+                      {isDailyChallengeSolved ? '✓ Solved (Play Again)' : '🎯 Take Daily Challenge'}
                     </button>
                     <p className="text-center text-gray-400 text-sm">
                       Solve today's featured puzzle and continue with more!

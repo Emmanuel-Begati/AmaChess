@@ -260,6 +260,40 @@ class DatabasePuzzleService {
     }
   }
 
+  // Daily Challenge methods
+  async getDailyChallenge(puzzleId = null) {
+    await this.initialize();
+    try {
+      if (puzzleId) {
+        return await this.getPuzzleById(puzzleId);
+      }
+      
+      // Get a random puzzle for the daily challenge if no ID is provided
+      // In a real app, this would be seeded by date so everyone gets the same one
+      return await this.getRandomPuzzle({ difficulty: 'Intermediate' });
+    } catch (error) {
+      console.error('Error getting daily challenge:', error);
+      throw error;
+    }
+  }
+
+  async getDailyChallengeStats(date = null) {
+    await this.initialize();
+    try {
+      // Mock stats for now
+      return {
+        totalAttempts: 1542,
+        successfulAttempts: 890,
+        averageTime: 45, // seconds
+        averageAttempts: 1.5,
+        completionRate: 57.7
+      };
+    } catch (error) {
+      console.error('Error getting daily challenge stats:', error);
+      throw error;
+    }
+  }
+
   // User progress tracking methods
   async recordPuzzleAttempt(userId, puzzleId, attemptData) {
     await this.initialize();
@@ -591,22 +625,39 @@ class DatabasePuzzleService {
     try {
       console.log(`📊 Processing puzzle attempt for user ${userId}: puzzle ${puzzleData.id}, correct: ${isCorrect}, first attempt: ${isFirstAttempt}`);
       
+      // Check if user has already solved this puzzle
+      const previousSolvedAttempt = await prisma.puzzleAttempt.findFirst({
+        where: {
+          userId,
+          puzzleId: puzzleData.id,
+          isSolved: true
+        }
+      });
+
+      const hasAlreadySolved = !!previousSolvedAttempt;
+      if (hasAlreadySolved) {
+        console.log(`ℹ️ User ${userId} has already solved puzzle ${puzzleData.id}. Skipping rating updates.`);
+      }
+
       // Get current user stats
       const userStats = await this.getUserStats(userId);
       const puzzleRating = puzzleData.rating || 1500;
       
-      // Calculate ELO rating change using enhanced system
-      const ratingChange = this.calculateEloRatingChange(
-        userStats.currentPuzzleRating,
-        puzzleRating,
-        isCorrect,
-        userStats,
-        isFirstAttempt
-      );
-      
-      const newRating = Math.max(600, userStats.currentPuzzleRating + ratingChange); // Minimum rating of 600
-      
-      console.log(`🎯 ELO Rating Update: ${userStats.currentPuzzleRating} + ${ratingChange} = ${newRating}`);
+      // Calculate ELO rating change using enhanced system only if not previously solved
+      let ratingChange = 0;
+      let newRating = userStats.currentPuzzleRating;
+
+      if (!hasAlreadySolved) {
+        ratingChange = this.calculateEloRatingChange(
+          userStats.currentPuzzleRating,
+          puzzleRating,
+          isCorrect,
+          userStats,
+          isFirstAttempt
+        );
+        newRating = Math.max(600, userStats.currentPuzzleRating + ratingChange); // Minimum rating of 600
+        console.log(`🎯 ELO Rating Update: ${userStats.currentPuzzleRating} + ${ratingChange} = ${newRating}`);
+      }
       
       // Save puzzle attempt to database
       const puzzleAttempt = await prisma.puzzleAttempt.create({
@@ -627,22 +678,26 @@ class DatabasePuzzleService {
       console.log(`💾 Saved puzzle attempt: ${puzzleAttempt.id}`);
       
       // Calculate updated statistics
-      const newTotalSolved = userStats.totalPuzzlesSolved + (isCorrect ? 1 : 0);
+      let newTotalSolved = userStats.totalPuzzlesSolved;
+      let newCurrentStreak = userStats.currentStreak;
       
-      // Streak logic: Reset to 0 on incorrect first attempt, increment on correct solve
-      let newCurrentStreak;
-      if (isCorrect) {
-        newCurrentStreak = userStats.currentStreak + 1;
-        console.log(`🔥 Streak continued: ${userStats.currentStreak} → ${newCurrentStreak}`);
-      } else if (isFirstAttempt) {
-        newCurrentStreak = 0;
-        console.log(`💔 Streak reset due to incorrect first attempt: ${userStats.currentStreak} → 0`);
-      } else {
-        // Keep current streak if it's not the first attempt (user can retry)
-        newCurrentStreak = userStats.currentStreak;
-        console.log(`🔄 Streak maintained on retry: ${newCurrentStreak}`);
+      if (!hasAlreadySolved) {
+        newTotalSolved = userStats.totalPuzzlesSolved + (isCorrect ? 1 : 0);
+        
+        // Streak logic: Reset to 0 on incorrect first attempt, increment on correct solve
+        if (isCorrect) {
+          newCurrentStreak = userStats.currentStreak + 1;
+          console.log(`🔥 Streak continued: ${userStats.currentStreak} → ${newCurrentStreak}`);
+        } else if (isFirstAttempt) {
+          newCurrentStreak = 0;
+          console.log(`💔 Streak reset due to incorrect first attempt: ${userStats.currentStreak} → 0`);
+        } else {
+          // Keep current streak if it's not the first attempt (user can retry)
+          newCurrentStreak = userStats.currentStreak;
+          console.log(`🔄 Streak maintained on retry: ${newCurrentStreak}`);
+        }
       }
-      
+
       const newBestStreak = Math.max(userStats.bestStreak, newCurrentStreak);
       const newTotalTime = userStats.totalTimeSpent + Math.round(timeSpent);
       
@@ -676,7 +731,7 @@ class DatabasePuzzleService {
         ratingChange: ratingChange,
         attemptId: puzzleAttempt.id,
         wasFirstAttempt: isFirstAttempt,
-        streakReset: isFirstAttempt && !isCorrect
+        streakReset: !hasAlreadySolved && isFirstAttempt && !isCorrect
       };
     } catch (error) {
       console.error('❌ Error updating user stats after puzzle attempt:', error);

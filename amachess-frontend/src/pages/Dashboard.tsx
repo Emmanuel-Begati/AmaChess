@@ -4,6 +4,7 @@ import Header from '../components/ui/Header';
 import Footer from '../components/ui/Footer';
 import ChessGame from '../components/chess/ChessGame';
 import DashboardInsights from '../components/dashboard/DashboardInsights';
+import CoachingGoals from '../components/dashboard/CoachingGoals';
 import { useAuth } from '../contexts/AuthContext';
 import { puzzleService } from '../services/puzzleService';
 import { dailyPuzzleService } from '../services/dailyPuzzleService';
@@ -20,6 +21,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [dailyPuzzle, setDailyPuzzle] = useState<any>(null);
   const [dailyPuzzleLoading, setDailyPuzzleLoading] = useState(true);
+  const [isDailyChallengeSolved, setIsDailyChallengeSolved] = useState<boolean>(false);
 
   const currentDate = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
@@ -102,9 +104,15 @@ const Dashboard = () => {
     const loadDailyPuzzle = async () => {
       try {
         setDailyPuzzleLoading(true);
-        const puzzleId = 'lichess-01av5';
-        const puzzle = await dailyPuzzleService.getDailyPuzzle(puzzleId);
+        const puzzle = await dailyPuzzleService.getDailyPuzzle();
         setDailyPuzzle(puzzle);
+
+        if (user?.id && puzzle?.id) {
+          const isSolved = await puzzleService.checkPuzzleSolvedStatus(user.id, puzzle.id);
+          setIsDailyChallengeSolved(isSolved);
+        } else {
+          setIsDailyChallengeSolved(false);
+        }
       } catch (error) {
         console.error('Failed to load daily puzzle:', error);
       } finally {
@@ -212,9 +220,10 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* AI Coaching Insights */}
+          {/* AI Coaching Insights & Goals */}
           {user?.lichessUsername && user.lichessUsername.trim().length > 0 && (
-            <div className="mb-10">
+            <div className="mb-10 space-y-6">
+              <CoachingGoals />
               <DashboardInsights />
             </div>
           )}
@@ -255,10 +264,14 @@ const Dashboard = () => {
               </div>
               <button 
                 onClick={() => navigate(dailyPuzzleService.getPuzzleSolverUrl(dailyPuzzle || undefined))}
-                className="w-full py-3 bg-gradient-to-r from-[#115fd4] to-[#4a90e2] text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-[#115fd4]/25 transition-all duration-300"
+                className={`w-full py-3 text-white font-semibold rounded-xl hover:shadow-lg transition-all duration-300 ${
+                  isDailyChallengeSolved 
+                    ? 'bg-gradient-to-r from-green-600 to-green-500 hover:shadow-green-500/25' 
+                    : 'bg-gradient-to-r from-[#115fd4] to-[#4a90e2] hover:shadow-[#115fd4]/25'
+                }`}
                 disabled={dailyPuzzleLoading}
               >
-                🎯 Take Daily Challenge
+                {isDailyChallengeSolved ? '✓ Solved (Play Again)' : '🎯 Take Daily Challenge'}
               </button>
             </div>
 

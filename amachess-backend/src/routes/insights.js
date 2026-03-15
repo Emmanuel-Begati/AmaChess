@@ -14,10 +14,9 @@ const insightsService = new InsightsService();
  */
 router.get('/dashboard', authenticateToken, async (req, res) => {
   try {
-    // Get the user's Lichess username from the database
+    // Get the user's Lichess username and coaching goals from the database
     const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
-      select: { lichessUsername: true }
+      where: { id: req.user.id }
     });
 
     if (!user?.lichessUsername) {
@@ -31,7 +30,7 @@ router.get('/dashboard', authenticateToken, async (req, res) => {
     const forceRefresh = req.query.refresh === 'true';
 
     const result = await insightsService.generateDashboardInsights(
-      user.lichessUsername,
+      user,
       forceRefresh
     );
 

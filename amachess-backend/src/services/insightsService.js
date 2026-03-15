@@ -1,5 +1,8 @@
 const Groq = require('groq-sdk');
 const LichessService = require('./lichessService');
+const { PrismaClient } = require('@prisma/client');
+
+const prisma = new PrismaClient();
 
 class InsightsService {
   constructor() {
@@ -151,8 +154,10 @@ class InsightsService {
   //  PUBLIC: Generate dashboard insights
   // ──────────────────────────────────────────────────────────────────────────
 
-  async generateDashboardInsights(lichessUsername, forceRefresh = false) {
+  async generateDashboardInsights(user, forceRefresh = false) {
+    const lichessUsername = user.lichessUsername;
     const cacheKey = `insights_${lichessUsername.toLowerCase()}`;
+    
     if (!forceRefresh) {
       const cached = this.insightsCache.get(cacheKey);
       if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
@@ -164,8 +169,14 @@ class InsightsService {
     console.log(`🔍 Generating dashboard insights for: ${lichessUsername}`);
     const startTime = Date.now();
 
-    // Step 1: Fetch the last 10 games (with evals, clocks, accuracy, openings)
-    const games = await this.lichessService.getUserGames(lichessUsername, 10);
+    // Fetch the last snapshot for historical comparison
+    const lastSnapshot = await prisma.coachingSnapshot.findFirst({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Step 1: Fetch the last 25 games (with evals, clocks, accuracy, openings)
+    const games = await this.lichessService.getUserGames(lichessUsername, 25);
 
     if (!games || games.length === 0) {
       return {
@@ -180,14 +191,26 @@ class InsightsService {
       };
     }
 
-    // Step 2: Compute accurate stats directly from raw game data
+    // Process all 25 games for stats, opponent patterns, and phase analysis
     const stats = this._computeStatsFromGames(games, lichessUsername);
+    const opponentPatterns = this._analyzeOpponentPatterns(games, lichessUsername);
+    const gamePhases = this._analyzeGamePhases(games, lichessUsername);
 
-    // Step 3: Build per-game detail for the LLM prompt
-    const perGameDetails = this._buildPerGameDetails(games, lichessUsername);
+    // Build per-game detail for the LLM prompt (only most recent 10 to save tokens)
+    const recentGamesForPrompt = games.slice(0, 10);
+    const perGameDetails = this._buildPerGameDetails(recentGamesForPrompt, lichessUsername);
 
-    // Step 4: Build the LLM summary combining stats + per-game details
-    const summary = { ...stats, recentResults: perGameDetails };
+    // Step 4: Build the LLM summary combining stats + patterns + per-game details
+    const summary = { 
+      ...stats, 
+      recentResults: perGameDetails,
+      opponentPatterns,
+      gamePhases,
+      playerGoals: user.chessGoal || null,
+      focusAreas: user.focusAreas ? JSON.parse(user.focusAreas) : null,
+      targetRating: user.targetRating || null,
+      historicalProgress: this._computeHistoricalProgress(stats, lastSnapshot)
+    };
 
     // Step 5: Generate coaching insight + puzzle theme recommendations in parallel
     const [insight, recommendedThemes] = await Promise.all([
@@ -199,11 +222,31 @@ class InsightsService {
       insight,
       analysis: stats,
       recommendedThemes,
+      historicalProgress: summary.historicalProgress,
       gamesAnalyzed: games.length,
       generatedAt: new Date().toISOString(),
       generationTimeMs: Date.now() - startTime,
       cached: false
     };
+
+    // Step 6: Save the new snapshot to the database
+    try {
+      await prisma.coachingSnapshot.create({
+        data: {
+          userId: user.id,
+          winRate: stats.winRate,
+          averageRating: stats.averageRating,
+          totalBlunders: stats.totalBlunders,
+          totalMistakes: stats.totalMistakes,
+          accuracy: stats.overallAccuracy,
+          gamesAnalyzed: games.length,
+          insightText: insight.message,
+          themes: JSON.stringify(recommendedThemes || [])
+        }
+      });
+    } catch (dbError) {
+      console.error('Failed to save coaching snapshot:', dbError.message);
+    }
 
     // Cache the result
     this.insightsCache.set(cacheKey, {
@@ -216,6 +259,24 @@ class InsightsService {
   }
 
   /**
+   * Compare current stats to the last snapshot to see improvement.
+   */
+  _computeHistoricalProgress(currentStats, lastSnapshot) {
+    if (!lastSnapshot) return null;
+
+    return {
+      winRateDelta: currentStats.winRate - lastSnapshot.winRate,
+      ratingDelta: currentStats.averageRating - lastSnapshot.averageRating,
+      blunderDelta: currentStats.totalBlunders - lastSnapshot.totalBlunders,
+      mistakeDelta: currentStats.totalMistakes - lastSnapshot.totalMistakes,
+      accuracyDelta: (currentStats.overallAccuracy !== null && lastSnapshot.accuracy !== null) 
+        ? currentStats.overallAccuracy - lastSnapshot.accuracy 
+        : null,
+      daysSinceLastInsight: Math.round((Date.now() - lastSnapshot.createdAt.getTime()) / (1000 * 60 * 60 * 24))
+    };
+  }
+
+  /**
    * Build per-game detail array for the LLM prompt, including critical moments.
    */
   _buildPerGameDetails(games, username) {
@@ -225,6 +286,8 @@ class InsightsService {
       const result = !game.winner ? 'Draw' : (game.winner === userColor ? 'Win' : 'Loss');
       const accuracy = game.accuracy?.[userColor];
       const ratingDiff = game.players[userColor]?.ratingDiff || 0;
+      const opponentData = game.players[opponentColor]?.user;
+      const opponentName = opponentData ? (opponentData.name || opponentData.id || '?') : '?';
       const opponentRating = game.players[opponentColor]?.rating || '?';
       const opening = game.opening?.name || 'Unknown';
       const timeControl = game.speed || 'unknown';
@@ -240,6 +303,7 @@ class InsightsService {
         result,
         accuracy: typeof accuracy === 'number' ? `${Math.round(accuracy)}%` : 'N/A',
         ratingChange: ratingDiff > 0 ? `+${ratingDiff}` : `${ratingDiff}`,
+        opponentName,
         opponentRating,
         opening,
         timeControl,
@@ -321,7 +385,7 @@ class InsightsService {
     let timePressureBlunders = 0;
     let totalBlunderMoments = 0;
 
-    recentResults.forEach((game, gameIdx) => {
+    recentResults.forEach(game => {
       if (!game.criticalMoments || game.criticalMoments.length === 0) return;
       game.criticalMoments.forEach(m => {
         phaseCounts[m.phase]++;
@@ -330,7 +394,8 @@ class InsightsService {
 
         const bestInfo = m.bestMove ? ` (engine suggests ${m.bestMove})` : '';
         const timeInfo = m.timePressure ? ' [TIME PRESSURE]' : '';
-        allMoments.push(`  Game ${gameIdx + 1}, move ${m.moveNumber} (${m.phase}): ${m.severity} — played ${m.movePlayed}${bestInfo}${timeInfo}`);
+        const oppName = game.opponentName !== '?' ? game.opponentName : 'Opponent';
+        allMoments.push(`  Game vs ${oppName}, move ${m.moveNumber} (${m.phase}): ${m.severity} — played ${m.movePlayed}${bestInfo}${timeInfo}`);
       });
     });
 
@@ -349,6 +414,105 @@ class InsightsService {
 ${allMoments.join('\n')}
 
 Patterns detected: ${patterns.join('. ') || 'No strong patterns detected.'}`;
+  }
+
+  /**
+   * Analyze opponent rating differences and time control win rates.
+   */
+  _analyzeOpponentPatterns(games, username) {
+    let vsHigherWins = 0, vsHigherTotal = 0;
+    let vsLowerWins = 0, vsLowerTotal = 0;
+    
+    // Time control tracking { wins, total }
+    const timeControls = {
+      bullet: { wins: 0, total: 0 },
+      blitz: { wins: 0, total: 0 },
+      rapid: { wins: 0, total: 0 },
+      classical: { wins: 0, total: 0 }
+    };
+
+    games.forEach(game => {
+      const uColor = this._getUserColor(game, username);
+      const oColor = uColor === 'white' ? 'black' : 'white';
+      
+      const uRating = game.players[uColor]?.rating || 0;
+      const oRating = game.players[oColor]?.rating || 0;
+      const isWin = game.winner === uColor;
+      
+      if (uRating > 0 && oRating > 0) {
+        if (oRating > uRating) {
+          vsHigherTotal++;
+          if (isWin) vsHigherWins++;
+        } else {
+          vsLowerTotal++;
+          if (isWin) vsLowerWins++;
+        }
+      }
+
+      const tc = game.perf || game.speed;
+      if (timeControls[tc]) {
+        timeControls[tc].total++;
+        if (isWin) timeControls[tc].wins++;
+      }
+    });
+
+    const vsHigherRate = vsHigherTotal > 0 ? Math.round((vsHigherWins / vsHigherTotal) * 100) : null;
+    const vsLowerRate = vsLowerTotal > 0 ? Math.round((vsLowerWins / vsLowerTotal) * 100) : null;
+
+    // Find best and worst time controls
+    const tcStats = Object.entries(timeControls).filter(([_, data]) => data.total > 2).map(([name, data]) => ({
+      name,
+      winRate: Math.round((data.wins / data.total) * 100),
+      total: data.total
+    })).sort((a, b) => b.winRate - a.winRate);
+
+    return {
+      vsHigherRate,
+      vsHigherTotal,
+      vsLowerRate,
+      vsLowerTotal,
+      bestTimeControl: tcStats.length > 0 ? tcStats[0] : null,
+      worstTimeControl: tcStats.length > 1 ? tcStats[tcStats.length - 1] : null
+    };
+  }
+
+  /**
+   * Determine which game phase costs the player the most evaluation.
+   */
+  _analyzeGamePhases(games, username) {
+    const phaseDrops = { opening: 0, middlegame: 0, endgame: 0 };
+    const phaseBlunders = { opening: 0, middlegame: 0, endgame: 0 };
+    let gamesAnalyzed = 0;
+
+    games.forEach(game => {
+      if (!Array.isArray(game.analysis)) return;
+      gamesAnalyzed++;
+
+      const uColor = this._getUserColor(game, username);
+      
+      game.analysis.forEach((move, i) => {
+        const moveColor = i % 2 === 0 ? 'white' : 'black';
+        if (moveColor !== uColor || !move.judgment) return;
+
+        const moveNumber = Math.floor(i / 2) + 1;
+        let phase = moveNumber <= 10 ? 'opening' : (moveNumber <= 30 ? 'middlegame' : 'endgame');
+
+        if (move.judgment.name === 'Blunder') {
+          phaseBlunders[phase]++;
+          // Estimate eval drop based on "Mate" or numerical eval diff
+        } else if (move.judgment.name === 'Mistake') {
+          phaseDrops[phase]++; 
+        }
+      });
+    });
+
+    if (gamesAnalyzed === 0) return null;
+
+    return {
+      blundersByPhase: phaseBlunders,
+      mistakesByPhase: phaseDrops,
+      criticalPhase: Object.keys(phaseBlunders).reduce((a, b) => phaseBlunders[a] > phaseBlunders[b] ? a : b)
+    };
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -487,6 +651,9 @@ YOUR COACHING STYLE
 - You are speaking directly to YOUR student. Be warm, personal, and encouraging.
 - NEVER call the student by their tier label (e.g., "Club Player", "Candidate Master", "Novice", "Intermediate"). Those labels are for YOUR internal reference only — the student should never see them. Just speak naturally to them as a coach would.
 - Reference their SPECIFIC data — actual blunder counts, win rates, rating changes, critical moment details.
+- If the student has provided personal GOALS (e.g., "Reach 1600" or focusing on Endgames), tailor your advice to help them reach that goal.
+- If there is HISTORICAL PROGRESS data showing improvement (e.g., fewer blunders than last time), celebrate it!
+- Use their GAME PHASE and OPPONENT PATTERN data to give highly specific advice (e.g., "You're losing 60% of your points in the opening against higher-rated players").
 - Identify their ONE biggest strength (be genuine, find something positive in their data).
 - Identify the ONE thing that will improve their rating the most RIGHT NOW based on their tier.
 - Give ONE concrete, actionable recommendation they can start TODAY (e.g., "solve 15 puzzles focusing on pins before your next game").
@@ -496,6 +663,31 @@ YOUR COACHING STYLE
 - End with genuine encouragement tied to their data (e.g., "that +34 rating climb shows real progress").
 - NEVER make openings the primary topic for players under 1800 unless the data strongly warrants it.`;
 
+      // Format deep analytical data if available
+      const goalStr = summary.playerGoals ? `\nSTUDENT'S GOALS:\nMain Goal: "${summary.playerGoals}"\nFocus Areas: ${summary.focusAreas ? summary.focusAreas.join(', ') : 'None specified'}\nTarget Rating: ${summary.targetRating || 'None'}\n` : '';
+      
+      let historyStr = '';
+      if (summary.historicalProgress) {
+        const hp = summary.historicalProgress;
+        historyStr = `\nHISTORICAL PROGRESS (since last coaching session ${hp.daysSinceLastInsight} days ago):\nWin Rate Change: ${hp.winRateDelta > 0 ? '+' : ''}${hp.winRateDelta.toFixed(1)}%\nRating Change: ${hp.ratingDelta > 0 ? '+' : ''}${hp.ratingDelta}\nBlunder Change: ${hp.blunderDelta > 0 ? '+' : ''}${hp.blunderDelta} blunders\n`;
+      }
+
+      let patternStr = '';
+      if (summary.opponentPatterns) {
+        const op = summary.opponentPatterns;
+        patternStr += `\nOPPONENT PATTERNS:\n`;
+        if (op.vsHigherRate !== null) patternStr += `- Win rate vs higher rated: ${op.vsHigherRate}%\n`;
+        if (op.vsLowerRate !== null) patternStr += `- Win rate vs lower rated: ${op.vsLowerRate}%\n`;
+        if (op.bestTimeControl) patternStr += `- Best time control: ${op.bestTimeControl.name} (${op.bestTimeControl.winRate}% win rate)\n`;
+      }
+
+      if (summary.gamePhases && summary.gamePhases.criticalPhase) {
+        const gp = summary.gamePhases;
+        patternStr += `\nGAME PHASE ANALYSIS:\n`;
+        patternStr += `- Most blunders occur in the: ${gp.criticalPhase.toUpperCase()}\n`;
+        patternStr += `- Blunder breakdown: ${gp.blundersByPhase.opening} in opening, ${gp.blundersByPhase.middlegame} in middlegame, ${gp.blundersByPhase.endgame} in endgame.\n`;
+      }
+
       const userPrompt = `PLAYER PROFILE:
 Rating: ${summary.averageRating} (${playerTier})
 Games Analyzed: ${summary.gamesAnalyzed}
@@ -504,9 +696,9 @@ ${accuracyLine}
 Net Rating Change: ${summary.ratingProgress > 0 ? '+' : ''}${summary.ratingProgress}
 ${blunderLine}
 Most Played Openings: ${summary.topOpenings.map(o => `${o.name} (${o.games} games, ${o.winRate}% win rate)`).join(', ') || 'Varied'}
-
+${goalStr}${historyStr}${patternStr}
 GAME-BY-GAME BREAKDOWN (newest first):
-${summary.recentResults.map((r, i) => `Game ${i + 1}: ${r.result} | Accuracy: ${r.accuracy} | Rating: ${r.ratingChange} | vs ${r.opponentRating} | ${r.opening} | ${r.timeControl} | ${r.totalMoves} moves`).join('\n')}
+${summary.recentResults.map(r => `Game vs ${r.opponentName !== '?' ? r.opponentName : 'Opponent'} (Rating: ${r.opponentRating}): ${r.result} | Accuracy: ${r.accuracy} | Rating ∆: ${r.ratingChange} | ${r.opening} | ${r.timeControl} | ${r.totalMoves} moves`).join('\n')}
 
 ${this._buildCriticalMomentsSection(summary.recentResults)}
 Based on ALL of the above data and the coaching principles for this player's rating tier, provide your personalized coaching insight.`;

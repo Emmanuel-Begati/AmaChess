@@ -23,6 +23,7 @@ const coachRoutes = require('./routes/coach'); // AI chess coach routes
 const gamesRoutes = require('./routes/games'); // Game storage routes
 const chatRoutes = require('./routes/chat'); // AI chat routes
 const insightsRoutes = require('./routes/insights'); // AI dashboard insights routes
+const goalsRoutes = require('./routes/goals'); // User improvement goals routes
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -49,6 +50,7 @@ app.use(express.static(frontendBuildPath));
 // Authentication & User Management
 app.use('/api/auth', authRoutes);                    // Login, Register, Logout
 app.use('/api/user', protectedRoutes);               // User dashboard, profile, settings
+app.use('/api/goals', goalsRoutes);                  // User coaching goals
 
 // Chess Puzzles
 app.use('/api/puzzles', puzzleRoutes);               // Get puzzles, daily challenge, themes

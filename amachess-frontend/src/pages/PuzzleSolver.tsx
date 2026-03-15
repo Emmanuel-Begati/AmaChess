@@ -298,13 +298,37 @@ const PuzzleSolver = () => {
       console.log('- Solved moves:', solvedMoves);
       console.log('- Total moves:', totalMoves);
       
+      // Mark this puzzle as completed to prevent duplicate updates
+      setLastCompletedPuzzleId(currentPuzzle.id);
+
+      if (solutionShown) {
+        setNotification({
+          type: 'info',
+          message: `Solution completed.`
+        });
+
+        // If they already failed, they already lost points. Don't punish twice.
+        if (currentPuzzle.id === lastFailedPuzzleId) return;
+        
+        // If they gave up without failing, record it as a failure
+        if (userId && userId !== 'anonymous') {
+          puzzleService.updateUserStats(
+            userId,
+            currentPuzzle,
+            false, // isCorrect = false because they used solution
+            timeSpent,
+            hintsUsed,
+            solutionShown
+          ).catch(console.error);
+        }
+        return;
+      }
+
       setNotification({
         type: 'success',
         message: `Excellent! Puzzle solved in ${timeSpent} seconds!`
       });
       
-      // Mark this puzzle as completed to prevent duplicate updates
-      setLastCompletedPuzzleId(currentPuzzle.id);
       
       // Update backend stats
       if (userId && userId !== 'anonymous') {
