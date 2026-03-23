@@ -37,59 +37,61 @@ const Header = () => {
             </Link>
           </div>
           
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-1 lg:space-x-4">
-            <Link
-              to="/dashboard"
-              className={`px-3 lg:px-4 py-2 rounded-md text-sm font-medium ${
-                isActive('/dashboard')
-                  ? 'bg-[#115fd4] text-white'
-                  : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
-              }`}
-            >
-              Dashboard
-            </Link>
-            <Link
-              to="/learn"
-              className={`px-3 lg:px-4 py-2 rounded-md text-sm font-medium ${
-                isActive('/learn')
-                  ? 'bg-[#115fd4] text-white'
-                  : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
-              }`}
-            >
-              Learn
-            </Link>
-            <Link
-              to="/puzzles"
-              className={`px-3 lg:px-4 py-2 rounded-md text-sm font-medium ${
-                isActive('/puzzles')
-                  ? 'bg-[#115fd4] text-white'
-                  : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
-              }`}
-            >
-              Puzzles
-            </Link>
-            <Link
-              to="/library"
-              className={`px-3 lg:px-4 py-2 rounded-md text-sm font-medium ${
-                isActive('/library')
-                  ? 'bg-[#115fd4] text-white'
-                  : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
-              }`}
-            >
-              Library
-            </Link>
-            <Link
-              to="/contact"
-              className={`px-3 lg:px-4 py-2 rounded-md text-sm font-medium ${
-                isActive('/contact')
-                  ? 'bg-[#115fd4] text-white'
-                  : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
-              }`}
-            >
-              Contact
-            </Link>
-          </nav>
+          {/* Desktop Navigation - Only show for authenticated users */}
+          {user && (
+            <nav className="hidden md:flex items-center space-x-1 lg:space-x-4">
+              <Link
+                to="/dashboard"
+                className={`px-3 lg:px-4 py-2 rounded-md text-sm font-medium ${
+                  isActive('/dashboard')
+                    ? 'bg-[#115fd4] text-white'
+                    : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
+                }`}
+              >
+                Dashboard
+              </Link>
+              <Link
+                to="/learn"
+                className={`px-3 lg:px-4 py-2 rounded-md text-sm font-medium ${
+                  isActive('/learn')
+                    ? 'bg-[#115fd4] text-white'
+                    : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
+                }`}
+              >
+                Learn
+              </Link>
+              <Link
+                to="/puzzles"
+                className={`px-3 lg:px-4 py-2 rounded-md text-sm font-medium ${
+                  isActive('/puzzles')
+                    ? 'bg-[#115fd4] text-white'
+                    : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
+                }`}
+              >
+                Puzzles
+              </Link>
+              <Link
+                to="/library"
+                className={`px-3 lg:px-4 py-2 rounded-md text-sm font-medium ${
+                  isActive('/library')
+                    ? 'bg-[#115fd4] text-white'
+                    : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
+                }`}
+              >
+                Library
+              </Link>
+              <Link
+                to="/contact"
+                className={`px-3 lg:px-4 py-2 rounded-md text-sm font-medium ${
+                  isActive('/contact')
+                    ? 'bg-[#115fd4] text-white'
+                    : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
+                }`}
+              >
+                Contact
+              </Link>
+            </nav>
+          )}
           
           {/* Desktop User Menu */}
           <div className="hidden md:flex items-center">
@@ -191,63 +193,66 @@ const Header = () => {
       {/* Mobile Menu */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-[#1a1f2e] border-t border-[#374162]">
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-            <Link
-              to="/dashboard"
-              className={`block px-3 py-2 rounded-md text-base font-medium ${
-                isActive('/dashboard')
-                  ? 'bg-[#115fd4] text-white'
-                  : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
-              }`}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Dashboard
-            </Link>
-            <Link
-              to="/learn"
-              className={`block px-3 py-2 rounded-md text-base font-medium ${
-                isActive('/learn')
-                  ? 'bg-[#115fd4] text-white'
-                  : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
-              }`}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Learn
-            </Link>
-            <Link
-              to="/puzzles"
-              className={`block px-3 py-2 rounded-md text-base font-medium ${
-                isActive('/puzzles')
-                  ? 'bg-[#115fd4] text-white'
-                  : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
-              }`}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Puzzles
-            </Link>
-            <Link
-              to="/library"
-              className={`block px-3 py-2 rounded-md text-base font-medium ${
-                isActive('/library')
-                  ? 'bg-[#115fd4] text-white'
-                  : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
-              }`}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Library
-            </Link>
-            <Link
-              to="/contact"
-              className={`block px-3 py-2 rounded-md text-base font-medium ${
-                isActive('/contact')
-                  ? 'bg-[#115fd4] text-white'
-                  : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
-              }`}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Contact
-            </Link>
-          </div>
+          {/* Mobile nav links - Only show for authenticated users */}
+          {user && (
+            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+              <Link
+                to="/dashboard"
+                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                  isActive('/dashboard')
+                    ? 'bg-[#115fd4] text-white'
+                    : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Dashboard
+              </Link>
+              <Link
+                to="/learn"
+                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                  isActive('/learn')
+                    ? 'bg-[#115fd4] text-white'
+                    : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Learn
+              </Link>
+              <Link
+                to="/puzzles"
+                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                  isActive('/puzzles')
+                    ? 'bg-[#115fd4] text-white'
+                    : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Puzzles
+              </Link>
+              <Link
+                to="/library"
+                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                  isActive('/library')
+                    ? 'bg-[#115fd4] text-white'
+                    : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Library
+              </Link>
+              <Link
+                to="/contact"
+                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                  isActive('/contact')
+                    ? 'bg-[#115fd4] text-white'
+                    : 'text-[#97a1c4] hover:bg-[#272e45] hover:text-white'
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Contact
+              </Link>
+            </div>
+          )}
           
           {/* Mobile User Section */}
           <div className="pt-4 pb-3 border-t border-[#374162]">

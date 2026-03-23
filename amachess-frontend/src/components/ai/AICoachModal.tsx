@@ -474,73 +474,72 @@ ${pgnMoves} *`;
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4">
-      <div className="bg-[#121621] rounded-xl max-w-7xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-2 sm:p-4">
+      <div className="bg-gradient-to-br from-[#0d1220] to-[#131a2e] rounded-2xl max-w-7xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden border border-slate-700/50 shadow-2xl shadow-black/40">
         {/* Header */}
-        <div className="flex items-center justify-between p-3 sm:p-6 border-b border-[#374162]">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
+        <div className="flex items-center justify-between p-3 sm:p-5 border-b border-slate-700/40 bg-slate-800/20">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-9 h-9 sm:w-11 sm:h-11 bg-gradient-to-br from-[#115fd4] to-[#4a90e2] rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
               <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
               </svg>
             </div>
             <div>
-              <h2 className="text-lg sm:text-xl font-bold text-white">Coach B • Groq LLaMA</h2>
-              <p className="text-[#97a1c4] text-xs sm:text-sm">Instructive Training Game</p>
+              <h2 className="text-base sm:text-lg font-bold text-white">Coach B</h2>
+              <p className="text-gray-400 text-xs">Groq LLaMA • Instructive Training</p>
             </div>
           </div>
           
           {/* Controls */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {/* Coach Mode Toggle */}
-            <div className="flex items-center gap-2">
-              <label htmlFor="coach-mode" className="text-white text-sm hidden sm:block">Coach Mode:</label>
+            <div className="flex items-center gap-2 bg-slate-800/60 rounded-lg px-2.5 py-1.5 border border-slate-700/40">
+              <span className="text-gray-400 text-xs hidden sm:block">Coach</span>
               <button
                 id="coach-mode"
                 onClick={() => setCoachModeEnabled(!coachModeEnabled)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  coachModeEnabled ? 'bg-blue-600' : 'bg-[#374162]'
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 ${
+                  coachModeEnabled ? 'bg-[#115fd4]' : 'bg-slate-600'
                 }`}
                 title={coachModeEnabled ? 'Turn off coaching' : 'Turn on coaching'}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    coachModeEnabled ? 'translate-x-6' : 'translate-x-1'
+                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform duration-200 shadow-sm ${
+                    coachModeEnabled ? 'translate-x-[18px]' : 'translate-x-[3px]'
                   }`}
                 />
               </button>
-              <span className="text-[#97a1c4] text-xs sm:hidden">
-                {coachModeEnabled ? 'ON' : 'OFF'}
-              </span>
             </div>
 
             {gameStarted && (
               <div className="flex items-center gap-2">
-                <label htmlFor="difficulty" className="text-white text-sm hidden sm:block">Difficulty:</label>
-                <select
-                  id="difficulty"
-                  value={difficulty}
-                  onChange={(e) => setDifficulty(Number(e.target.value))}
-                  disabled={isAnalyzing}
-                  className="bg-[#374162] border border-[#455173] text-white text-sm px-2 py-1 rounded focus:outline-none focus:border-blue-600 disabled:opacity-50"
-                >
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((level) => (
-                    <option key={level} value={level}>
-                      {level}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-center gap-1.5 bg-slate-800/60 rounded-lg px-2.5 py-1.5 border border-slate-700/40">
+                  <span className="text-gray-400 text-xs hidden sm:block">Lvl</span>
+                  <select
+                    id="difficulty"
+                    value={difficulty}
+                    onChange={(e) => setDifficulty(Number(e.target.value))}
+                    disabled={isAnalyzing}
+                    className="bg-transparent text-white text-xs font-medium focus:outline-none disabled:opacity-50 cursor-pointer"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((level) => (
+                      <option key={level} value={level} className="bg-slate-800">
+                        {level}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 
                 <button
                   onClick={() => setShowEvaluation(!showEvaluation)}
-                  className={`p-1.5 rounded transition-colors ${
+                  className={`p-1.5 rounded-lg transition-all duration-200 border ${
                     showEvaluation 
-                      ? 'bg-blue-600 text-white' 
-                      : 'bg-[#374162] text-[#97a1c4] hover:text-white'
+                      ? 'bg-[#115fd4]/20 text-[#4a90e2] border-[#115fd4]/40' 
+                      : 'bg-slate-800/60 text-gray-500 hover:text-gray-300 border-slate-700/40'
                   }`}
                   title="Toggle Evaluation"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
                 </button>
@@ -549,9 +548,9 @@ ${pgnMoves} *`;
             
             <button 
               onClick={onClose}
-              className="text-[#97a1c4] hover:text-white transition-colors p-1 sm:p-0"
+              className="text-gray-500 hover:text-white hover:bg-slate-700/60 transition-all duration-200 p-1.5 rounded-lg"
             >
-              <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -560,25 +559,25 @@ ${pgnMoves} *`;
 
         <div className="flex flex-col lg:flex-row h-[70vh] sm:h-[75vh] lg:h-[70vh]">
           {/* Chess Board Section */}
-          <div className={`flex-1 p-3 sm:p-6 ${coachModeEnabled ? 'lg:border-r lg:border-[#374162]' : ''} min-h-0`}>
-            <div className="bg-[#272e45] rounded-lg p-2 sm:p-4 h-full flex items-center justify-center">
+          <div className={`flex-1 p-3 sm:p-5 ${coachModeEnabled ? 'lg:border-r lg:border-slate-700/30' : ''} min-h-0`}>
+            <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/40 rounded-xl p-2 sm:p-4 h-full flex items-center justify-center border border-slate-700/30">
               {!gameStarted ? (
-                <div className="text-center px-2">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg mx-auto mb-3 sm:mb-4 flex items-center justify-center">
-                    <svg className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                <div className="text-center px-4 max-w-sm mx-auto">
+                  <div className="w-18 h-18 sm:w-24 sm:h-24 bg-gradient-to-br from-[#115fd4] to-[#4a90e2] rounded-2xl mx-auto mb-5 flex items-center justify-center shadow-xl shadow-blue-500/20">
+                    <svg className="w-9 h-9 sm:w-12 sm:h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
                   </div>
-                  <h3 className="text-lg sm:text-xl font-bold text-white mb-2">Ready to Learn?</h3>
-                  <p className="text-[#97a1c4] mb-4 sm:mb-6 text-sm sm:text-base">Start an instructive game with personalized coaching</p>
+                  <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">Ready to Learn?</h3>
+                  <p className="text-gray-400 mb-6 text-sm sm:text-base leading-relaxed">Start an instructive game with personalized coaching from Coach B</p>
                   
                   {/* Pre-game difficulty selection */}
-                  <div className="mb-4">
-                    <label className="block text-white text-sm mb-2">Choose AI Difficulty:</label>
+                  <div className="mb-6 bg-slate-800/40 rounded-xl p-4 border border-slate-700/30">
+                    <label className="block text-gray-300 text-xs font-medium mb-2.5 uppercase tracking-wider">Difficulty Level</label>
                     <select
                       value={difficulty}
                       onChange={(e) => setDifficulty(Number(e.target.value))}
-                      className="bg-[#374162] border border-[#455173] text-white px-4 py-2 rounded-lg focus:outline-none focus:border-blue-600"
+                      className="w-full bg-slate-900/60 border border-slate-600/50 text-white px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#115fd4]/50 focus:border-[#115fd4]/50 transition-all cursor-pointer"
                     >
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((level) => (
                         <option key={level} value={level}>
@@ -591,12 +590,12 @@ ${pgnMoves} *`;
                   <button 
                     onClick={handleStartGame}
                     disabled={isAnalyzing}
-                    className="bg-blue-800 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg transition-colors text-sm sm:text-base flex items-center gap-2 mx-auto"
+                    className="w-full bg-gradient-to-r from-[#115fd4] to-[#4a90e2] hover:from-[#0e4fb3] hover:to-[#3a7fd4] disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white px-6 py-3 rounded-xl transition-all duration-300 text-sm sm:text-base font-semibold flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
                   >
                     {isAnalyzing && (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
                     )}
-                    {isAnalyzing ? 'Initializing...' : 'Start Training Game'}
+                    {isAnalyzing ? 'Initializing...' : '♟ Start Training Game'}
                   </button>
                 </div>
               ) : (
@@ -618,26 +617,31 @@ ${pgnMoves} *`;
 
           {/* Coach Chat Section - Only show when coach mode is enabled */}
           {coachModeEnabled && (
-            <div className="w-full lg:w-80 xl:w-96 flex flex-col min-h-0">
+            <div className="w-full lg:w-80 xl:w-96 flex flex-col min-h-0 bg-slate-900/30">
             {/* Coach Avatar */}
-            <div className="p-3 sm:p-4 border-b border-[#374162] shrink-0">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
-                  <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                  </svg>
+            <div className="p-3 sm:p-4 border-b border-slate-700/30 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="relative">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-[#115fd4] to-[#4a90e2] rounded-xl flex items-center justify-center">
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                  </div>
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-[#0d1220]"></div>
                 </div>
-                <div className="flex-1">
-                  <p className="text-white font-medium text-sm sm:text-base">Coach B</p>
-                  <p className="text-green-400 text-xs">● Online {gameStarted && `• Difficulty ${difficulty}`}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-semibold text-sm">Coach B</p>
+                  <p className="text-emerald-400 text-xs font-medium">
+                    Online {gameStarted && <span className="text-gray-500">• Level {difficulty}</span>}
+                  </p>
                 </div>
                 
                 {/* Game Settings Display */}
                 {gameStarted && (
-                  <div className="text-right">
-                    <p className="text-[#97a1c4] text-xs">Settings</p>
-                    <p className="text-white text-xs">
-                      Eval: {showEvaluation ? 'ON' : 'OFF'}
+                  <div className="bg-slate-800/50 rounded-lg px-2 py-1 border border-slate-700/30">
+                    <p className="text-gray-500 text-[10px] uppercase tracking-wider">Eval</p>
+                    <p className={`text-xs font-semibold ${showEvaluation ? 'text-emerald-400' : 'text-gray-500'}`}>
+                      {showEvaluation ? 'ON' : 'OFF'}
                     </p>
                   </div>
                 )}
@@ -646,52 +650,48 @@ ${pgnMoves} *`;
 
             {/* Chat Messages */}
             <div className="flex-1 p-3 sm:p-4 overflow-y-auto min-h-0">
-              <div className="space-y-3 sm:space-y-4">
-                <div className="bg-[#374162] rounded-lg p-2 sm:p-3">
-                  {isAnalyzing ? (
-                    <div className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400"></div>
-                      <p className="text-white text-sm">Coach is analyzing...</p>
-                    </div>
-                  ) : (
-                    <p className="text-white text-sm">{coachMessage}</p>
-                  )}
-                  <p className="text-[#97a1c4] text-xs mt-1">Coach Magnus</p>
+              <div className="space-y-3">
+                {/* Coach message */}
+                <div className="flex gap-2">
+                  <div className="w-6 h-6 bg-gradient-to-br from-[#115fd4] to-[#4a90e2] rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                    <span className="text-white text-[10px] font-bold">B</span>
+                  </div>
+                  <div className="bg-slate-800/60 rounded-xl rounded-tl-sm p-3 border border-slate-700/30 flex-1">
+                    {isAnalyzing ? (
+                      <div className="flex items-center gap-2">
+                        <div className="flex gap-1">
+                          <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                          <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                          <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                        </div>
+                        <p className="text-gray-400 text-xs">Analyzing...</p>
+                      </div>
+                    ) : (
+                      <p className="text-gray-200 text-sm leading-relaxed">{coachMessage}</p>
+                    )}
+                  </div>
                 </div>
                 
                 {gameStarted && (
-                  <div className="bg-blue-800 rounded-lg p-2 sm:p-3">
-                    <p className="text-white text-sm">I'm ready to learn!</p>
-                    <p className="text-blue-200 text-xs mt-1">You</p>
+                  <div className="flex justify-end">
+                    <div className="bg-gradient-to-r from-[#115fd4] to-[#4a90e2] rounded-xl rounded-tr-sm p-3 max-w-[85%] shadow-md shadow-blue-500/10">
+                      <p className="text-white text-sm">I'm ready to learn!</p>
+                    </div>
                   </div>
                 )}
 
-                {/* Display move history
-                {aiMoveHistory.map((moveSet, index) => (
-                  <div key={index} className="space-y-2">
-                    <div className="bg-blue-800 rounded-lg p-2 sm:p-3">
-                      <p className="text-white text-sm">I played {moveSet.playerMove}</p>
-                      <p className="text-blue-200 text-xs mt-1">You</p>
-                    </div>
-                    <div className="bg-[#374162] rounded-lg p-2 sm:p-3">
-                      <p className="text-white text-sm">{moveSet.playerFeedback}</p>
-                      <p className="text-[#97a1c4] text-xs mt-1">Coach Magnus</p>
-                    </div>
-                  </div>
-                ))} */}
-
                 {/* Hint Button */}
                 {gameStarted && (
-                  <div className="flex justify-center">
+                  <div className="flex justify-center pt-1">
                     <button 
                       onClick={getHint}
                       disabled={isAnalyzing}
-                      className="bg-yellow-600 hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2"
+                      className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl transition-all duration-200 text-xs font-medium flex items-center gap-1.5 shadow-md shadow-amber-500/20"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                       </svg>
-                      Get Hint
+                      💡 Get Hint
                     </button>
                   </div>
                 )}
@@ -699,20 +699,20 @@ ${pgnMoves} *`;
             </div>
 
             {/* Learning Objectives */}
-            <div className="p-3 sm:p-4 border-t border-[#374162] shrink-0">
-              <h4 className="text-white font-medium mb-2 sm:mb-3 text-sm sm:text-base">Today's Learning Goals</h4>
+            <div className="p-3 sm:p-4 border-t border-slate-700/30 shrink-0 bg-slate-800/20">
+              <h4 className="text-gray-300 font-semibold mb-2.5 text-xs uppercase tracking-wider">Learning Goals</h4>
               <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full shrink-0"></div>
-                  <p className="text-[#97a1c4] text-xs sm:text-sm">Opening principles</p>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full shrink-0 shadow-sm shadow-emerald-400/50"></div>
+                  <p className="text-gray-400 text-xs">Opening principles</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full shrink-0"></div>
-                  <p className="text-[#97a1c4] text-xs sm:text-sm">Tactical awareness</p>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-1.5 h-1.5 bg-amber-400 rounded-full shrink-0 shadow-sm shadow-amber-400/50"></div>
+                  <p className="text-gray-400 text-xs">Tactical awareness</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-gray-500 rounded-full shrink-0"></div>
-                  <p className="text-[#97a1c4] text-xs sm:text-sm">Endgame technique</p>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-1.5 h-1.5 bg-gray-500 rounded-full shrink-0"></div>
+                  <p className="text-gray-500 text-xs">Endgame technique</p>
                 </div>
               </div>
             </div>
@@ -721,24 +721,27 @@ ${pgnMoves} *`;
         </div>
 
         {/* Footer */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0 p-3 sm:p-6 border-t border-[#374162]">
-          <div className="flex gap-2 sm:gap-3 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0 p-3 sm:p-4 border-t border-slate-700/40 bg-slate-800/20">
+          <div className="flex gap-2 w-full sm:w-auto">
             <button 
               onClick={saveGame}
-              className="bg-green-800 hover:bg-green-700 text-white px-3 sm:px-4 py-2 rounded-lg transition-colors text-xs sm:text-sm flex-1 sm:flex-none"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 px-4 py-2 rounded-xl transition-all duration-200 text-xs sm:text-sm font-medium"
             >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+              </svg>
               Save Progress
             </button>
             <button 
               onClick={resetGame}
-              className="bg-[#374162] hover:bg-[#455173] text-white px-3 sm:px-4 py-2 rounded-lg transition-colors text-xs sm:text-sm flex-1 sm:flex-none"
+              className="flex-1 sm:flex-none bg-slate-700/30 hover:bg-slate-700/50 text-gray-300 border border-slate-600/30 px-4 py-2 rounded-xl transition-all duration-200 text-xs sm:text-sm font-medium"
             >
               Reset Game
             </button>
           </div>
           <button 
             onClick={onClose}
-            className="bg-[#374162] hover:bg-[#455173] text-white px-4 sm:px-6 py-2 rounded-lg transition-colors text-sm sm:text-base w-full sm:w-auto"
+            className="w-full sm:w-auto bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-5 py-2 rounded-xl transition-all duration-200 text-sm font-medium"
           >
             End Session
           </button>

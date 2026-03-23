@@ -208,6 +208,7 @@ class InsightsService {
       gamePhases,
       playerGoals: user.chessGoal || null,
       focusAreas: user.focusAreas ? JSON.parse(user.focusAreas) : null,
+      customGoals: user.customGoals ? JSON.parse(user.customGoals) : [],
       targetRating: user.targetRating || null,
       historicalProgress: this._computeHistoricalProgress(stats, lastSnapshot)
     };
@@ -754,9 +755,93 @@ Based on ALL of the above data and the coaching principles for this player's rat
    * Generate personalized puzzle theme recommendations using Groq.
    * Returns an array of { theme, reason } objects.
    */
+  /**
+   * Maps goal text (primary goal, focus areas, custom goals) to valid puzzle themes.
+   * Returns an array of { theme, reason } objects derived from the user's stated goals.
+   */
+  _extractThemesFromGoals(summary) {
+    const validThemes = [
+      'fork', 'pin', 'skewer', 'discoveredAttack', 'doubleCheck',
+      'hangingPiece', 'trappedPiece', 'backRankMate', 'sacrifice',
+      'deflection', 'attraction', 'interference', 'clearance',
+      'endgame', 'pawnEndgame', 'rookEndgame', 'knightEndgame', 'bishopEndgame',
+      'mateIn1', 'mateIn2', 'mateIn3', 'mate',
+      'middlegame', 'opening', 'promotion', 'exposedKing',
+      'kingsideAttack', 'queensideAttack', 'quietMove', 'defensiveMove',
+      'intermezzo', 'zugzwang', 'xRayAttack', 'capturingDefender'
+    ];
+
+    // Keyword → theme mappings
+    const keywordMap = [
+      { keywords: ['fork'], theme: 'fork', reason: 'You mentioned forks in your goals — practice this core tactical pattern.' },
+      { keywords: ['pin'], theme: 'pin', reason: 'You want to work on pins — a fundamental tactic for winning material.' },
+      { keywords: ['skewer'], theme: 'skewer', reason: 'Skewers are in your goals — sharpen this tactic to pressure high-value pieces.' },
+      { keywords: ['discovered attack', 'discovery'], theme: 'discoveredAttack', reason: 'Discovered attacks are in your goals — master this powerful double-threat tactic.' },
+      { keywords: ['double check'], theme: 'doubleCheck', reason: 'Double checks are in your goals — these are among the most forcing moves in chess.' },
+      { keywords: ['hanging piece', 'hanging'], theme: 'hangingPiece', reason: 'You want to reduce hanging pieces — practice spotting undefended pieces.' },
+      { keywords: ['trapped piece', 'trapped'], theme: 'trappedPiece', reason: 'Trapping pieces is in your goals — learn to restrict and win enemy pieces.' },
+      { keywords: ['back rank', 'backrank'], theme: 'backRankMate', reason: 'Back rank mates are in your goals — practice both delivering and defending them.' },
+      { keywords: ['sacrifice', 'sac'], theme: 'sacrifice', reason: 'Sacrifices are in your goals — learn when giving up material leads to a decisive advantage.' },
+      { keywords: ['deflection'], theme: 'deflection', reason: 'Deflection is in your goals — practice luring defenders away from key squares.' },
+      { keywords: ['attraction', 'lure'], theme: 'attraction', reason: 'Attraction tactics are in your goals — learn to draw kings into mating nets.' },
+      { keywords: ['interference'], theme: 'interference', reason: 'Interference is in your goals — practice cutting off defensive pieces.' },
+      { keywords: ['clearance'], theme: 'clearance', reason: 'Clearance sacrifices are in your goals — open lines and diagonals for your pieces.' },
+      { keywords: ['endgame', 'end game', 'ending'], theme: 'endgame', reason: 'Endgames are in your goals — converting advantages in the endgame is crucial.' },
+      { keywords: ['pawn endgame', 'pawn ending'], theme: 'pawnEndgame', reason: 'Pawn endgames are in your goals — master king and pawn technique.' },
+      { keywords: ['rook endgame', 'rook ending'], theme: 'rookEndgame', reason: 'Rook endgames are in your goals — the most common endgame type in practice.' },
+      { keywords: ['knight endgame', 'knight ending'], theme: 'knightEndgame', reason: 'Knight endgames are in your goals — practice these tricky technical positions.' },
+      { keywords: ['bishop endgame', 'bishop ending'], theme: 'bishopEndgame', reason: 'Bishop endgames are in your goals — learn good vs bad bishop concepts.' },
+      { keywords: ['checkmate', 'mate in 1', 'mate in one'], theme: 'mateIn1', reason: 'Checkmate patterns are in your goals — start with mate in 1 to sharpen pattern recognition.' },
+      { keywords: ['mate in 2', 'mate in two'], theme: 'mateIn2', reason: 'Mate in 2 puzzles are in your goals — build your calculation depth.' },
+      { keywords: ['mate in 3', 'mate in three'], theme: 'mateIn3', reason: 'Mate in 3 puzzles are in your goals — develop multi-move calculation skills.' },
+      { keywords: ['checkmate pattern', 'mating pattern', 'mating attack'], theme: 'mate', reason: 'Checkmate patterns are in your goals — recognizing them quickly wins games.' },
+      { keywords: ['middlegame', 'middle game'], theme: 'middlegame', reason: 'Middlegame tactics are in your goals — sharpen your calculation in complex positions.' },
+      { keywords: ['opening', 'repertoire', 'opening theory'], theme: 'opening', reason: 'Openings are in your goals — practice tactical patterns that arise from your repertoire.' },
+      { keywords: ['promotion', 'queening', 'pawn promotion'], theme: 'promotion', reason: 'Pawn promotion is in your goals — practice converting passed pawns.' },
+      { keywords: ['exposed king', 'king safety', 'king attack'], theme: 'exposedKing', reason: 'King safety is in your goals — practice attacking and defending exposed kings.' },
+      { keywords: ['kingside attack', 'kingside'], theme: 'kingsideAttack', reason: 'Kingside attacks are in your goals — sharpen your attacking play on the kingside.' },
+      { keywords: ['queenside attack', 'queenside'], theme: 'queensideAttack', reason: 'Queenside attacks are in your goals — learn to create pressure on the queenside.' },
+      { keywords: ['quiet move', 'prophylaxis', 'positional'], theme: 'quietMove', reason: 'Quiet positional moves are in your goals — develop your strategic thinking.' },
+      { keywords: ['defensive', 'defense', 'defence', 'defend'], theme: 'defensiveMove', reason: 'Defensive play is in your goals — practice finding the best defensive resources.' },
+      { keywords: ['intermezzo', 'in-between move', 'zwischenzug'], theme: 'intermezzo', reason: 'Intermezzo moves are in your goals — learn to spot these game-changing in-between moves.' },
+      { keywords: ['zugzwang'], theme: 'zugzwang', reason: 'Zugzwang is in your goals — master this powerful endgame concept.' },
+      { keywords: ['x-ray', 'xray', 'x ray'], theme: 'xRayAttack', reason: 'X-ray attacks are in your goals — practice these long-range tactical ideas.' },
+      { keywords: ['tactic', 'tactics', 'calculation', 'calculate'], theme: 'fork', reason: 'Improving tactics is in your goals — forks are one of the most common patterns to master.' },
+      { keywords: ['blunder', 'mistake', 'accuracy', 'reduce errors'], theme: 'hangingPiece', reason: 'Reducing blunders is in your goals — practice spotting hanging pieces before your opponent does.' },
+      { keywords: ['attack', 'attacking chess', 'aggressive'], theme: 'kingsideAttack', reason: 'Attacking chess is in your goals — practice launching kingside attacks.' },
+    ];
+
+    // Collect all goal text
+    const allGoalText = [
+      summary.playerGoals || '',
+      ...(summary.focusAreas || []),
+      ...(summary.customGoals || [])
+    ].join(' ').toLowerCase();
+
+    if (!allGoalText.trim()) return [];
+
+    const matched = [];
+    const usedThemes = new Set();
+
+    for (const mapping of keywordMap) {
+      if (usedThemes.has(mapping.theme)) continue;
+      if (mapping.keywords.some(kw => allGoalText.includes(kw))) {
+        if (validThemes.includes(mapping.theme)) {
+          matched.push({ theme: mapping.theme, reason: mapping.reason });
+          usedThemes.add(mapping.theme);
+        }
+      }
+    }
+
+    return matched;
+  }
+
   async _generatePuzzleRecommendations(summary) {
+    // Extract themes the user explicitly wants from their goals
+    const goalThemes = this._extractThemesFromGoals(summary);
+
     if (!this.groqClient) {
-      return this._getFallbackThemes(summary);
+      return this._getFallbackThemes(summary, goalThemes);
     }
 
     try {
@@ -771,6 +856,15 @@ Based on ALL of the above data and the coaching principles for this player's rat
         'intermezzo', 'zugzwang', 'xRayAttack', 'capturingDefender'
       ];
 
+      // Build goal context for the prompt
+      const goalContext = [];
+      if (summary.playerGoals) goalContext.push(`Primary goal: "${summary.playerGoals}"`);
+      if (summary.focusAreas?.length) goalContext.push(`Focus areas: ${summary.focusAreas.join(', ')}`);
+      if (summary.customGoals?.length) goalContext.push(`Custom goals: ${summary.customGoals.join('; ')}`);
+      const goalSection = goalContext.length
+        ? `\nPlayer's stated goals:\n${goalContext.join('\n')}\nIMPORTANT: If the player's goals mention specific themes or concepts, you MUST include those themes in your recommendations.\n`
+        : '';
+
       const systemPrompt = `You are an expert chess coach recommending puzzle themes based on a player's performance data. Follow these improvement principles:
 
 1. BELOW 1200: Focus on basic tactics (mate patterns, hanging pieces, simple forks). NO opening or advanced themes.
@@ -780,11 +874,13 @@ Based on ALL of the above data and the coaching principles for this player's rat
 5. 2000+: All themes appropriate, including zugzwang, intermezzo, complex endgames.
 
 RULES:
+- NEVER use rating titles like "Candidate Master", "Expert", "Novice", etc. in your reasons.
 - If blunders are high (3+), ALWAYS recommend hangingPiece or basic tactics like fork/pin
 - If win rate is low, prioritize defensive and calculation themes
 - Endgame themes should appear for ALL rating levels
 - DO NOT recommend "opening" theme for players under 1800
 - Vary recommendations — pick from different categories (e.g., 1 tactic + 1 endgame + 1 pattern)
+- If the player has stated goals that mention specific chess themes, PRIORITIZE those themes.
 
 You MUST respond with valid JSON only — no markdown, no commentary. The format:
 [
@@ -805,13 +901,13 @@ Be specific in reasons — reference data like blunder counts, win rate, or rati
         : 'Blunder data: N/A';
 
       const userPrompt = `Player data from last ${summary.gamesAnalyzed} games:
-Rating: ${summary.averageRating} (${this._getRatingTier(summary.averageRating)})
+Rating: ${summary.averageRating}
 Win: ${summary.winRate}% (${summary.wins}W/${summary.losses}L/${summary.draws}D)
 ${accuracyInfo}
 ${blunderInfo}
 Rating Change: ${summary.ratingProgress > 0 ? '+' : ''}${summary.ratingProgress}
 Openings: ${summary.topOpenings.map(o => `${o.name} (${o.winRate}%)`).join(', ') || 'Varied'}
-Recent: ${summary.recentResults.map(r => `${r.result}(${r.accuracy})`).join(', ')}`;
+Recent: ${summary.recentResults.map(r => `${r.result}(${r.accuracy})`).join(', ')}${goalSection}`;
 
       const response = await this.groqClient.chat.completions.create({
         model: this.model,
@@ -828,21 +924,31 @@ Recent: ${summary.recentResults.map(r => `${r.result}(${r.accuracy})`).join(', '
       const jsonStr = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       const themes = JSON.parse(jsonStr);
 
-      // Validate and sanitize
+      // Validate and sanitize AI themes
+      let aiThemes = [];
       if (Array.isArray(themes) && themes.length > 0) {
-        return themes
+        aiThemes = themes
           .filter(t => t.theme && t.reason && validThemes.includes(t.theme))
           .slice(0, 3)
-          .map(t => ({
-            theme: t.theme,
-            reason: t.reason.substring(0, 120) // cap reason length
-          }));
+          .map(t => ({ theme: t.theme, reason: t.reason }));
       }
 
-      return this._getFallbackThemes(summary);
+      // Merge: goal themes take priority, fill remaining slots with AI themes
+      const merged = [...goalThemes];
+      const usedThemes = new Set(merged.map(t => t.theme));
+      for (const t of aiThemes) {
+        if (!usedThemes.has(t.theme)) {
+          merged.push(t);
+          usedThemes.add(t.theme);
+        }
+      }
+
+      if (merged.length > 0) return merged.slice(0, 3);
+
+      return this._getFallbackThemes(summary, goalThemes);
     } catch (error) {
       console.error('Groq puzzle recommendation error:', error.message);
-      return this._getFallbackThemes(summary);
+      return this._getFallbackThemes(summary, goalThemes);
     }
   }
 
@@ -850,43 +956,48 @@ Recent: ${summary.recentResults.map(r => `${r.result}(${r.accuracy})`).join(', '
    * Rule-based fallback when Groq is unavailable.
    * Maps common weaknesses to puzzle themes.
    */
-  _getFallbackThemes(summary) {
-    const themes = [];
+  _getFallbackThemes(summary, goalThemes = []) {
+    const themes = [...goalThemes];
+    const usedThemes = new Set(themes.map(t => t.theme));
 
     // High blunders → hanging pieces / tactics awareness
-    if (summary.totalBlunders >= 3) {
+    if (summary.totalBlunders >= 3 && !usedThemes.has('hangingPiece')) {
       themes.push({
         theme: 'hangingPiece',
         reason: `You had ${summary.totalBlunders} blunders in your recent games — practice spotting undefended pieces.`
       });
+      usedThemes.add('hangingPiece');
     }
 
     // Low win rate → defensive skills
-    if (summary.winRate < 45) {
+    if (summary.winRate < 45 && !usedThemes.has('defensiveMove')) {
       themes.push({
         theme: 'defensiveMove',
         reason: `With a ${summary.winRate}% win rate, sharpening your defensive play can help you save more games.`
       });
+      usedThemes.add('defensiveMove');
     }
 
     // Always recommend forks for tactical improvement
-    if (themes.length < 3) {
+    if (themes.length < 3 && !usedThemes.has('fork')) {
       themes.push({
         theme: 'fork',
         reason: 'Forks are one of the most common tactical patterns — mastering them wins material consistently.'
       });
+      usedThemes.add('fork');
     }
 
     // Endgame practice
-    if (themes.length < 3) {
+    if (themes.length < 3 && !usedThemes.has('endgame')) {
       themes.push({
         theme: 'endgame',
         reason: 'Strong endgame technique converts advantages into wins — practice converting your winning positions.'
       });
+      usedThemes.add('endgame');
     }
 
     // Back rank awareness
-    if (themes.length < 3) {
+    if (themes.length < 3 && !usedThemes.has('backRankMate')) {
       themes.push({
         theme: 'backRankMate',
         reason: 'Back rank threats are easy to miss in fast games — practice both attacking and defending them.'

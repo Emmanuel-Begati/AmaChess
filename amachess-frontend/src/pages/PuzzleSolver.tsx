@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Header from '../components/ui/Header';
 import Footer from '../components/ui/Footer';
@@ -34,11 +34,87 @@ const PuzzleSolver = () => {
     averageTime: 0,
     rating: 1200
   });
-  const { user } = useAuth();
+  const [statsLoading, setStatsLoading] = useState(true);
+  const { user, loading: authLoading, isAuthenticated } = useAuth();
   const userId = user?.id || 'anonymous';
   const [puzzleStartTime, setPuzzleStartTime] = useState<number>(Date.now());
   const [hintsUsed, setHintsUsed] = useState(0);
   const [solutionShown, setSolutionShown] = useState(false);
+
+  // Board size — driven entirely by the container's actual rendered width
+  const boardContainerRef = useRef<HTMLDivElement>(null);
+  const [boardSize, setBoardSize] = useState<number>(280);
+  const [isResizing, setIsResizing] = useState(false);
+  const RESERVED_DESKTOP = 296;
+
+  const clampBoardSize = useCallback((size: number, containerWidth: number) => {
+    const vh = window.innerHeight;
+    const vw = window.innerWidth;
+    const maxByContainer = containerWidth - 4;
+    if (vw < 768) {
+      // Mobile: never exceed 38% of vh so controls always fit below
+      return Math.max(Math.min(size, maxByContainer, Math.floor(vh * 0.38)), 180);
+    }
+    if (vw < 1024) {
+      // Tablet: fill the column, cap at 70% vh
+      return Math.max(Math.min(size, maxByContainer, Math.floor(vh * 0.70)), 280);
+    }
+    // Desktop
+    return Math.max(Math.min(size, maxByContainer, vh - RESERVED_DESKTOP), 280);
+  }, []);
+
+  // Use ResizeObserver so we always have the real container width
+  useEffect(() => {
+    const el = boardContainerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => {
+      const w = entry.contentRect.width;
+      if (w > 0) setBoardSize(prev => clampBoardSize(prev === 280 ? w : prev, w));
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [clampBoardSize]);
+
+  const getMaxBoardSize = useCallback(() => {
+    const containerW = boardContainerRef.current?.offsetWidth ?? 300;
+    return clampBoardSize(9999, containerW);
+  }, [clampBoardSize]);
+
+  const getMinBoardSize = useCallback(() => {
+    return window.innerWidth < 768 ? 180 : 240;
+  }, []);
+
+  const handleResizeDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    const clientX = 'touches' in e ? (e.touches[0]?.clientX ?? 0) : e.clientX;
+    const clientY = 'touches' in e ? (e.touches[0]?.clientY ?? 0) : e.clientY;
+    const startData = { x: clientX, y: clientY, size: boardSize };
+    setIsResizing(true);
+
+    const onMove = (ev: MouseEvent | TouchEvent) => {
+      const cx = 'touches' in ev ? (ev.touches[0]?.clientX ?? 0) : (ev as MouseEvent).clientX;
+      const cy = 'touches' in ev ? (ev.touches[0]?.clientY ?? 0) : (ev as MouseEvent).clientY;
+      const delta = Math.max(cx - startData.x, cy - startData.y);
+      const newSize = Math.min(
+        Math.max(startData.size + delta, getMinBoardSize()),
+        getMaxBoardSize()
+      );
+      setBoardSize(Math.round(newSize));
+    };
+
+    const onUp = () => {
+      setIsResizing(false);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onUp);
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onUp);
+  }, [boardSize, getMaxBoardSize, getMinBoardSize]);
 
   // Use the enhanced puzzle hook
   const {
@@ -113,11 +189,15 @@ const PuzzleSolver = () => {
   // Determine board orientation and turn indicator
   const [activeColor, setActiveColor] = useState<'white' | 'black'>('white');
 
-  // Load themes and user stats on mount
+  // Load themes on mount; reload user stats whenever userId resolves from auth
   useEffect(() => {
     loadAvailableThemes();
-    loadUserStats();
   }, []);
+
+  useEffect(() => {
+    if (authLoading) return;
+    loadUserStats();
+  }, [isAuthenticated, userId, authLoading]);
 
   // Handle puzzle loading by ID (separate from filter-based loading)
   useEffect(() => {
@@ -155,34 +235,26 @@ const PuzzleSolver = () => {
     loadRandomPuzzle(filters);
   }, [selectedTheme, selectedDifficulty, selectedRating, searchParams.get('id')]);
   
-  // Load user stats from backend
+  // Load user stats from backend — same approach as Puzzles page
   const loadUserStats = async () => {
-    if (userId && userId !== 'anonymous') {
+    if (isAuthenticated && userId && userId !== 'anonymous') {
+      setStatsLoading(true);
       try {
-        console.log('📊 Loading user stats for:', userId);
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/api'}/users/${userId}/stats`, {
-          headers: {
-            'Authorization': `Bearer ${(user as any)?.token}`
-          }
+        const stats = await puzzleService.getUserStats(userId);
+        setPuzzleStats({
+          solved: stats.totalPuzzlesSolved || 0,
+          accuracy: Math.round(stats.averageAccuracy || 0),
+          streak: stats.currentStreak || 0,
+          averageTime: Math.round(stats.averageTimePerPuzzle || 0),
+          rating: stats.currentPuzzleRating || 1200
         });
-        
-        if (response.ok) {
-          const userStats = await response.json();
-          console.log('✅ User stats loaded:', userStats);
-          
-          setPuzzleStats({
-            solved: userStats.totalPuzzlesSolved || 0,
-            accuracy: Math.round(userStats.averageAccuracy || 0),
-            streak: userStats.currentStreak || 0,
-            averageTime: Math.round(userStats.averageTimePerPuzzle || 0),
-            rating: userStats.currentPuzzleRating || 1200
-          });
-        } else {
-          console.warn('⚠️ Failed to load user stats:', response.status);
-        }
       } catch (error) {
         console.error('❌ Error loading user stats:', error);
+      } finally {
+        setStatsLoading(false);
       }
+    } else {
+      setStatsLoading(false);
     }
   };
 
@@ -646,8 +718,8 @@ const PuzzleSolver = () => {
       
       {/* Notification Toast */}
       {notification && (
-        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50">
-          <div className={`px-6 py-3 rounded-lg shadow-lg border-l-4 ${
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 w-[90vw] max-w-sm">
+          <div className={`px-4 py-3 rounded-lg shadow-lg border-l-4 text-sm ${
             notification.type === 'success' 
               ? 'bg-green-900/90 border-green-400 text-green-100' 
               : notification.type === 'error'
@@ -659,67 +731,49 @@ const PuzzleSolver = () => {
         </div>
       )}
 
-      <main className="container mx-auto px-4 pt-24 pb-8 sm:pt-28 max-w-7xl">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+      <main className="container mx-auto px-2 sm:px-4 pt-20 pb-8 sm:pt-24 max-w-7xl overflow-x-hidden">
+        {/* ── Page header ── */}
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Puzzle Solver</h1>
-            <p className="text-gray-400">Solve tactical puzzles from the Lichess database</p>
+            <h1 className="text-xl sm:text-3xl font-bold text-white leading-tight">Puzzle Solver</h1>
+            <p className="text-gray-400 text-xs sm:text-sm hidden sm:block">Solve tactical puzzles from the Lichess database</p>
           </div>
-          
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setShowSettings(!showSettings)}
-              className="p-2 bg-[#374162] hover:bg-[#455173] rounded-lg transition-colors"
-              title="Settings"
+              className="p-2 bg-[#374162] hover:bg-[#455173] rounded-lg transition-colors text-sm"
+              title="Filters"
             >
               ⚙️
             </button>
-            
             <button
               onClick={() => navigate('/puzzles')}
-              className="px-4 py-2 bg-[#374162] hover:bg-[#455173] rounded-lg transition-colors"
+              className="px-3 py-2 bg-[#374162] hover:bg-[#455173] rounded-lg transition-colors text-xs sm:text-sm"
             >
-              Back to Puzzles
+              ← Back
             </button>
           </div>
         </div>
 
-        {/* Filters Panel */}
+        {/* ── Filters Panel ── */}
         {showSettings && (
-          <div className="mb-8 bg-[#1e293b] rounded-xl p-6 border border-[#374162]">
-            <h3 className="text-lg font-semibold text-white mb-4">Puzzle Filters</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Theme Filter */}
+          <div className="mb-4 bg-[#1e293b] rounded-xl p-4 sm:p-6 border border-[#374162]">
+            <h3 className="text-base font-semibold text-white mb-3">Puzzle Filters</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Theme ({availableThemes.length} available)
-                </label>
-                <select
-                  value={selectedTheme}
-                  onChange={(e) => setSelectedTheme(e.target.value)}
-                  className="w-full bg-[#374162] text-white rounded-lg px-3 py-2 border border-[#455173] focus:border-blue-400 focus:outline-none"
-                >
+                <label className="block text-xs font-medium text-gray-300 mb-1">Theme</label>
+                <select value={selectedTheme} onChange={(e) => setSelectedTheme(e.target.value)}
+                  className="w-full bg-[#374162] text-white rounded-lg px-3 py-2 border border-[#455173] focus:border-blue-400 focus:outline-none text-sm">
                   <option value="all">All Themes</option>
                   {availableThemes.map((theme) => (
-                    <option key={theme.name} value={theme.name}>
-                      {theme.name} ({theme.count})
-                    </option>
+                    <option key={theme.name} value={theme.name}>{theme.name} ({theme.count})</option>
                   ))}
                 </select>
               </div>
-
-              {/* Difficulty Filter */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Difficulty
-                </label>
-                <select
-                  value={selectedDifficulty}
-                  onChange={(e) => setSelectedDifficulty(e.target.value)}
-                  className="w-full bg-[#374162] text-white rounded-lg px-3 py-2 border border-[#455173] focus:border-blue-400 focus:outline-none"
-                >
+                <label className="block text-xs font-medium text-gray-300 mb-1">Difficulty</label>
+                <select value={selectedDifficulty} onChange={(e) => setSelectedDifficulty(e.target.value)}
+                  className="w-full bg-[#374162] text-white rounded-lg px-3 py-2 border border-[#455173] focus:border-blue-400 focus:outline-none text-sm">
                   <option value="all">All Difficulties</option>
                   <option value="beginner">Beginner (&lt; 1400)</option>
                   <option value="intermediate">Intermediate (1400-1800)</option>
@@ -727,17 +781,10 @@ const PuzzleSolver = () => {
                   <option value="expert">Expert (&gt; 2200)</option>
                 </select>
               </div>
-
-              {/* Rating Filter */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Rating Range
-                </label>
-                <select
-                  value={selectedRating}
-                  onChange={(e) => setSelectedRating(e.target.value)}
-                  className="w-full bg-[#374162] text-white rounded-lg px-3 py-2 border border-[#455173] focus:border-blue-blue-400 focus:outline-none"
-                >
+                <label className="block text-xs font-medium text-gray-300 mb-1">Rating Range</label>
+                <select value={selectedRating} onChange={(e) => setSelectedRating(e.target.value)}
+                  className="w-full bg-[#374162] text-white rounded-lg px-3 py-2 border border-[#455173] focus:border-blue-400 focus:outline-none text-sm">
                   <option value="all">All Ratings</option>
                   <option value="under1400">Under 1400</option>
                   <option value="1400-1600">1400-1600</option>
@@ -750,80 +797,73 @@ const PuzzleSolver = () => {
           </div>
         )}
 
-        {/* Stats Bar */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
-          <div className="bg-[#272e45] rounded-xl p-4 border border-[#374162]">
-            <p className="text-[#97a1c4] text-sm">Solved</p>
-            <p className="text-2xl font-bold text-green-400">{puzzleStats.solved}</p>
+        {/* ── Stats Bar (desktop: 4 cols, mobile: 2 cols) ── */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
+          <div className="bg-[#272e45] rounded-xl p-3 sm:p-4 border border-[#374162]">
+            <p className="text-[#97a1c4] text-xs">Solved</p>
+            {statsLoading
+              ? <div className="h-7 w-10 bg-[#374162] rounded animate-pulse mt-1" />
+              : <p className="text-xl sm:text-2xl font-bold text-green-400">{puzzleStats.solved}</p>}
           </div>
-          <div className="bg-[#272e45] rounded-xl p-4 border border-[#374162]">
-            <p className="text-[#97a1c4] text-sm">Current Streak</p>
-            <p className="text-2xl font-bold text-orange-400">{puzzleStats.streak}</p>
+          <div className="bg-[#272e45] rounded-xl p-3 sm:p-4 border border-[#374162]">
+            <p className="text-[#97a1c4] text-xs">My Rating</p>
+            {statsLoading
+              ? <div className="h-7 w-14 bg-[#374162] rounded animate-pulse mt-1" />
+              : <p className="text-xl sm:text-2xl font-bold text-blue-400">{puzzleStats.rating || 1200}</p>}
           </div>
-          <div className="bg-[#272e45] rounded-xl p-4 border border-[#374162]">
-            <p className="text-[#97a1c4] text-sm">My Puzzle Rating</p>
-            <p className="text-2xl font-bold text-blue-400">{puzzleStats.rating || 1200}</p>
+          <div className="bg-[#272e45] rounded-xl p-3 sm:p-4 border border-[#374162]">
+            <p className="text-[#97a1c4] text-xs">Streak</p>
+            {statsLoading
+              ? <div className="h-7 w-8 bg-[#374162] rounded animate-pulse mt-1" />
+              : <p className="text-xl sm:text-2xl font-bold text-orange-400">{puzzleStats.streak}</p>}
           </div>
-          {/* Only show puzzle rating after it's solved */}
           {isCompleted && (
-            <div className="bg-[#272e45] rounded-xl p-4 border border-[#374162]">
-              <p className="text-[#97a1c4] text-sm">Puzzle Rating</p>
-              <p className="text-2xl font-bold text-purple-400">{currentPuzzle.rating}</p>
+            <div className="bg-[#272e45] rounded-xl p-3 sm:p-4 border border-[#374162] hidden sm:block">
+              <p className="text-[#97a1c4] text-xs">Puzzle Rating</p>
+              <p className="text-xl sm:text-2xl font-bold text-purple-400">{currentPuzzle.rating}</p>
             </div>
           )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Left Column - PGN/Moves Panel */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* PGN/Moves Panel */}
-            <div className="bg-[#272e45] rounded-xl p-6 border border-[#374162]">
-              <h4 className="text-white font-semibold mb-4">
+        {/* ── Main layout: Desktop 4-col, Tablet 2-col, Mobile single column ── */}
+        <div className="flex flex-col md:grid md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
+
+          {/* ── Left panel (tablet + desktop) ── */}
+          <div className="hidden md:flex md:col-span-1 flex-col space-y-4">
+            <div className="bg-[#272e45] rounded-xl p-4 border border-[#374162]">
+              <h4 className="text-white font-semibold mb-3 text-sm">
                 {solutionModeActive ? 'Solution Moves' : 'Your Attempts'}
               </h4>
-              <div className="space-y-2 max-h-60 overflow-y-auto">
+              <div className="space-y-1 max-h-48 overflow-y-auto">
                 {solutionModeActive ? (
-                  // Show solution moves when in solution mode
-                  solutionMoves.length > 0 ? (
-                    solutionMoves.map((move, index) => (
-                      <div key={index} className="flex items-center justify-between text-sm">
-                        <span className="text-green-400">{index + 1}. {move}</span>
-                        <span className="text-gray-400">✓</span>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-gray-400 text-sm">Step through the solution...</p>
-                  )
+                  solutionMoves.length > 0 ? solutionMoves.map((move, index) => (
+                    <div key={index} className="flex items-center justify-between text-xs">
+                      <span className="text-green-400">{index + 1}. {move}</span>
+                      <span className="text-gray-400">✓</span>
+                    </div>
+                  )) : <p className="text-gray-400 text-xs">Step through the solution...</p>
                 ) : (
-                  // Show user attempts when not in solution mode
-                  userAttempts.length > 0 ? (
-                    userAttempts.map((attempt, index) => (
-                      <div key={index} className="flex items-center justify-between text-sm">
-                        <span className={attempt.includes('✓') ? 'text-green-400' : 'text-red-400'}>
-                          {index + 1}. {attempt.replace(' ✓', '').replace(' (incorrect)', '')}
-                        </span>
-                        <span className={attempt.includes('✓') ? 'text-green-400' : 'text-red-400'}>
-                          {attempt.includes('✓') ? '✓' : '✗'}
-                        </span>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-gray-400 text-sm">Make your moves...</p>
-                  )
+                  userAttempts.length > 0 ? userAttempts.map((attempt, index) => (
+                    <div key={index} className="flex items-center justify-between text-xs">
+                      <span className={attempt.includes('✓') ? 'text-green-400' : 'text-red-400'}>
+                        {index + 1}. {attempt.replace(' ✓', '').replace(' (incorrect)', '')}
+                      </span>
+                      <span className={attempt.includes('✓') ? 'text-green-400' : 'text-red-400'}>
+                        {attempt.includes('✓') ? '✓' : '✗'}
+                      </span>
+                    </div>
+                  )) : <p className="text-gray-400 text-xs">Make your moves...</p>
                 )}
               </div>
             </div>
 
-            {/* Puzzle Info */}
-            <div className="bg-[#272e45] rounded-xl p-6 border border-[#374162]">
-              <h4 className="text-white font-semibold mb-3">Puzzle Details</h4>
-              
-              <div className="space-y-3">
+            <div className="bg-[#272e45] rounded-xl p-4 border border-[#374162]">
+              <h4 className="text-white font-semibold mb-3 text-sm">Puzzle Details</h4>
+              <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-[#97a1c4]">ID:</span>
-                  <span className="text-white text-sm font-mono">{currentPuzzle.id}</span>
+                  <span className="text-white text-xs font-mono">{currentPuzzle.id}</span>
                 </div>
-                {/* Only show puzzle rating after it's solved */}
                 {isCompleted && (
                   <div className="flex items-center justify-between">
                     <span className="text-[#97a1c4]">Rating:</span>
@@ -832,7 +872,7 @@ const PuzzleSolver = () => {
                 )}
                 <div className="flex items-center justify-between">
                   <span className="text-[#97a1c4]">Difficulty:</span>
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${getDifficultyColor(currentPuzzle.difficulty)}`}>
+                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${getDifficultyColor(currentPuzzle.difficulty)}`}>
                     {currentPuzzle.difficulty}
                   </span>
                 </div>
@@ -843,15 +883,11 @@ const PuzzleSolver = () => {
               </div>
             </div>
 
-            {/* Themes */}
-            <div className="bg-[#272e45] rounded-xl p-6 border border-[#374162]">
-              <h4 className="text-white font-semibold mb-3">Themes</h4>
-              <div className="flex flex-wrap gap-2">
+            <div className="bg-[#272e45] rounded-xl p-4 border border-[#374162]">
+              <h4 className="text-white font-semibold mb-3 text-sm">Themes</h4>
+              <div className="flex flex-wrap gap-1.5">
                 {currentPuzzle.themes.map((theme, index) => (
-                  <span 
-                    key={index} 
-                    className={`${getThemeColor(theme)}/20 text-blue-400 px-3 py-1 rounded-full text-xs border border-blue-400/30`}
-                  >
+                  <span key={index} className={`${getThemeColor(theme)}/20 text-blue-400 px-2 py-0.5 rounded-full text-xs border border-blue-400/30`}>
                     {theme}
                   </span>
                 ))}
@@ -859,18 +895,19 @@ const PuzzleSolver = () => {
             </div>
           </div>
 
-          {/* Center Columns - Chess Board */}
-          <div className="lg:col-span-2 flex flex-col items-center space-y-6">
-            {/* Progress Bar */}
-            <div className="w-full bg-[#374162] rounded-full h-2">
-              <div 
-                className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-300" 
-                style={{ width: `${progressPercentage}%` }}
-              ></div>
+          {/* ── Center: Board ── */}
+          <div ref={boardContainerRef} className="md:col-span-1 lg:col-span-2 flex flex-col items-center gap-3 min-w-0 w-full overflow-hidden">
+            {/* Progress bar */}
+            <div className="w-full bg-[#374162] rounded-full h-1.5">
+              <div className="bg-gradient-to-r from-blue-500 to-purple-500 h-1.5 rounded-full transition-all duration-300"
+                style={{ width: `${progressPercentage}%` }} />
             </div>
 
-            {/* Chess Board */}
-            <div className="flex justify-center">
+            {/* Chess Board with resize handle */}
+            <div
+              className="relative inline-block select-none max-w-full overflow-hidden"
+              style={{ cursor: isResizing ? 'nwse-resize' : 'default', maxWidth: '100%' }}
+            >
               <ChessGame
                 key={boardKey}
                 isModalMode={true}
@@ -880,16 +917,32 @@ const PuzzleSolver = () => {
                 showNotation={false}
                 engineEnabled={analysisMode}
                 orientation={activeColor}
+                boardWidth={Math.min(boardSize, window.innerWidth - 16)}
+                notationFontSize={window.innerWidth < 768 ? '7px' : '10px'}
               />
+              {/* Resize handle — bottom-right corner, like Lichess */}
+              <div
+                onMouseDown={handleResizeDragStart}
+                onTouchStart={handleResizeDragStart}
+                title="Drag to resize board"
+                className="absolute bottom-0 right-0 w-5 h-5 cursor-nwse-resize z-10 flex items-end justify-end pb-0.5 pr-0.5"
+                style={{ touchAction: 'none' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="opacity-40 hover:opacity-90 transition-opacity">
+                  <path d="M13 1L1 13" stroke="#94a3b8" strokeWidth="1.8" strokeLinecap="round"/>
+                  <path d="M13 6L6 13" stroke="#94a3b8" strokeWidth="1.8" strokeLinecap="round"/>
+                  <path d="M13 11L11 13" stroke="#94a3b8" strokeWidth="1.8" strokeLinecap="round"/>
+                </svg>
+              </div>
             </div>
 
             {/* Solution Display */}
             {solutionVisible && !solutionModeActive && (
-              <div className="bg-[#1e293b] rounded-xl p-4 border border-[#374162] w-full max-w-md">
-                <h4 className="text-white font-semibold mb-2">Solution:</h4>
-                <div className="flex flex-wrap gap-2">
+              <div className="bg-[#1e293b] rounded-xl p-3 border border-[#374162] w-full">
+                <h4 className="text-white font-semibold mb-2 text-sm">Solution:</h4>
+                <div className="flex flex-wrap gap-1.5">
                   {currentPuzzle.moves.map((move, index) => (
-                    <span key={index} className="bg-[#374162] text-green-400 px-2 py-1 rounded text-sm">
+                    <span key={index} className="bg-[#374162] text-green-400 px-2 py-0.5 rounded text-xs">
                       {index + 1}. {move}
                     </span>
                   ))}
@@ -899,89 +952,128 @@ const PuzzleSolver = () => {
 
             {/* Hint Display */}
             {hintVisible && (
-              <div className="bg-[#1e293b] rounded-xl p-4 border border-yellow-400/30 w-full max-w-md">
-                <p className="text-yellow-400 font-medium mb-2">💡 Hint:</p>
+              <div className="bg-[#1e293b] rounded-xl p-3 border border-yellow-400/30 w-full">
+                <p className="text-yellow-400 font-medium mb-1 text-sm">💡 Hint:</p>
                 <p className="text-white text-sm">{currentPuzzle.hint}</p>
               </div>
             )}
+
+            {/* ── Mobile-only controls below board ── */}
+            <div className="md:hidden w-full space-y-3">
+              <div className="bg-[#272e45] rounded-xl p-4 border border-[#374162]">
+                <div className="grid grid-cols-2 gap-2">
+                  {!isCompleted && !solutionModeActive && (
+                    <>
+                      <button onClick={handleShowHint} disabled={hintVisible}
+                        className="bg-yellow-600 hover:bg-yellow-700 disabled:opacity-50 text-white py-2 rounded-lg transition-colors text-sm">
+                        {hintVisible ? 'Hint Shown' : '💡 Hint'}
+                      </button>
+                      <button onClick={handleShowSolution}
+                        className="bg-orange-600 hover:bg-orange-700 text-white py-2 rounded-lg transition-colors text-sm">
+                        Show Solution
+                      </button>
+                    </>
+                  )}
+                  {solutionModeActive && (
+                    <>
+                      <button onClick={stepSolutionBackward} disabled={solutionIndex <= 0}
+                        className="bg-[#374162] hover:bg-[#455173] disabled:opacity-50 text-white py-2 rounded-lg transition-colors text-sm">
+                        ← Back
+                      </button>
+                      <button onClick={stepSolutionForward} disabled={solutionIndex >= currentPuzzle.moves.length}
+                        className="bg-[#374162] hover:bg-[#455173] disabled:opacity-50 text-white py-2 rounded-lg transition-colors text-sm">
+                        Next →
+                      </button>
+                      <button onClick={exitSolutionMode}
+                        className="col-span-2 bg-gray-600 hover:bg-gray-700 text-white py-2 rounded-lg transition-colors text-sm">
+                        Exit Solution
+                      </button>
+                    </>
+                  )}
+                  <button onClick={loadNextPuzzle}
+                    className={`bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors text-sm ${(!isCompleted && !solutionModeActive) ? 'col-span-2' : ''}`}>
+                    Next Puzzle →
+                  </button>
+                  {isCompleted && (
+                    <button onClick={handleAnalyzePosition}
+                      className="bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg transition-colors text-sm">
+                      Analyze
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Mobile compact puzzle info */}
+              <div className="bg-[#272e45] rounded-xl p-3 border border-[#374162]">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${getDifficultyColor(currentPuzzle.difficulty)}`}>
+                    {currentPuzzle.difficulty}
+                  </span>
+                  <span className="text-[#97a1c4] text-xs">{currentPuzzle.moves?.length || 0} moves</span>
+                  <div className="flex flex-wrap gap-1">
+                    {currentPuzzle.themes.slice(0, 3).map((theme, index) => (
+                      <span key={index} className="text-blue-400 px-2 py-0.5 rounded-full text-xs border border-blue-400/30 bg-blue-600/10">
+                        {theme}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Right Column - Controls & Analysis */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* Puzzle Controls */}
-            <div className="bg-[#272e45] rounded-xl p-6 border border-[#374162]">
-              <h4 className="text-white font-semibold mb-4">Controls</h4>
-              <div className="space-y-3">
+          {/* ── Right panel (tablet + desktop) ── */}
+          <div className="hidden md:flex md:col-span-1 flex-col space-y-4">
+            <div className="bg-[#272e45] rounded-xl p-4 border border-[#374162]">
+              <h4 className="text-white font-semibold mb-3 text-sm">Controls</h4>
+              <div className="space-y-2">
                 {!isCompleted && !solutionModeActive && (
                   <>
-                    <button
-                      onClick={handleShowHint}
-                      disabled={hintVisible}
-                      className="w-full bg-yellow-600 hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded-lg transition-colors"
-                    >
+                    <button onClick={handleShowHint} disabled={hintVisible}
+                      className="w-full bg-yellow-600 hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded-lg transition-colors text-sm">
                       {hintVisible ? 'Hint Shown' : 'Show Hint'}
                     </button>
-                    <button
-                      onClick={handleShowSolution}
-                      className="w-full bg-orange-600 hover:bg-orange-700 text-white py-2 rounded-lg transition-colors"
-                    >
+                    <button onClick={handleShowSolution}
+                      className="w-full bg-orange-600 hover:bg-orange-700 text-white py-2 rounded-lg transition-colors text-sm">
                       Show Solution
                     </button>
                   </>
                 )}
-
                 {solutionModeActive && (
                   <div className="space-y-2">
-                    <p className="text-sm text-gray-400 mb-2">
-                      {solutionModeActive ? 'Solution Active' : 'Solution Mode'}
-                    </p>
+                    <p className="text-xs text-gray-400">Solution Active</p>
                     <div className="flex gap-2">
-                      <button
-                        onClick={stepSolutionBackward}
-                        disabled={solutionIndex <= 0}
-                        className="flex-1 bg-[#374162] hover:bg-[#455173] disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded-lg transition-colors text-sm"
-                      >
+                      <button onClick={stepSolutionBackward} disabled={solutionIndex <= 0}
+                        className="flex-1 bg-[#374162] hover:bg-[#455173] disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded-lg transition-colors text-sm">
                         ← Back
                       </button>
-                      <button
-                        onClick={stepSolutionForward}
-                        disabled={solutionIndex >= currentPuzzle.moves.length}
-                        className="flex-1 bg-[#374162] hover:bg-[#455173] disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded-lg transition-colors text-sm"
-                      >
+                      <button onClick={stepSolutionForward} disabled={solutionIndex >= currentPuzzle.moves.length}
+                        className="flex-1 bg-[#374162] hover:bg-[#455173] disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded-lg transition-colors text-sm">
                         Next →
                       </button>
                     </div>
-                    <button
-                      onClick={exitSolutionMode}
-                      className="w-full bg-gray-600 hover:bg-gray-700 text-white py-2 rounded-lg transition-colors text-sm"
-                    >
+                    <button onClick={exitSolutionMode}
+                      className="w-full bg-gray-600 hover:bg-gray-700 text-white py-2 rounded-lg transition-colors text-sm">
                       Exit Solution
                     </button>
                   </div>
                 )}
-
-                <button
-                  onClick={loadNextPuzzle}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"
-                >
+                <button onClick={loadNextPuzzle}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors text-sm">
                   Next Puzzle
                 </button>
-
                 {isCompleted && (
-                  <button
-                    onClick={handleAnalyzePosition}
-                    className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg transition-colors"
-                  >
+                  <button onClick={handleAnalyzePosition}
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg transition-colors text-sm">
                     Analyze Position
                   </button>
                 )}
               </div>
             </div>
 
-            {/* Engine Analysis */}
             {showGameAnalysis && engineAnalysis && (
-              <div className="bg-[#272e45] rounded-xl p-6 border border-[#374162]">
-                <h4 className="text-white font-semibold mb-3">Engine Analysis</h4>
+              <div className="bg-[#272e45] rounded-xl p-4 border border-[#374162]">
+                <h4 className="text-white font-semibold mb-3 text-sm">Engine Analysis</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-[#97a1c4]">Evaluation:</span>
@@ -999,19 +1091,14 @@ const PuzzleSolver = () => {
               </div>
             )}
 
-            {/* Game Context */}
             {gameContext && (
-              <div className="bg-[#272e45] rounded-xl p-6 border border-[#374162]">
-                <h4 className="text-white font-semibold mb-3">Game Context</h4>
+              <div className="bg-[#272e45] rounded-xl p-4 border border-[#374162]">
+                <h4 className="text-white font-semibold mb-3 text-sm">Game Context</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-[#97a1c4]">Game:</span>
-                    <a 
-                      href={currentPuzzle.gameUrl} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-blue-400 hover:text-blue-300 underline"
-                    >
+                    <a href={currentPuzzle.gameUrl} target="_blank" rel="noopener noreferrer"
+                      className="text-blue-400 hover:text-blue-300 underline">
                       View on Lichess
                     </a>
                   </div>
@@ -1031,6 +1118,7 @@ const PuzzleSolver = () => {
               </div>
             )}
           </div>
+
         </div>
       </main>
       

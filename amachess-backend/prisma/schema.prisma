@@ -18,6 +18,7 @@ model User {
   chessGoal       String?  // Optional improvement goal, e.g., "Reach 1600"
   focusAreas      String?  // JSON array of areas to focus on, e.g., ["endgame", "tactics"]
   targetRating    Int?     // Numeric target rating
+  customGoals     String?  // JSON array of custom chess goals
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   

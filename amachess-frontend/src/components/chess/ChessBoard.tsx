@@ -31,6 +31,8 @@ interface ChessBoardProps {
   allowAllMoves?: boolean;
   arePremovesAllowed?: boolean;
   className?: string;
+  boardWidth?: number;
+  notationFontSize?: string;
 }
 
 const ChessBoard = forwardRef<ChessBoardRef, ChessBoardProps>(({
@@ -43,7 +45,9 @@ const ChessBoard = forwardRef<ChessBoardRef, ChessBoardProps>(({
   highlightLastMove = true,
   showEvaluation = false,
   evaluation = null,
-  className = ''
+  className = '',
+  boardWidth,
+  notationFontSize
 }, ref) => {
   const gameRef = useRef(new Chess());
   const lastMoveRef = useRef<{ from: string; to: string } | null>(null);
@@ -222,6 +226,11 @@ const ChessBoard = forwardRef<ChessBoardRef, ChessBoardProps>(({
           boardOrientation: orientation,
           animationDurationInMs: animationDuration,
           squareStyles: combinedSquareStyles,
+          ...(boardWidth ? { boardStyle: { width: boardWidth, height: boardWidth } } : {}),
+          ...(notationFontSize ? {
+            alphaNotationStyle: { fontSize: notationFontSize },
+            numericNotationStyle: { fontSize: notationFontSize },
+          } : {}),
         }}
       />
       

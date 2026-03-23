@@ -264,7 +264,7 @@ router.get('/user/:userId/puzzle-status/:puzzleId', auth, async (req, res) => {
     const { userId, puzzleId } = req.params;
     
     // Check for a solved attempt
-    const prisma = require('../config/database');
+    const { prisma } = require('../config/database');
     const previousSolvedAttempt = await prisma.puzzleAttempt.findFirst({
       where: {
         userId,

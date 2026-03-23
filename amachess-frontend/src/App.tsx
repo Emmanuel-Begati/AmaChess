@@ -1,6 +1,6 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { PreferencesProvider } from './contexts/PreferencesContext';
 import HomePage from './pages/HomePage';
 import Dashboard from './pages/Dashboard';
@@ -17,6 +17,28 @@ import Register from './pages/Register';
 import ProtectedRoute from './components/ui/ProtectedRoute';
 import { ChessMove } from './types';
 import './App.css';
+
+// Redirect authenticated users away from public-only pages (landing, login, register)
+const RedirectIfAuthenticated: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center">
+        <div className="flex items-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mr-3"></div>
+          <span className="text-white">Loading...</span>
+        </div>
+      </div>
+    );
+  }
+  
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return <>{children}</>;
+};
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -96,21 +118,57 @@ function App() {
           <Router>
             <div className="w-full min-h-screen">
               <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
+                <Route path="/" element={
+                  <RedirectIfAuthenticated>
+                    <HomePage />
+                  </RedirectIfAuthenticated>
+                } />
+                <Route path="/login" element={
+                  <RedirectIfAuthenticated>
+                    <Login />
+                  </RedirectIfAuthenticated>
+                } />
+                <Route path="/register" element={
+                  <RedirectIfAuthenticated>
+                    <Register />
+                  </RedirectIfAuthenticated>
+                } />
                 <Route path="/dashboard" element={
                   <ProtectedRoute>
                     <Dashboard />
                   </ProtectedRoute>
                 } />
                 <Route path="/contact" element={<ContactUs />} />
-                <Route path="/learn" element={<Learn />} />
-                <Route path="/puzzles" element={<Puzzles />} />
-                <Route path="/puzzle-solver" element={<PuzzleSolver />} />
-                <Route path="/library" element={<Library />} />
-                <Route path="/book" element={<BookReader />} />
-                <Route path="/library/book/:bookId" element={<BookReader />} />
+                <Route path="/learn" element={
+                  <ProtectedRoute>
+                    <Learn />
+                  </ProtectedRoute>
+                } />
+                <Route path="/puzzles" element={
+                  <ProtectedRoute>
+                    <Puzzles />
+                  </ProtectedRoute>
+                } />
+                <Route path="/puzzle-solver" element={
+                  <ProtectedRoute>
+                    <PuzzleSolver />
+                  </ProtectedRoute>
+                } />
+                <Route path="/library" element={
+                  <ProtectedRoute>
+                    <Library />
+                  </ProtectedRoute>
+                } />
+                <Route path="/book" element={
+                  <ProtectedRoute>
+                    <BookReader />
+                  </ProtectedRoute>
+                } />
+                <Route path="/library/book/:bookId" element={
+                  <ProtectedRoute>
+                    <BookReader />
+                  </ProtectedRoute>
+                } />
                 <Route path="/settings" element={
                   <ProtectedRoute>
                     <Settings />

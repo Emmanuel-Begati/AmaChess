@@ -63,7 +63,7 @@ const RecommendedPuzzles: React.FC<RecommendedPuzzlesProps> = ({ themes }) => {
     <div className="mt-6">
       <div className="flex items-center gap-2 mb-4">
         <span className="text-lg">🧩</span>
-        <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Recommended Practice</h4>
+        <h4 className="text-xs sm:text-sm font-semibold text-gray-300 uppercase tracking-wider">Recommended Practice</h4>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {themes.map((rec, i) => {
@@ -72,16 +72,18 @@ const RecommendedPuzzles: React.FC<RecommendedPuzzlesProps> = ({ themes }) => {
             <Link
               key={i}
               to={`/puzzle-solver?theme=${rec.theme}`}
-              className={`group bg-gradient-to-br ${display.color} rounded-xl p-4 border transition-all duration-300 hover:scale-[1.02] hover:shadow-lg block`}
+              className={`group bg-gradient-to-br ${display.color} rounded-xl p-3 sm:p-4 border transition-all duration-300 hover:scale-[1.02] hover:shadow-lg flex flex-col h-full`}
             >
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xl">{display.emoji}</span>
-                <span className="text-white font-semibold text-sm">{display.label}</span>
+              <div className="flex items-center gap-1.5 sm:gap-2 mb-2">
+                <span className="text-lg sm:text-xl">{display.emoji}</span>
+                <span className="text-white font-semibold text-xs sm:text-sm">{display.label}</span>
               </div>
-              <p className="text-gray-400 text-xs leading-relaxed mb-3 line-clamp-2">{rec.reason}</p>
-              <div className="flex items-center gap-1 text-xs font-medium text-blue-400 group-hover:text-blue-300 transition-colors">
+              <p className="text-gray-400 text-[10px] sm:text-xs leading-relaxed mb-3 line-clamp-2 group-hover:line-clamp-none transition-all duration-300 flex-grow">
+                {rec.reason}
+              </p>
+              <div className="flex items-center gap-1 text-[10px] sm:text-xs font-medium text-blue-400 group-hover:text-blue-300 transition-colors mt-auto pt-2 border-t border-slate-700/30">
                 <span>Practice now</span>
-                <svg className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </div>

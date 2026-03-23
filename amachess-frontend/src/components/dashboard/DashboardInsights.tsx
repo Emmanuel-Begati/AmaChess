@@ -84,21 +84,21 @@ const DashboardInsights: React.FC = () => {
   // Loading state
   if (loading) {
     return (
-      <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl p-8 border border-slate-700/50 backdrop-blur-sm">
+      <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl sm:rounded-2xl p-4 sm:p-8 border border-slate-700/50 backdrop-blur-sm">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-xl flex items-center justify-center">
             <span className="text-lg">🧠</span>
           </div>
           <div>
-            <h3 className="text-xl font-bold text-white">Coach B Insights</h3>
-            <p className="text-gray-400 text-sm">Analyzing your recent games...</p>
+            <h3 className="text-base sm:text-xl font-bold text-white">Coach B Insights</h3>
+            <p className="text-gray-400 text-xs sm:text-sm">Analyzing your recent games...</p>
           </div>
         </div>
         <div className="space-y-4 animate-pulse">
           <div className="h-4 bg-slate-700/50 rounded-full w-full"></div>
           <div className="h-4 bg-slate-700/50 rounded-full w-5/6"></div>
           <div className="h-4 bg-slate-700/50 rounded-full w-4/6"></div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 mt-4 sm:mt-6">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="h-20 bg-slate-700/30 rounded-xl"></div>
             ))}
@@ -111,14 +111,14 @@ const DashboardInsights: React.FC = () => {
   // Error state
   if (error) {
     return (
-      <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl p-8 border border-red-500/20 backdrop-blur-sm">
+      <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl sm:rounded-2xl p-4 sm:p-8 border border-red-500/20 backdrop-blur-sm">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center">
             <span className="text-lg">⚠️</span>
           </div>
-          <h3 className="text-xl font-bold text-white">Coach B Insights</h3>
+          <h3 className="text-base sm:text-xl font-bold text-white">Coach B Insights</h3>
         </div>
-        <p className="text-gray-400 mb-4">{error}</p>
+        <p className="text-gray-400 text-sm sm:text-base mb-4">{error}</p>
         <button
           onClick={() => fetchInsights()}
           className="px-4 py-2 bg-slate-700 text-white text-sm font-medium rounded-lg hover:bg-slate-600 transition-colors"
@@ -134,26 +134,26 @@ const DashboardInsights: React.FC = () => {
   const { insight, analysis } = data;
 
   return (
-    <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl p-8 border border-purple-500/20 backdrop-blur-sm relative overflow-hidden">
+    <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl sm:rounded-2xl p-4 sm:p-8 border border-purple-500/20 backdrop-blur-sm relative overflow-hidden">
       {/* Subtle gradient accent */}
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-400"></div>
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20">
-            <span className="text-lg">🧠</span>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20 shrink-0">
+            <span className="text-sm sm:text-lg">🧠</span>
           </div>
-          <div>
-            <h3 className="text-xl font-bold text-white">Coach B Insights</h3>
-            <div className="flex items-center gap-2">
-              <p className="text-gray-400 text-xs">
+          <div className="min-w-0">
+            <h3 className="text-base sm:text-xl font-bold text-white">Coach B Insights</h3>
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <p className="text-gray-400 text-[10px] sm:text-xs">
                 Based on your last {data.gamesAnalyzed} games
                 {data.cached && ' • Cached'}
               </p>
               {data.historicalProgress && (
-                <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full border border-purple-500/30">
-                  Compared to {data.historicalProgress.daysSinceLastInsight} days ago
+                <span className="text-[9px] sm:text-[10px] bg-purple-500/20 text-purple-300 px-1.5 sm:px-2 py-0.5 rounded-full border border-purple-500/30">
+                  vs {data.historicalProgress.daysSinceLastInsight}d ago
                 </span>
               )}
             </div>
@@ -162,11 +162,11 @@ const DashboardInsights: React.FC = () => {
         <button
           onClick={handleRefresh}
           disabled={refreshing}
-          className="flex items-center gap-2 px-4 py-2 bg-slate-700/50 text-gray-300 text-sm font-medium rounded-xl hover:bg-slate-600/50 hover:text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-slate-600/50"
+          className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-slate-700/50 text-gray-300 text-xs sm:text-sm font-medium rounded-lg sm:rounded-xl hover:bg-slate-600/50 hover:text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-slate-600/50 self-start sm:self-auto"
           title="Refresh insights"
         >
           <svg
-            className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
+            className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${refreshing ? 'animate-spin' : ''}`}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -179,10 +179,10 @@ const DashboardInsights: React.FC = () => {
       </div>
 
       {/* AI Coaching Message */}
-      <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 rounded-xl p-5 mb-6 border border-purple-500/10">
-        <div className="flex items-start gap-3">
-          <span className="text-xl mt-0.5">♔</span>
-          <p className="text-gray-200 leading-relaxed text-[15px]">
+      <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 rounded-lg sm:rounded-xl p-3 sm:p-5 mb-4 sm:mb-6 border border-purple-500/10">
+        <div className="flex items-start gap-2 sm:gap-3">
+          <span className="text-base sm:text-xl mt-0.5 shrink-0">♔</span>
+          <p className="text-gray-200 leading-relaxed text-xs sm:text-[15px]">
             {insight.message}
           </p>
         </div>
@@ -190,7 +190,7 @@ const DashboardInsights: React.FC = () => {
 
       {/* Quick Stats Grid */}
       {analysis && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
           <StatCard
             label="Accuracy"
             value={analysis.overallAccuracy !== null ? `${analysis.overallAccuracy}%` : 'N/A'}
@@ -279,13 +279,13 @@ const StatCard: React.FC<StatCardProps> = ({ label, value, icon, color, small = 
   }
 
   return (
-    <div className={`bg-gradient-to-br ${color} rounded-xl p-3 border border-slate-700/30`}>
-      <div className="flex items-center gap-1.5 mb-1">
-        <span className="text-sm">{icon}</span>
-        <span className="text-gray-400 text-xs font-medium">{label}</span>
+    <div className={`bg-gradient-to-br ${color} rounded-lg sm:rounded-xl p-2.5 sm:p-3 border border-slate-700/30`}>
+      <div className="flex items-center gap-1 sm:gap-1.5 mb-1">
+        <span className="text-xs sm:text-sm">{icon}</span>
+        <span className="text-gray-400 text-[10px] sm:text-xs font-medium">{label}</span>
       </div>
       <div className="flex items-end">
-        <p className={`text-white font-bold ${small ? 'text-xs' : 'text-lg'} truncate`}>{value}</p>
+        <p className={`text-white font-bold ${small ? 'text-[10px] sm:text-xs' : 'text-sm sm:text-lg'} truncate`}>{value}</p>
         {deltaIndicator}
       </div>
       {subtitle && <p className="text-gray-500 text-[10px] mt-1">{subtitle}</p>}

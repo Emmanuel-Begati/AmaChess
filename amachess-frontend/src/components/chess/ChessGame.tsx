@@ -15,6 +15,8 @@ interface ChessGameProps {
   showNotation?: boolean;
   engineEnabled?: boolean;
   orientation?: 'white' | 'black';
+  boardWidth?: number;
+  notationFontSize?: string;
 }
 
 const ChessGame: React.FC<ChessGameProps> = ({
@@ -24,7 +26,9 @@ const ChessGame: React.FC<ChessGameProps> = ({
   interactive = true,
   showNotation = false,
   engineEnabled = true,
-  orientation = 'white'
+  orientation = 'white',
+  boardWidth,
+  notationFontSize
 }) => {
   const chessBoardRef = useRef<ChessBoardRef>(null);
   const [evaluation, setEvaluation] = useState<{ value: number; type: 'centipawns' | 'mate' } | null>(null);
@@ -186,6 +190,8 @@ const ChessGame: React.FC<ChessGameProps> = ({
               highlightLastMove={true}
               showCoordinates={false}
               showEvaluation={false}
+              boardWidth={boardWidth}
+              notationFontSize={notationFontSize}
             />
           </div>
           
